@@ -1,0 +1,41 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "lista_compras (Samsung Físico)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "R5CY90W0RVR"
+        },
+        {
+            "name": "lista_compras (Android Emulator)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "emulator-5554"
+        },
+        {
+            "name": "lista_compras (Chrome Web)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "chrome"
+        },
+        {
+            "name": "lista_compras (Servidor Web para iPhone / Safari)",
+            "request": "launch",
+            "type": "dart",
+            "args": [
+                "-d",
+                "web-server",
+                "--web-hostname",
+                "0.0.0.0",
+                "--web-port",
+                "8080"
+            ]
+        },
+        {
+            "name": "lista_compras (Selección Automática)",
+            "request": "launch",
+            "type": "dart"
+        }
+    ]
+}
