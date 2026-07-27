@@ -62,7 +62,6 @@ class DatabaseService extends ChangeNotifier {
       final savedUserId = prefs.getString('session_user_id');
 
       if (savedUserId != null && savedUserId.isNotEmpty) {
-        // Intentar buscar usuario en MongoDB Cloud
         final remoteUser = await MongoService.findOne(
           collectionName: MongoConfig.colUsuario,
           filter: {'id_usuario': savedUserId},
@@ -137,11 +136,12 @@ class DatabaseService extends ChangeNotifier {
         }
       }
 
-      // 3. Obtener todas las Listas de Compras de la Familia desde MongoDB
+      // 3. Obtener todas las Listas de Compras de la Familia desde MongoDB ('lista_compra')
       final listDocs = await MongoService.find(
         collectionName: MongoConfig.colListasCompra,
         filter: {'id_familia': famId},
       );
+
       for (var doc in listDocs) {
         final listModel = ShoppingListModel.fromMap(doc);
         final idx = _shoppingLists.indexWhere((l) => l.idListaCompra == listModel.idListaCompra);
@@ -450,7 +450,7 @@ class DatabaseService extends ChangeNotifier {
     if (famId == null) return [];
 
     final lists = _shoppingLists
-        .where((l) => l.idFamilia == famId && l.isActive)
+        .where((l) => l.idFamilia == famId && l.isActive && !l.isCompleted)
         .toList();
 
     lists.sort((a, b) {
@@ -463,41 +463,42 @@ class DatabaseService extends ChangeNotifier {
   }
 
   Future<void> createOrReactivateList(String nbLista) async {
+    await createNewList(nbLista);
+  }
+
+  /// Crea una NUEVA lista de compras limpia si no existe una activa con el mismo nombre
+  Future<void> createNewList(String nbLista) async {
     final famId = _currentUser?.idFamilia;
     if (famId == null) return;
 
     final trimmedName = nbLista.trim();
     if (trimmedName.isEmpty) return;
 
-    final existingIdx = _shoppingLists.indexWhere(
-      (l) => l.idFamilia == famId && l.nbLista.toLowerCase() == trimmedName.toLowerCase(),
+    // Verificar si ya existe una lista ACTIVA (no completada) con el mismo nombre para esta familia
+    final hasActiveList = _shoppingLists.any(
+      (l) => l.idFamilia == famId &&
+             l.isActive &&
+             !l.isCompleted &&
+             l.nbLista.toLowerCase() == trimmedName.toLowerCase(),
     );
 
-    if (existingIdx != -1) {
-      final existing = _shoppingLists[existingIdx];
-      _shoppingLists[existingIdx] = existing.copyWith(isActive: true, isCompleted: false);
-      await MongoService.updateOne(
-        collectionName: MongoConfig.colListasCompra,
-        filter: {'id_lista_compra': existing.idListaCompra},
-        update: {
-          '\$set': {'is_active': true, 'is_completed': false}
-        },
-      );
-    } else {
-      final newList = ShoppingListModel(
-        idListaCompra: _uuid.v4(),
-        idFamilia: famId,
-        nbLista: trimmedName,
-        isDefault: false,
-        isActive: true,
-        isCompleted: false,
-      );
-      await MongoService.insertOne(
-        collectionName: MongoConfig.colListasCompra,
-        document: newList.toMap(),
-      );
-      _shoppingLists.add(newList);
+    if (hasActiveList) {
+      throw Exception("LIST_ALREADY_EXISTS");
     }
+
+    final newList = ShoppingListModel(
+      idListaCompra: _uuid.v4(),
+      idFamilia: famId,
+      nbLista: trimmedName,
+      isDefault: false,
+      isActive: true,
+      isCompleted: false,
+    );
+    await MongoService.insertOne(
+      collectionName: MongoConfig.colListasCompra,
+      document: newList.toMap(),
+    );
+    _shoppingLists.add(newList);
     notifyListeners();
   }
 
@@ -522,6 +523,53 @@ class DatabaseService extends ChangeNotifier {
       );
       notifyListeners();
     }
+  }
+
+  /// Finaliza toda la lista: marca todos los elementos pendientes como comprados y la lista como hecha (is_completed = true)
+  Future<void> finishAndCompleteEntireList(String idListaCompra) async {
+    final nowIso = DateTime.now().toIso8601String();
+    final userId = _currentUser?.idUsuario;
+
+    // 1. Marcar todos los elementos pendientes de esta lista en memoria y MongoDB como comprados
+    for (int i = 0; i < _listDetailItems.length; i++) {
+      if (_listDetailItems[i].idListaCompra == idListaCompra && _listDetailItems[i].isPending) {
+        _listDetailItems[i] = _listDetailItems[i].copyWith(
+          status: 'completed',
+          fechaCompra: DateTime.now(),
+          idUsuarioFinalizo: userId,
+        );
+      }
+    }
+
+    await MongoService.updateOne(
+      collectionName: MongoConfig.colDetalleLista,
+      filter: {
+        'id_lista_compra': idListaCompra,
+        'status': 'pending',
+      },
+      update: {
+        '\$set': {
+          'status': 'completed',
+          'fecha_compra': nowIso,
+          'id_usuario_finalizo': userId,
+        }
+      },
+    );
+
+    // 2. Marcar la lista de compras como completada (is_completed = true)
+    final idx = _shoppingLists.indexWhere((l) => l.idListaCompra == idListaCompra);
+    if (idx != -1) {
+      _shoppingLists[idx] = _shoppingLists[idx].copyWith(isCompleted: true);
+      await MongoService.updateOne(
+        collectionName: MongoConfig.colListasCompra,
+        filter: {'id_lista_compra': idListaCompra},
+        update: {
+          '\$set': {'is_completed': true}
+        },
+      );
+    }
+
+    notifyListeners();
   }
 
   Future<bool> markListAsCompleted(String idListaCompra) async {
@@ -557,6 +605,7 @@ class DatabaseService extends ChangeNotifier {
         .toList();
   }
 
+  /// Retorna ÚNICAMENTE los artículos del catálogo pertenecientes a la familia del usuario activo
   List<ItemCatalogModel> getCatalogItems() {
     final famId = _currentUser?.idFamilia;
     if (famId == null) return [];
@@ -590,24 +639,52 @@ class DatabaseService extends ChangeNotifier {
     final famId = _currentUser?.idFamilia;
     if (famId == null) return;
 
-    final artId = _uuid.v4();
-    final newCatalogItem = ItemCatalogModel(
-      idArticulo: artId,
-      idFamilia: famId,
-      nbArticuloEs: nbArticulo,
-      nbArticuloEn: nbArticulo,
-    );
-    await MongoService.insertOne(
-      collectionName: MongoConfig.colCArticulo,
-      document: newCatalogItem.toMap(),
-    );
-    _catalogItems.add(newCatalogItem);
+    final cleanName = nbArticulo.trim();
+    if (cleanName.isEmpty) return;
 
-    await addItemToList(
-      idListaCompra: idListaCompra,
-      idArticulo: artId,
-      nbArticulo: nbArticulo,
+    // Verificar si el artículo ya existe en el catálogo exclusivo de ESTA familia
+    final familyCatalog = getCatalogItems();
+    final existingIdx = familyCatalog.indexWhere(
+      (c) => c.nbArticuloEs.toLowerCase() == cleanName.toLowerCase() ||
+             c.nbArticuloEn.toLowerCase() == cleanName.toLowerCase(),
     );
+
+    if (existingIdx != -1) {
+      final existingArt = familyCatalog[existingIdx];
+      await addItemToList(
+        idListaCompra: idListaCompra,
+        idArticulo: existingArt.idArticulo,
+        nbArticulo: cleanName,
+      );
+    } else {
+      final artId = _uuid.v4();
+      final newCatalogItem = ItemCatalogModel(
+        idArticulo: artId,
+        idFamilia: famId,
+        nbArticuloEs: cleanName,
+        nbArticuloEn: cleanName,
+      );
+      await MongoService.insertOne(
+        collectionName: MongoConfig.colCArticulo,
+        document: newCatalogItem.toMap(),
+      );
+      _catalogItems.add(newCatalogItem);
+
+      await addItemToList(
+        idListaCompra: idListaCompra,
+        idArticulo: artId,
+        nbArticulo: cleanName,
+      );
+    }
+  }
+
+  Future<void> removeListDetailItem(String idDetalle) async {
+    _listDetailItems.removeWhere((item) => item.idDetalle == idDetalle);
+    await MongoService.deleteOne(
+      collectionName: MongoConfig.colDetalleLista,
+      filter: {'id_detalle': idDetalle},
+    );
+    notifyListeners();
   }
 
   Future<void> markItemAsCompleted(String idDetalle) async {

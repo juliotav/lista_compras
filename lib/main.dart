@@ -31,7 +31,18 @@ class ShoppingListApp extends StatelessWidget {
     return MaterialApp(
       title: 'Lista de Compras',
       debugShowCheckedModeBanner: false,
-      locale: localeProvider.locale,
+      locale: localeProvider.effectiveLocale,
+      localeResolutionCallback: (deviceLocale, supportedLocales) {
+        if (localeProvider.locale != null) {
+          return localeProvider.locale;
+        }
+        if (deviceLocale != null) {
+          if (deviceLocale.languageCode.toLowerCase() == 'en') {
+            return const Locale('en');
+          }
+        }
+        return const Locale('es');
+      },
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -39,7 +50,7 @@ class ShoppingListApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [
-        Locale('es'), // Español (Predeterminado)
+        Locale('es'), // Español
         Locale('en'), // Inglés
       ],
       theme: ThemeData(

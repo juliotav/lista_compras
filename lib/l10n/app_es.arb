@@ -66,6 +66,7 @@
   "confirmDeleteMsg": "La lista de compras que desea eliminar tiene artículos sin comprar, ¿Desea continuar?",
   "btnCancel": "Cancelar",
   "btnDelete": "Eliminar",
+  "listAlreadyExistsErr": "Esta lista de compras ya existe.",
   
   "listDetailTitle": "Detalle de Lista",
   "pendingItemsHeader": "Artículos por comprar",

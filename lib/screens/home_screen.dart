@@ -68,10 +68,31 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () async {
                 if (formKey.currentState!.validate()) {
                   final db = dialogContext.read<DatabaseService>();
+                  final messenger = ScaffoldMessenger.of(context);
                   final dialogNav = Navigator.of(dialogContext);
-                  await db.createOrReactivateList(listNameController.text.trim());
-                  dialogNav.pop();
-                  _refreshData();
+                  final listName = listNameController.text.trim();
+
+                  try {
+                    await db.createNewList(listName);
+                    dialogNav.pop();
+                    _refreshData();
+                  } catch (e) {
+                    if (e.toString().contains("LIST_ALREADY_EXISTS")) {
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(l10n.listAlreadyExistsErr),
+                          backgroundColor: Colors.orange[900],
+                        ),
+                      );
+                    } else {
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(e.toString()),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
                 }
               },
               child: Text(l10n.btnCreateList),
@@ -180,24 +201,33 @@ class _HomeScreenState extends State<HomeScreen> {
             const Divider(),
             Consumer<LocaleProvider>(
               builder: (context, localeProvider, child) {
-                final currentCode = localeProvider.locale?.languageCode ?? 'es';
+                final currentCode = localeProvider.locale == null ? 'system' : localeProvider.locale!.languageCode;
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.language_rounded, color: Colors.grey),
-                      const SizedBox(width: 16),
-                      Text(l10n.menuLanguage),
-                      const Spacer(),
+                      Row(
+                        children: [
+                          const Icon(Icons.language_rounded, color: Colors.grey),
+                          const SizedBox(width: 12),
+                          Text(l10n.menuLanguage, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
                       DropdownButton<String>(
+                        isExpanded: true,
                         value: currentCode,
                         underline: const SizedBox(),
                         items: [
+                          DropdownMenuItem(value: 'system', child: Text(l10n.systemDefault)),
                           DropdownMenuItem(value: 'es', child: Text(l10n.spanish)),
                           DropdownMenuItem(value: 'en', child: Text(l10n.english)),
                         ],
                         onChanged: (val) {
-                          if (val != null) {
+                          if (val == 'system') {
+                            localeProvider.setLocale(null);
+                          } else if (val != null) {
                             localeProvider.setLocale(Locale(val));
                           }
                         },

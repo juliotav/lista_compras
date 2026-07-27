@@ -195,6 +195,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get btnDelete => 'Eliminar';
 
   @override
+  String get listAlreadyExistsErr => 'Esta lista de compras ya existe.';
+
+  @override
   String get listDetailTitle => 'Detalle de Lista';
 
   @override

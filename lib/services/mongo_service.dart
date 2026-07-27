@@ -87,4 +87,21 @@ class MongoService {
       return false;
     }
   }
+
+  /// Elimina un documento en MongoDB Cloud
+  static Future<bool> deleteOne({
+    required String collectionName,
+    required Map<String, dynamic> filter,
+  }) async {
+    final db = await _getDb();
+    if (db == null) return false;
+
+    try {
+      final collection = db.collection(collectionName);
+      final res = await collection.deleteOne(filter);
+      return res.isSuccess;
+    } catch (_) {
+      return false;
+    }
+  }
 }

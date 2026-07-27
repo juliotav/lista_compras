@@ -452,6 +452,12 @@ abstract class AppLocalizations {
   /// **'Eliminar'**
   String get btnDelete;
 
+  /// No description provided for @listAlreadyExistsErr.
+  ///
+  /// In es, this message translates to:
+  /// **'Esta lista de compras ya existe.'**
+  String get listAlreadyExistsErr;
+
   /// No description provided for @listDetailTitle.
   ///
   /// In es, this message translates to:

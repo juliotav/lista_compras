@@ -66,6 +66,7 @@
   "confirmDeleteMsg": "The shopping list you want to delete has unpurchased items. Do you wish to continue?",
   "btnCancel": "Cancel",
   "btnDelete": "Delete",
+  "listAlreadyExistsErr": "This shopping list already exists.",
   
   "listDetailTitle": "List Detail",
   "pendingItemsHeader": "Items to buy",

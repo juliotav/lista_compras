@@ -17,6 +17,8 @@ class ListDetailScreen extends StatefulWidget {
 
 class _ListDetailScreenState extends State<ListDetailScreen> {
   Timer? _syncTimer;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
 
   @override
   void initState() {
@@ -33,17 +35,38 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
         context.read<DatabaseService>().fetchFamilyData();
       }
     });
+
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim();
+      });
+    });
   }
 
   @override
   void dispose() {
     _syncTimer?.cancel();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _addCustomItem(String itemName) async {
+    final cleanName = itemName.trim();
+    if (cleanName.isEmpty) return;
+
+    final db = context.read<DatabaseService>();
+    await db.addCustomItemToCatalogAndList(
+      idListaCompra: widget.shoppingList.idListaCompra,
+      nbArticulo: cleanName,
+    );
+    _searchController.clear();
+    FocusManager.instance.primaryFocus?.unfocus();
+    db.fetchFamilyData();
   }
 
   void _showAddCustomItemDialog() {
     final l10n = AppLocalizations.of(context)!;
-    final itemController = TextEditingController();
+    final itemController = TextEditingController(text: _searchQuery);
     final formKey = GlobalKey<FormState>();
 
     showDialog(
@@ -75,14 +98,10 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
               ),
               onPressed: () async {
                 if (formKey.currentState!.validate()) {
-                  final db = dialogContext.read<DatabaseService>();
                   final dialogNav = Navigator.of(dialogContext);
-                  await db.addCustomItemToCatalogAndList(
-                    idListaCompra: widget.shoppingList.idListaCompra,
-                    nbArticulo: itemController.text.trim(),
-                  );
+                  final text = itemController.text;
                   dialogNav.pop();
-                  db.fetchFamilyData();
+                  await _addCustomItem(text);
                 }
               },
               child: Text(l10n.btnAdd),
@@ -99,9 +118,33 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
-    final success = await db.markListAsCompleted(widget.shoppingList.idListaCompra);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("Finalizar Lista"),
+          content: const Text("¿Desea finalizar toda la lista?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(l10n.btnCancel),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text("Finalizar", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
 
-    if (success) {
+    if (confirm == true) {
+      await db.finishAndCompleteEntireList(widget.shoppingList.idListaCompra);
       messenger.showSnackBar(
         SnackBar(
           content: Text(l10n.listFinishedSuccess),
@@ -109,13 +152,6 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
         ),
       );
       navigator.pop();
-    } else {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(l10n.cannotFinishPendingItemsErr),
-          backgroundColor: Colors.orange[900],
-        ),
-      );
     }
   }
 
@@ -130,6 +166,17 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     final pendingItems = db.getPendingItems(widget.shoppingList.idListaCompra);
     final completedItems = db.getCompletedItems(widget.shoppingList.idListaCompra);
     final catalogItems = db.getCatalogItems();
+
+    // Filtrar el catálogo al vuelo según el texto ingresado en el buscador
+    final filteredCatalog = catalogItems.where((c) {
+      final name = c.getLocalizedName(currentLang).toLowerCase();
+      return name.contains(_searchQuery.toLowerCase());
+    }).toList();
+
+    // Verificar si el texto escrito existe exactamente en el catálogo de esta familia
+    final hasExactMatch = catalogItems.any(
+      (c) => c.getLocalizedName(currentLang).toLowerCase() == _searchQuery.toLowerCase(),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -198,7 +245,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(24.0),
                           child: Text(
-                            "No hay artículos pendientes. Toca un artículo abajo para agregarlo.",
+                            "No hay artículos pendientes. Escribe o selecciona abajo para agregar.",
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.grey[600]),
                           ),
@@ -213,7 +260,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                           final item = pendingItems[index];
                           return Dismissible(
                             key: Key(item.idDetalle),
-                            direction: DismissDirection.startToEnd,
+                            direction: DismissDirection.horizontal,
                             background: Container(
                               alignment: Alignment.centerLeft,
                               padding: const EdgeInsets.only(left: 20),
@@ -229,15 +276,42 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                                 ],
                               ),
                             ),
-                            onDismissed: (_) {
-                              db.markItemAsCompleted(item.idDetalle);
+                            secondaryBackground: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              color: Colors.red,
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    "Eliminar",
+                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.delete_outline_rounded, color: Colors.white, size: 28),
+                                ],
+                              ),
+                            ),
+                            onDismissed: (direction) {
+                              if (direction == DismissDirection.startToEnd) {
+                                db.markItemAsCompleted(item.idDetalle);
+                              } else if (direction == DismissDirection.endToStart) {
+                                db.removeListDetailItem(item.idDetalle);
+                              }
                             },
                             child: ListTile(
                               title: Text(
                                 item.nbArticulo,
                                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                               ),
-                              trailing: const Icon(Icons.swipe_right_rounded, color: Colors.grey, size: 20),
+                              trailing: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.swipe_right_rounded, color: Colors.green, size: 16),
+                                  SizedBox(width: 2),
+                                  Icon(Icons.swipe_left_rounded, color: Colors.red, size: 16),
+                                ],
+                              ),
                             ),
                           );
                         },
@@ -246,7 +320,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
 
               const SizedBox(height: 28),
 
-              // --- SECCIÓN 2: LISTA DE ARTÍCULOS FAST-SELECT ---
+              // --- SECCIÓN 2: BUSCADOR AL VUELO Y CATÁLOGO RÁPIDO ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -272,22 +346,87 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
               ),
               const SizedBox(height: 8),
 
+              // CAMPO DE BÚSQUEDA AL VUELO
+              TextField(
+                controller: _searchController,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (value) {
+                  if (value.trim().isNotEmpty) {
+                    _addCustomItem(value);
+                  }
+                },
+                decoration: InputDecoration(
+                  hintText: "Buscar o escribir artículo...",
+                  prefixIcon: const Icon(Icons.search_rounded, color: Colors.deepPurple),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded, color: Colors.grey),
+                          onPressed: () {
+                            _searchController.clear();
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: Colors.deepPurple.withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
               Container(
-                constraints: const BoxConstraints(minHeight: 120),
+                constraints: const BoxConstraints(minHeight: 100),
                 decoration: BoxDecoration(
                   color: Colors.amber.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
                 ),
-                child: catalogItems.isEmpty
-                    ? const Center(child: Padding(padding: EdgeInsets.all(24), child: Text("No hay catálogo disponible.")))
-                    : ListView.separated(
+                child: Column(
+                  children: [
+                    // Opción dinámica de agregar artículo personalizado cuando el usuario escribe algo no coincidente
+                    if (_searchQuery.isNotEmpty && !hasExactMatch)
+                      ListTile(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        tileColor: Colors.deepPurple.withValues(alpha: 0.08),
+                        leading: const CircleAvatar(
+                          backgroundColor: Colors.deepPurple,
+                          radius: 14,
+                          child: Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                        ),
+                        title: Text(
+                          "Agregar '$_searchQuery' a la lista",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.deepPurple,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          "Se agregará a tu lista y al catálogo de tu familia",
+                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                        onTap: () => _addCustomItem(_searchQuery),
+                      ),
+
+                    if (filteredCatalog.isEmpty && (_searchQuery.isEmpty || hasExactMatch))
+                      const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(child: Text("No se encontraron artículos en el catálogo.")),
+                      )
+                    else
+                      ListView.separated(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: catalogItems.length,
+                        itemCount: filteredCatalog.length,
                         separatorBuilder: (context, index) => const Divider(height: 1),
                         itemBuilder: (context, index) {
-                          final catItem = catalogItems[index];
+                          final catItem = filteredCatalog[index];
                           final name = catItem.getLocalizedName(currentLang);
 
                           return ListTile(
@@ -303,11 +442,15 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                                 idArticulo: catItem.idArticulo,
                                 nbArticulo: name,
                               );
+                              _searchController.clear();
+                              FocusManager.instance.primaryFocus?.unfocus();
                               db.fetchFamilyData();
                             },
                           );
                         },
                       ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 28),

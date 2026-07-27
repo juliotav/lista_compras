@@ -6,10 +6,10 @@ class MongoConfig {
   /// Nombre de la base de datos
   static const String databaseName = "lista_compras";
 
-  /// Nombres exactos de tus Colecciones (Coincidiendo exactamente con la capitalización en MongoDB Atlas)
+  /// Nombres exactos de tus Colecciones (Coincidiendo exactamente con tu panel de MongoDB Atlas)
   static const String colUsuario = "usuario";
   static const String colFamilia = "familia";
-  static const String colListasCompra = "listas_compra";
+  static const String colListasCompra = "lista_compra"; // Nombre exacto en singular
   static const String colCArticulo = "c_articulo";
   static const String colDetalleLista = "detalle_lista_compra";
 }
