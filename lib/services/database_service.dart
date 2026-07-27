@@ -616,12 +616,14 @@ class DatabaseService extends ChangeNotifier {
     required String idListaCompra,
     required String idArticulo,
     required String nbArticulo,
+    String? dsDetalle,
   }) async {
     final newItem = ListDetailItemModel(
       idDetalle: _uuid.v4(),
       idListaCompra: idListaCompra,
       idArticulo: idArticulo,
       nbArticulo: nbArticulo,
+      dsDetalle: dsDetalle,
       status: 'pending',
     );
     await MongoService.insertOne(
@@ -635,6 +637,7 @@ class DatabaseService extends ChangeNotifier {
   Future<void> addCustomItemToCatalogAndList({
     required String idListaCompra,
     required String nbArticulo,
+    String? dsDetalle,
   }) async {
     final famId = _currentUser?.idFamilia;
     if (famId == null) return;
@@ -655,6 +658,7 @@ class DatabaseService extends ChangeNotifier {
         idListaCompra: idListaCompra,
         idArticulo: existingArt.idArticulo,
         nbArticulo: cleanName,
+        dsDetalle: dsDetalle,
       );
     } else {
       final artId = _uuid.v4();
@@ -674,7 +678,35 @@ class DatabaseService extends ChangeNotifier {
         idListaCompra: idListaCompra,
         idArticulo: artId,
         nbArticulo: cleanName,
+        dsDetalle: dsDetalle,
       );
+    }
+  }
+
+  Future<void> updateItemDetailNote(String idDetalle, String? dsDetalle) async {
+    final cleanNote = dsDetalle?.trim();
+    final idx = _listDetailItems.indexWhere((i) => i.idDetalle == idDetalle);
+    if (idx != -1) {
+      if (cleanNote == null || cleanNote.isEmpty) {
+        _listDetailItems[idx] = _listDetailItems[idx].copyWith(clearDsDetalle: true);
+        await MongoService.updateOne(
+          collectionName: MongoConfig.colDetalleLista,
+          filter: {'id_detalle': idDetalle},
+          update: {
+            '\$unset': {'ds_detalle': ''}
+          },
+        );
+      } else {
+        _listDetailItems[idx] = _listDetailItems[idx].copyWith(dsDetalle: cleanNote);
+        await MongoService.updateOne(
+          collectionName: MongoConfig.colDetalleLista,
+          filter: {'id_detalle': idDetalle},
+          update: {
+            '\$set': {'ds_detalle': cleanNote}
+          },
+        );
+      }
+      notifyListeners();
     }
   }
 

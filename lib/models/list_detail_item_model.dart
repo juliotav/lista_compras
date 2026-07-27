@@ -3,6 +3,7 @@ class ListDetailItemModel {
   final String idListaCompra;
   final String idArticulo;
   final String nbArticulo;
+  final String? dsDetalle;
   final String status; // 'pending' | 'completed'
   final DateTime? fechaCompra;
   final String? idUsuarioFinalizo;
@@ -12,6 +13,7 @@ class ListDetailItemModel {
     required this.idListaCompra,
     required this.idArticulo,
     required this.nbArticulo,
+    this.dsDetalle,
     this.status = 'pending',
     this.fechaCompra,
     this.idUsuarioFinalizo,
@@ -25,6 +27,8 @@ class ListDetailItemModel {
     String? idListaCompra,
     String? idArticulo,
     String? nbArticulo,
+    String? dsDetalle,
+    bool clearDsDetalle = false,
     String? status,
     DateTime? fechaCompra,
     String? idUsuarioFinalizo,
@@ -34,6 +38,7 @@ class ListDetailItemModel {
       idListaCompra: idListaCompra ?? this.idListaCompra,
       idArticulo: idArticulo ?? this.idArticulo,
       nbArticulo: nbArticulo ?? this.nbArticulo,
+      dsDetalle: clearDsDetalle ? null : (dsDetalle ?? this.dsDetalle),
       status: status ?? this.status,
       fechaCompra: fechaCompra ?? this.fechaCompra,
       idUsuarioFinalizo: idUsuarioFinalizo ?? this.idUsuarioFinalizo,
@@ -46,6 +51,7 @@ class ListDetailItemModel {
       'id_lista_compra': idListaCompra,
       'id_articulo': idArticulo,
       'nb_articulo': nbArticulo,
+      'ds_detalle': dsDetalle,
       'status': status,
       'fecha_compra': fechaCompra?.toIso8601String(),
       'id_usuario_finalizo': idUsuarioFinalizo,
@@ -58,6 +64,7 @@ class ListDetailItemModel {
       idListaCompra: map['id_lista_compra'] ?? '',
       idArticulo: map['id_articulo'] ?? '',
       nbArticulo: map['nb_articulo'] ?? '',
+      dsDetalle: map['ds_detalle'],
       status: map['status'] ?? 'pending',
       fechaCompra: map['fecha_compra'] != null ? DateTime.parse(map['fecha_compra']) : null,
       idUsuarioFinalizo: map['id_usuario_finalizo'],

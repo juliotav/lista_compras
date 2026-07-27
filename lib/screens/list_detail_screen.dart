@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
+import '../models/list_detail_item_model.dart';
 import '../models/shopping_list_model.dart';
 import '../services/database_service.dart';
 import '../services/locale_provider.dart';
@@ -299,19 +300,11 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                                 db.removeListDetailItem(item.idDetalle);
                               }
                             },
-                            child: ListTile(
-                              title: Text(
-                                item.nbArticulo,
-                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                              ),
-                              trailing: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.swipe_right_rounded, color: Colors.green, size: 16),
-                                  SizedBox(width: 2),
-                                  Icon(Icons.swipe_left_rounded, color: Colors.red, size: 16),
-                                ],
-                              ),
+                            child: PendingItemTile(
+                              item: item,
+                              onSaveNote: (newNote) {
+                                db.updateItemDetailNote(item.idDetalle, newNote);
+                              },
                             ),
                           );
                         },
@@ -509,6 +502,16 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                             color: Colors.grey[700],
                           ),
                         ),
+                        subtitle: item.dsDetalle != null && item.dsDetalle!.trim().isNotEmpty
+                            ? Text(
+                                item.dsDetalle!,
+                                style: TextStyle(
+                                  decoration: TextDecoration.lineThrough,
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              )
+                            : null,
                       );
                     },
                   ),
@@ -516,6 +519,150 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class PendingItemTile extends StatefulWidget {
+  final ListDetailItemModel item;
+  final Function(String) onSaveNote;
+
+  const PendingItemTile({
+    super.key,
+    required this.item,
+    required this.onSaveNote,
+  });
+
+  @override
+  State<PendingItemTile> createState() => _PendingItemTileState();
+}
+
+class _PendingItemTileState extends State<PendingItemTile> {
+  bool _isEditingNote = false;
+  late TextEditingController _noteController;
+  late FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _noteController = TextEditingController(text: widget.item.dsDetalle ?? "");
+    _focusNode = FocusNode();
+    _focusNode.addListener(() {
+      if (!_focusNode.hasFocus) {
+        if (_isEditingNote) {
+          setState(() {
+            _isEditingNote = false;
+          });
+          widget.onSaveNote(_noteController.text);
+        }
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant PendingItemTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item.dsDetalle != widget.item.dsDetalle && !_isEditingNote) {
+      _noteController.text = widget.item.dsDetalle ?? "";
+    }
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _startEditing() {
+    setState(() {
+      _isEditingNote = true;
+    });
+    _focusNode.requestFocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final noteText = widget.item.dsDetalle?.trim() ?? "";
+
+    return InkWell(
+      onTap: () {
+        if (!_isEditingNote) {
+          _startEditing();
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.item.nbArticulo,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                  ),
+                  const SizedBox(height: 4),
+
+                  if (_isEditingNote) ...[
+                    TextField(
+                      controller: _noteController,
+                      focusNode: _focusNode,
+                      textInputAction: TextInputAction.done,
+                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                      decoration: InputDecoration(
+                        hintText: "Agregar detalle (ej. Marca, cantidad...)",
+                        hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Colors.deepPurple, width: 1.5),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
+                        ),
+                      ),
+                      onSubmitted: (val) {
+                        setState(() {
+                          _isEditingNote = false;
+                        });
+                        widget.onSaveNote(val);
+                      },
+                    ),
+                  ] else ...[
+                    GestureDetector(
+                      onTap: _startEditing,
+                      child: Text(
+                        noteText.isNotEmpty ? noteText : "Toca para agregar detalle...",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontStyle: noteText.isEmpty ? FontStyle.italic : FontStyle.normal,
+                          color: noteText.isNotEmpty ? Colors.deepPurple[700] : Colors.grey[500],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.swipe_right_rounded, color: Colors.green, size: 16),
+                SizedBox(width: 2),
+                Icon(Icons.swipe_left_rounded, color: Colors.red, size: 16),
+              ],
+            ),
+          ],
         ),
       ),
     );
