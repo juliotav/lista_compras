@@ -21,10 +21,10 @@ class AboutPrivacyScreen extends StatelessWidget {
             Center(
               child: Column(
                 children: [
-                  Icon(
-                    Icons.shopping_cart_rounded,
-                    size: 72,
-                    color: theme.colorScheme.primary,
+                  Image.asset(
+                    'assets/images/app_icon.png',
+                    height: 90,
+                    width: 90,
                   ),
                   const SizedBox(height: 12),
                   Text(

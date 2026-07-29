@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appTitle": "Shopping List",
+  "appTitle": "Lista lista",
   
   "introSlide1Title": "Organize Your Purchases",
   "introSlide1Desc": "Easily manage your household shopping lists in real-time.",
@@ -11,7 +11,7 @@
   "btnStart": "Get Started",
   
   "loginTitle": "Sign In",
-  "loginSubtitle": "Welcome back to your Shopping List app",
+  "loginSubtitle": "Welcome back to your Lista lista app",
   "emailOrUsername": "Email or Username",
   "password": "Password",
   "btnLogin": "Sign In",
@@ -67,6 +67,11 @@
   "btnCancel": "Cancel",
   "btnDelete": "Delete",
   "listAlreadyExistsErr": "This shopping list already exists.",
+  "syncTooltip": "Synchronize",
+  "defaultUser": "User",
+  "defaultFamily": "Family",
+  "primaryFixedListTag": "Fixed Main List",
+  "deleteListAction": "Delete List",
   
   "listDetailTitle": "List Detail",
   "pendingItemsHeader": "Items to buy",
@@ -78,6 +83,23 @@
   "finishListTooltip": "Mark entire list as finished",
   "cannotFinishPendingItemsErr": "Cannot finish a list while it still has unpurchased items.",
   "listFinishedSuccess": "List completed successfully!",
+  "confirmFinishListTitle": "Finish List",
+  "confirmFinishListMsg": "Do you want to finish the entire list?",
+  "btnFinish": "Finish",
+  "noPendingItemsMsg": "No pending items. Type or select below to add.",
+  "statusPurchased": "Purchased",
+  "actionDelete": "Delete",
+  "searchOrTypeItemHint": "Search or type item...",
+  "addQueryToListOption": "Add '{query}' to list",
+  "@addQueryToListOption": {
+    "placeholders": {
+      "query": { "type": "String" }
+    }
+  },
+  "addQueryToListSubtitle": "Will be added to your list and family catalog",
+  "noCatalogItemsFound": "No catalog items found.",
+  "addDetailHint": "Add detail (e.g. Brand, quantity...)",
+  "tapToAddDetail": "Tap to add detail...",
   
   "menuAbout": "About",
   "menuFamilyMembers": "Family Members",

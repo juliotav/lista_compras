@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In es, this message translates to:
-  /// **'Lista de Compras'**
+  /// **'Lista lista'**
   String get appTitle;
 
   /// No description provided for @introSlide1Title.
@@ -155,7 +155,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginSubtitle.
   ///
   /// In es, this message translates to:
-  /// **'Bienvenido de nuevo a tu Lista de Compras'**
+  /// **'Bienvenido de nuevo a tu Lista lista'**
   String get loginSubtitle;
 
   /// No description provided for @emailOrUsername.
@@ -458,6 +458,36 @@ abstract class AppLocalizations {
   /// **'Esta lista de compras ya existe.'**
   String get listAlreadyExistsErr;
 
+  /// No description provided for @syncTooltip.
+  ///
+  /// In es, this message translates to:
+  /// **'Sincronizar'**
+  String get syncTooltip;
+
+  /// No description provided for @defaultUser.
+  ///
+  /// In es, this message translates to:
+  /// **'Usuario'**
+  String get defaultUser;
+
+  /// No description provided for @defaultFamily.
+  ///
+  /// In es, this message translates to:
+  /// **'Familia'**
+  String get defaultFamily;
+
+  /// No description provided for @primaryFixedListTag.
+  ///
+  /// In es, this message translates to:
+  /// **'Lista Principal Fija'**
+  String get primaryFixedListTag;
+
+  /// No description provided for @deleteListAction.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar Lista'**
+  String get deleteListAction;
+
   /// No description provided for @listDetailTitle.
   ///
   /// In es, this message translates to:
@@ -517,6 +547,78 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'¡Lista completada exitosamente!'**
   String get listFinishedSuccess;
+
+  /// No description provided for @confirmFinishListTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Finalizar Lista'**
+  String get confirmFinishListTitle;
+
+  /// No description provided for @confirmFinishListMsg.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Desea finalizar toda la lista?'**
+  String get confirmFinishListMsg;
+
+  /// No description provided for @btnFinish.
+  ///
+  /// In es, this message translates to:
+  /// **'Finalizar'**
+  String get btnFinish;
+
+  /// No description provided for @noPendingItemsMsg.
+  ///
+  /// In es, this message translates to:
+  /// **'No hay artículos pendientes. Escribe o selecciona abajo para agregar.'**
+  String get noPendingItemsMsg;
+
+  /// No description provided for @statusPurchased.
+  ///
+  /// In es, this message translates to:
+  /// **'Comprado'**
+  String get statusPurchased;
+
+  /// No description provided for @actionDelete.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar'**
+  String get actionDelete;
+
+  /// No description provided for @searchOrTypeItemHint.
+  ///
+  /// In es, this message translates to:
+  /// **'Buscar o escribir artículo...'**
+  String get searchOrTypeItemHint;
+
+  /// No description provided for @addQueryToListOption.
+  ///
+  /// In es, this message translates to:
+  /// **'Agregar \'{query}\' a la lista'**
+  String addQueryToListOption(String query);
+
+  /// No description provided for @addQueryToListSubtitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Se agregará a tu lista y al catálogo de tu familia'**
+  String get addQueryToListSubtitle;
+
+  /// No description provided for @noCatalogItemsFound.
+  ///
+  /// In es, this message translates to:
+  /// **'No se encontraron artículos en el catálogo.'**
+  String get noCatalogItemsFound;
+
+  /// No description provided for @addDetailHint.
+  ///
+  /// In es, this message translates to:
+  /// **'Agregar detalle (ej. Marca, cantidad...)'**
+  String get addDetailHint;
+
+  /// No description provided for @tapToAddDetail.
+  ///
+  /// In es, this message translates to:
+  /// **'Toca para agregar detalle...'**
+  String get tapToAddDetail;
 
   /// No description provided for @menuAbout.
   ///

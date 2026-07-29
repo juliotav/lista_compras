@@ -124,8 +124,8 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
       builder: (dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text("Finalizar Lista"),
-          content: const Text("¿Desea finalizar toda la lista?"),
+          title: Text(l10n.confirmFinishListTitle),
+          content: Text(l10n.confirmFinishListMsg),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -137,7 +137,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text("Finalizar", style: TextStyle(color: Colors.white)),
+              child: Text(l10n.btnFinish, style: const TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -185,7 +185,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: "Sincronizar",
+            tooltip: l10n.syncTooltip,
             onPressed: () => db.fetchFamilyData(),
           ),
           IconButton(
@@ -246,7 +246,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(24.0),
                           child: Text(
-                            "No hay artículos pendientes. Escribe o selecciona abajo para agregar.",
+                            l10n.noPendingItemsMsg,
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.grey[600]),
                           ),
@@ -266,13 +266,13 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                               alignment: Alignment.centerLeft,
                               padding: const EdgeInsets.only(left: 20),
                               color: Colors.green,
-                              child: const Row(
+                              child: Row(
                                 children: [
-                                  Icon(Icons.check_rounded, color: Colors.white, size: 28),
-                                  SizedBox(width: 8),
+                                  const Icon(Icons.check_rounded, color: Colors.white, size: 28),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    "Comprado",
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    l10n.statusPurchased,
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
@@ -281,15 +281,15 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                               alignment: Alignment.centerRight,
                               padding: const EdgeInsets.only(right: 20),
                               color: Colors.red,
-                              child: const Row(
+                              child: Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   Text(
-                                    "Eliminar",
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    l10n.actionDelete,
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                                   ),
-                                  SizedBox(width: 8),
-                                  Icon(Icons.delete_outline_rounded, color: Colors.white, size: 28),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 28),
                                 ],
                               ),
                             ),
@@ -349,7 +349,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                   }
                 },
                 decoration: InputDecoration(
-                  hintText: "Buscar o escribir artículo...",
+                  hintText: l10n.searchOrTypeItemHint,
                   prefixIcon: const Icon(Icons.search_rounded, color: Colors.deepPurple),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
@@ -394,23 +394,23 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                           child: Icon(Icons.add_rounded, color: Colors.white, size: 18),
                         ),
                         title: Text(
-                          "Agregar '$_searchQuery' a la lista",
+                          l10n.addQueryToListOption(_searchQuery),
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.deepPurple,
                           ),
                         ),
-                        subtitle: const Text(
-                          "Se agregará a tu lista y al catálogo de tu familia",
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                        subtitle: Text(
+                          l10n.addQueryToListSubtitle,
+                          style: const TextStyle(fontSize: 11, color: Colors.grey),
                         ),
                         onTap: () => _addCustomItem(_searchQuery),
                       ),
 
                     if (filteredCatalog.isEmpty && (_searchQuery.isEmpty || hasExactMatch))
-                      const Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Center(child: Text("No se encontraron artículos en el catálogo.")),
+                      Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Center(child: Text(l10n.noCatalogItemsFound)),
                       )
                     else
                       ListView.separated(
@@ -585,6 +585,7 @@ class _PendingItemTileState extends State<PendingItemTile> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final noteText = widget.item.dsDetalle?.trim() ?? "";
 
     return InkWell(
@@ -615,7 +616,7 @@ class _PendingItemTileState extends State<PendingItemTile> {
                       textInputAction: TextInputAction.done,
                       style: const TextStyle(fontSize: 13, color: Colors.black87),
                       decoration: InputDecoration(
-                        hintText: "Agregar detalle (ej. Marca, cantidad...)",
+                        hintText: l10n.addDetailHint,
                         hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -641,7 +642,7 @@ class _PendingItemTileState extends State<PendingItemTile> {
                     GestureDetector(
                       onTap: _startEditing,
                       child: Text(
-                        noteText.isNotEmpty ? noteText : "Toca para agregar detalle...",
+                        noteText.isNotEmpty ? noteText : l10n.tapToAddDetail,
                         style: TextStyle(
                           fontSize: 13,
                           fontStyle: noteText.isEmpty ? FontStyle.italic : FontStyle.normal,

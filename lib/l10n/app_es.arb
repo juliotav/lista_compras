@@ -1,6 +1,6 @@
 {
   "@@locale": "es",
-  "appTitle": "Lista de Compras",
+  "appTitle": "Lista lista",
   
   "introSlide1Title": "Organiza tus Compras",
   "introSlide1Desc": "Gestiona fácilmente las listas de compras de tu hogar en tiempo real.",
@@ -11,7 +11,7 @@
   "btnStart": "Comenzar",
   
   "loginTitle": "Iniciar Sesión",
-  "loginSubtitle": "Bienvenido de nuevo a tu Lista de Compras",
+  "loginSubtitle": "Bienvenido de nuevo a tu Lista lista",
   "emailOrUsername": "Correo electrónico o Usuario",
   "password": "Contraseña",
   "btnLogin": "Iniciar Sesión",
@@ -67,6 +67,11 @@
   "btnCancel": "Cancelar",
   "btnDelete": "Eliminar",
   "listAlreadyExistsErr": "Esta lista de compras ya existe.",
+  "syncTooltip": "Sincronizar",
+  "defaultUser": "Usuario",
+  "defaultFamily": "Familia",
+  "primaryFixedListTag": "Lista Principal Fija",
+  "deleteListAction": "Eliminar Lista",
   
   "listDetailTitle": "Detalle de Lista",
   "pendingItemsHeader": "Artículos por comprar",
@@ -78,6 +83,23 @@
   "finishListTooltip": "Marcar toda la lista como hecha",
   "cannotFinishPendingItemsErr": "No se puede finalizar la lista si aún tiene artículos por comprar.",
   "listFinishedSuccess": "¡Lista completada exitosamente!",
+  "confirmFinishListTitle": "Finalizar Lista",
+  "confirmFinishListMsg": "¿Desea finalizar toda la lista?",
+  "btnFinish": "Finalizar",
+  "noPendingItemsMsg": "No hay artículos pendientes. Escribe o selecciona abajo para agregar.",
+  "statusPurchased": "Comprado",
+  "actionDelete": "Eliminar",
+  "searchOrTypeItemHint": "Buscar o escribir artículo...",
+  "addQueryToListOption": "Agregar '{query}' a la lista",
+  "@addQueryToListOption": {
+    "placeholders": {
+      "query": { "type": "String" }
+    }
+  },
+  "addQueryToListSubtitle": "Se agregará a tu lista y al catálogo de tu familia",
+  "noCatalogItemsFound": "No se encontraron artículos en el catálogo.",
+  "addDetailHint": "Agregar detalle (ej. Marca, cantidad...)",
+  "tapToAddDetail": "Toca para agregar detalle...",
   
   "menuAbout": "Acerca de",
   "menuFamilyMembers": "Miembros de la Familia",

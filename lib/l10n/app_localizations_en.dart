@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'Shopping List';
+  String get appTitle => 'Lista lista';
 
   @override
   String get introSlide1Title => 'Organize Your Purchases';
@@ -39,7 +39,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginTitle => 'Sign In';
 
   @override
-  String get loginSubtitle => 'Welcome back to your Shopping List app';
+  String get loginSubtitle => 'Welcome back to your Lista lista app';
 
   @override
   String get emailOrUsername => 'Email or Username';
@@ -197,6 +197,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get listAlreadyExistsErr => 'This shopping list already exists.';
 
   @override
+  String get syncTooltip => 'Synchronize';
+
+  @override
+  String get defaultUser => 'User';
+
+  @override
+  String get defaultFamily => 'Family';
+
+  @override
+  String get primaryFixedListTag => 'Fixed Main List';
+
+  @override
+  String get deleteListAction => 'Delete List';
+
+  @override
   String get listDetailTitle => 'List Detail';
 
   @override
@@ -226,6 +241,46 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get listFinishedSuccess => 'List completed successfully!';
+
+  @override
+  String get confirmFinishListTitle => 'Finish List';
+
+  @override
+  String get confirmFinishListMsg => 'Do you want to finish the entire list?';
+
+  @override
+  String get btnFinish => 'Finish';
+
+  @override
+  String get noPendingItemsMsg =>
+      'No pending items. Type or select below to add.';
+
+  @override
+  String get statusPurchased => 'Purchased';
+
+  @override
+  String get actionDelete => 'Delete';
+
+  @override
+  String get searchOrTypeItemHint => 'Search or type item...';
+
+  @override
+  String addQueryToListOption(String query) {
+    return 'Add \'$query\' to list';
+  }
+
+  @override
+  String get addQueryToListSubtitle =>
+      'Will be added to your list and family catalog';
+
+  @override
+  String get noCatalogItemsFound => 'No catalog items found.';
+
+  @override
+  String get addDetailHint => 'Add detail (e.g. Brand, quantity...)';
+
+  @override
+  String get tapToAddDetail => 'Tap to add detail...';
 
   @override
   String get menuAbout => 'About';

@@ -150,7 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: "Sincronizar",
+            tooltip: l10n.syncTooltip,
             onPressed: () => db.fetchFamilyData(),
           ),
         ],
@@ -161,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             UserAccountsDrawerHeader(
               decoration: BoxDecoration(color: theme.colorScheme.primary),
-              accountName: Text(user?.nbCompleto ?? 'Usuario'),
+              accountName: Text(user?.nbCompleto ?? l10n.defaultUser),
               accountEmail: Text(user?.nbEmail ?? ''),
               currentAccountPicture: CircleAvatar(
                 backgroundColor: Colors.white,
@@ -268,7 +268,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   children: [
                     Text(
-                      family?.nbFamilia ?? "Familia",
+                      family?.nbFamilia ?? l10n.defaultFamily,
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.primary,
@@ -372,7 +372,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                               subtitle: list.isDefault
-                                  ? const Text("Lista Principal Fija", style: TextStyle(fontSize: 12, color: Colors.grey))
+                                  ? Text(l10n.primaryFixedListTag, style: const TextStyle(fontSize: 12, color: Colors.grey))
                                   : Text(l10n.swipeToDeleteHint, style: const TextStyle(fontSize: 11, color: Colors.grey)),
                               trailing: const Icon(Icons.chevron_right_rounded, size: 28),
                               onTap: () async {
@@ -406,13 +406,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               alignment: Alignment.centerLeft,
                               padding: const EdgeInsets.only(left: 24),
-                              child: const Row(
+                              child: Row(
                                 children: [
-                                  Icon(Icons.delete_rounded, color: Colors.white, size: 28),
-                                  SizedBox(width: 8),
+                                  const Icon(Icons.delete_rounded, color: Colors.white, size: 28),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    "Eliminar Lista",
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    l10n.deleteListAction,
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),

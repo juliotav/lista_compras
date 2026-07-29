@@ -29,7 +29,7 @@ class ShoppingListApp extends StatelessWidget {
     final localeProvider = context.watch<LocaleProvider>();
 
     return MaterialApp(
-      title: 'Lista de Compras',
+      title: 'Lista lista',
       debugShowCheckedModeBanner: false,
       locale: localeProvider.effectiveLocale,
       localeResolutionCallback: (deviceLocale, supportedLocales) {

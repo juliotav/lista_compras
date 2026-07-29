@@ -9,7 +9,7 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
-  String get appTitle => 'Lista de Compras';
+  String get appTitle => 'Lista lista';
 
   @override
   String get introSlide1Title => 'Organiza tus Compras';
@@ -39,7 +39,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get loginTitle => 'Iniciar Sesión';
 
   @override
-  String get loginSubtitle => 'Bienvenido de nuevo a tu Lista de Compras';
+  String get loginSubtitle => 'Bienvenido de nuevo a tu Lista lista';
 
   @override
   String get emailOrUsername => 'Correo electrónico o Usuario';
@@ -198,6 +198,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get listAlreadyExistsErr => 'Esta lista de compras ya existe.';
 
   @override
+  String get syncTooltip => 'Sincronizar';
+
+  @override
+  String get defaultUser => 'Usuario';
+
+  @override
+  String get defaultFamily => 'Familia';
+
+  @override
+  String get primaryFixedListTag => 'Lista Principal Fija';
+
+  @override
+  String get deleteListAction => 'Eliminar Lista';
+
+  @override
   String get listDetailTitle => 'Detalle de Lista';
 
   @override
@@ -227,6 +242,47 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get listFinishedSuccess => '¡Lista completada exitosamente!';
+
+  @override
+  String get confirmFinishListTitle => 'Finalizar Lista';
+
+  @override
+  String get confirmFinishListMsg => '¿Desea finalizar toda la lista?';
+
+  @override
+  String get btnFinish => 'Finalizar';
+
+  @override
+  String get noPendingItemsMsg =>
+      'No hay artículos pendientes. Escribe o selecciona abajo para agregar.';
+
+  @override
+  String get statusPurchased => 'Comprado';
+
+  @override
+  String get actionDelete => 'Eliminar';
+
+  @override
+  String get searchOrTypeItemHint => 'Buscar o escribir artículo...';
+
+  @override
+  String addQueryToListOption(String query) {
+    return 'Agregar \'$query\' a la lista';
+  }
+
+  @override
+  String get addQueryToListSubtitle =>
+      'Se agregará a tu lista y al catálogo de tu familia';
+
+  @override
+  String get noCatalogItemsFound =>
+      'No se encontraron artículos en el catálogo.';
+
+  @override
+  String get addDetailHint => 'Agregar detalle (ej. Marca, cantidad...)';
+
+  @override
+  String get tapToAddDetail => 'Toca para agregar detalle...';
 
   @override
   String get menuAbout => 'Acerca de';

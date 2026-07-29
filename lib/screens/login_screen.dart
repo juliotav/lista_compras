@@ -73,13 +73,15 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 40),
-                Icon(
-                  Icons.shopping_bag_outlined,
-                  size: 80,
-                  color: theme.colorScheme.primary,
+                const SizedBox(height: 30),
+                Center(
+                  child: Image.asset(
+                    'assets/images/app_icon.png',
+                    height: 90,
+                    width: 90,
+                  ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 Text(
                   l10n.loginTitle,
                   style: theme.textTheme.headlineMedium?.copyWith(
@@ -94,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 36),
 
                 // Email o Usuario
                 TextFormField(
