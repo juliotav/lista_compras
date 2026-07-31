@@ -20,7 +20,7 @@
   
   "registerTitle": "Crear Cuenta",
   "registerSubtitle": "Únete para administrar tus compras",
-  "fullName": "Nombre Completo",
+  "fullName": "Nombre",
   "usernameOptional": "Nombre de Usuario (Opcional)",
   "email": "Correo Electrónico",
   "confirmPassword": "Confirmar Contraseña",
@@ -125,5 +125,18 @@
   "confirmLeaveFamilyMsg": "¿Estás seguro de que deseas salir de esta familia? Perderás el acceso a sus listas de compra compartidas.",
   "addOrJoinFamily": "+ Crear o Unirse a otra familia",
   "noFamiliesYet": "Sin familia asignada",
-  "leftFamilySuccess": "Has salido de la familia correctamente."
+  "leftFamilySuccess": "Has salido de la familia correctamente.",
+  "invalidCredentialsErr": "Credenciales incorrectas. Verifique e intente nuevamente.",
+  "addedBy": "Agregado por: {name}",
+  "@addedBy": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "itemAlreadyInList": "'{name}' ya está en la lista.",
+  "@itemAlreadyInList": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  }
 }

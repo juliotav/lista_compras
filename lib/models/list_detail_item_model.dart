@@ -7,6 +7,7 @@ class ListDetailItemModel {
   final String status; // 'pending' | 'completed'
   final DateTime? fechaCompra;
   final String? idUsuarioFinalizo;
+  final String? idUsuarioAgrego;
 
   ListDetailItemModel({
     required this.idDetalle,
@@ -17,6 +18,7 @@ class ListDetailItemModel {
     this.status = 'pending',
     this.fechaCompra,
     this.idUsuarioFinalizo,
+    this.idUsuarioAgrego,
   });
 
   bool get isCompleted => status == 'completed';
@@ -32,6 +34,7 @@ class ListDetailItemModel {
     String? status,
     DateTime? fechaCompra,
     String? idUsuarioFinalizo,
+    String? idUsuarioAgrego,
   }) {
     return ListDetailItemModel(
       idDetalle: idDetalle ?? this.idDetalle,
@@ -42,6 +45,7 @@ class ListDetailItemModel {
       status: status ?? this.status,
       fechaCompra: fechaCompra ?? this.fechaCompra,
       idUsuarioFinalizo: idUsuarioFinalizo ?? this.idUsuarioFinalizo,
+      idUsuarioAgrego: idUsuarioAgrego ?? this.idUsuarioAgrego,
     );
   }
 
@@ -55,6 +59,7 @@ class ListDetailItemModel {
       'status': status,
       'fecha_compra': fechaCompra?.toIso8601String(),
       'id_usuario_finalizo': idUsuarioFinalizo,
+      'id_usuario_agrego': idUsuarioAgrego,
     };
   }
 
@@ -68,6 +73,7 @@ class ListDetailItemModel {
       status: map['status'] ?? 'pending',
       fechaCompra: map['fecha_compra'] != null ? DateTime.parse(map['fecha_compra']) : null,
       idUsuarioFinalizo: map['id_usuario_finalizo'],
+      idUsuarioAgrego: map['id_usuario_agrego'],
     );
   }
 }

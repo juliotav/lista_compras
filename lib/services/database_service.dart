@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +24,9 @@ class DatabaseService extends ChangeNotifier {
   final List<ShoppingListModel> _shoppingLists = [];
   final List<ItemCatalogModel> _catalogItems = [];
   final List<ListDetailItemModel> _listDetailItems = [];
+
+  final List<ListDetailItemModel> _pendingInsertQueue = [];
+  Timer? _batchInsertTimer;
 
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
@@ -192,10 +196,43 @@ class DatabaseService extends ChangeNotifier {
     }
   }
 
+  void _scheduleBatchInsert() {
+    _batchInsertTimer?.cancel();
+    _batchInsertTimer = Timer(const Duration(milliseconds: 1500), () {
+      flushPendingInserts();
+    });
+  }
+
+  /// Procesa y envía todos los elementos acumulados en la cola a MongoDB Atlas en 1 sola petición
+  Future<void> flushPendingInserts() async {
+    _batchInsertTimer?.cancel();
+    _batchInsertTimer = null;
+
+    if (_pendingInsertQueue.isEmpty) return;
+
+    final batchToInsert = List<ListDetailItemModel>.from(_pendingInsertQueue);
+    _pendingInsertQueue.clear();
+
+    debugPrint("[DB_SERVICE LOG] Enviando lote de ${batchToInsert.length} elementos a MongoDB Atlas en 1 sola petición...");
+
+    final docs = batchToInsert.map((item) => item.toMap()).toList();
+    final success = await MongoService.insertMany(
+      collectionName: MongoConfig.colDetalleLista,
+      documents: docs,
+    );
+
+    if (!success) {
+      debugPrint("[DB_SERVICE LOG] Error en insertMany en lote. Re-encolando elementos...");
+      _pendingInsertQueue.addAll(batchToInsert);
+    }
+  }
+
   /// Sincroniza y descarga en tiempo real todos los datos compartidos de la familia seleccionada desde MongoDB Cloud
   Future<void> fetchFamilyData() async {
     final userId = _currentUser?.idUsuario;
     if (userId == null) return;
+
+    await flushPendingInserts();
 
     _isSyncing = true;
     notifyListeners();
@@ -228,6 +265,14 @@ class DatabaseService extends ChangeNotifier {
       );
       
       final memberUserIds = memberLinks.map((l) => l['id_usuario'] as String).toList();
+
+      if (famDocs.isNotEmpty) {
+        final creatorId = famDocs.first['id_creador'] as String?;
+        if (creatorId != null && creatorId.isNotEmpty && !memberUserIds.contains(creatorId)) {
+          memberUserIds.add(creatorId);
+        }
+      }
+
       if (!memberUserIds.contains(userId)) {
         memberUserIds.add(userId);
       }
@@ -276,8 +321,23 @@ class DatabaseService extends ChangeNotifier {
           collectionName: MongoConfig.colDetalleLista,
           filter: {'id_lista_compra': listId},
         );
+        final Set<String> seenPendingNames = {};
         for (var doc in detailDocs) {
-          _listDetailItems.add(ListDetailItemModel.fromMap(doc));
+          final item = ListDetailItemModel.fromMap(doc);
+          final normName = item.nbArticulo.trim().toLowerCase();
+          if (item.isPending) {
+            if (seenPendingNames.contains(normName)) {
+              // Limpieza de duplicados almacenados previamente en MongoDB Atlas
+              debugPrint("[DB_SERVICE LOG] Limpiando duplicado en MongoDB: '${item.nbArticulo}' (ID: ${item.idDetalle})");
+              MongoService.deleteOne(
+                collectionName: MongoConfig.colDetalleLista,
+                filter: {'id_detalle': item.idDetalle},
+              );
+              continue;
+            }
+            seenPendingNames.add(normName);
+          }
+          _listDetailItems.add(item);
         }
       }
     } catch (_) {
@@ -859,49 +919,105 @@ class DatabaseService extends ChangeNotifier {
     return _catalogItems.where((c) => c.idFamilia == famId).toList();
   }
 
-  Future<void> addItemToList({
+  /// Obtiene el primer nombre o nombre de usuario amigable de la persona que realizó una acción
+  String getUserDisplayName(String? idUsuario) {
+    if (idUsuario == null || idUsuario.isEmpty) return '';
+    if (_currentUser != null && _currentUser!.idUsuario == idUsuario) {
+      final name = _currentUser!.nbCompleto.trim();
+      final first = name.contains(' ') ? name.split(' ').first : name;
+      return first.isNotEmpty ? first : (_currentUser!.nbUsuario ?? '');
+    }
+    try {
+      final u = _users.firstWhere((user) => user.idUsuario == idUsuario);
+      final name = u.nbCompleto.trim();
+      final first = name.contains(' ') ? name.split(' ').first : name;
+      return first.isNotEmpty ? first : (u.nbUsuario ?? '');
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Future<bool> addItemToList({
     required String idListaCompra,
     required String idArticulo,
     required String nbArticulo,
     String? dsDetalle,
   }) async {
+    final cleanName = nbArticulo.trim();
+    if (cleanName.isEmpty) return false;
+
+    final cleanNameLower = cleanName.toLowerCase();
+
+    // Evitar agregar elementos duplicados con el mismo nombre o idArticulo en la misma lista
+    final alreadyExists = _listDetailItems.any(
+      (i) =>
+          i.idListaCompra == idListaCompra &&
+          (i.nbArticulo.trim().toLowerCase() == cleanNameLower ||
+              (idArticulo.isNotEmpty && i.idArticulo == idArticulo)),
+    );
+
+    if (alreadyExists) {
+      debugPrint("[DB_SERVICE LOG] Omitiendo adición: '$cleanName' ya se encuentra en la lista.");
+      return false;
+    }
+
     final newItem = ListDetailItemModel(
       idDetalle: _uuid.v4(),
       idListaCompra: idListaCompra,
       idArticulo: idArticulo,
-      nbArticulo: nbArticulo,
+      nbArticulo: cleanName,
       dsDetalle: dsDetalle,
       status: 'pending',
+      idUsuarioAgrego: _currentUser?.idUsuario,
     );
-    await MongoService.insertOne(
-      collectionName: MongoConfig.colDetalleLista,
-      document: newItem.toMap(),
-    );
+
+    // 2. Agregar DE INMEDIATO en memoria local (0ms delay UI) y notificar a los listeners
     _listDetailItems.add(newItem);
     notifyListeners();
+
+    // 3. Encolar para procesamiento en lote agrupado (Batching)
+    _pendingInsertQueue.add(newItem);
+    _scheduleBatchInsert();
+
+    return true;
   }
 
-  Future<void> addCustomItemToCatalogAndList({
+  Future<bool> addCustomItemToCatalogAndList({
     required String idListaCompra,
     required String nbArticulo,
     String? dsDetalle,
   }) async {
     final famId = _currentUser?.idFamilia;
-    if (famId == null) return;
+    if (famId == null) return false;
 
     final cleanName = nbArticulo.trim();
-    if (cleanName.isEmpty) return;
+    if (cleanName.isEmpty) return false;
+
+    final cleanNameLower = cleanName.toLowerCase();
+
+    // Verificar si ya existe en la lista de compras antes de registrar en catálogo
+    final alreadyInList = _listDetailItems.any(
+      (i) =>
+          i.idListaCompra == idListaCompra &&
+          i.nbArticulo.trim().toLowerCase() == cleanNameLower,
+    );
+
+    if (alreadyInList) {
+      debugPrint("[DB_SERVICE LOG] Omitiendo adición personalizada: '$cleanName' ya está en la lista.");
+      return false;
+    }
 
     // Verificar si el artículo ya existe en el catálogo exclusivo de ESTA familia
     final familyCatalog = getCatalogItems();
     final existingIdx = familyCatalog.indexWhere(
-      (c) => c.nbArticuloEs.toLowerCase() == cleanName.toLowerCase() ||
-             c.nbArticuloEn.toLowerCase() == cleanName.toLowerCase(),
+      (c) =>
+          c.nbArticuloEs.toLowerCase() == cleanNameLower ||
+          c.nbArticuloEn.toLowerCase() == cleanNameLower,
     );
 
     if (existingIdx != -1) {
       final existingArt = familyCatalog[existingIdx];
-      await addItemToList(
+      return await addItemToList(
         idListaCompra: idListaCompra,
         idArticulo: existingArt.idArticulo,
         nbArticulo: cleanName,
@@ -921,7 +1037,7 @@ class DatabaseService extends ChangeNotifier {
       );
       _catalogItems.add(newCatalogItem);
 
-      await addItemToList(
+      return await addItemToList(
         idListaCompra: idListaCompra,
         idArticulo: artId,
         nbArticulo: cleanName,

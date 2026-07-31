@@ -23,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
+    final l10n = AppLocalizations.of(context)!;
 
     debugPrint("=========================================");
     debugPrint("[UI LOG] Botón Iniciar Sesión presionado");
@@ -58,8 +59,8 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Credenciales incorrectas. Verifique e intente nuevamente."),
+        SnackBar(
+          content: Text(l10n.invalidCredentialsErr),
           backgroundColor: Colors.red,
         ),
       );

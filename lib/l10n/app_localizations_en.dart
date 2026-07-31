@@ -63,7 +63,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get registerSubtitle => 'Join to manage your purchases';
 
   @override
-  String get fullName => 'Full Name';
+  String get fullName => 'Name';
 
   @override
   String get usernameOptional => 'Username (Optional)';
@@ -350,4 +350,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get leftFamilySuccess => 'You have left the family successfully.';
+
+  @override
+  String get invalidCredentialsErr => 'Wrong credentials. Verify them.';
+
+  @override
+  String addedBy(String name) {
+    return 'Added by: $name';
+  }
+
+  @override
+  String itemAlreadyInList(String name) {
+    return '\'$name\' is already in the list.';
+  }
 }

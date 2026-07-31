@@ -203,7 +203,7 @@ abstract class AppLocalizations {
   /// No description provided for @fullName.
   ///
   /// In es, this message translates to:
-  /// **'Nombre Completo'**
+  /// **'Nombre'**
   String get fullName;
 
   /// No description provided for @usernameOptional.
@@ -751,6 +751,24 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Has salido de la familia correctamente.'**
   String get leftFamilySuccess;
+
+  /// No description provided for @invalidCredentialsErr.
+  ///
+  /// In es, this message translates to:
+  /// **'Credenciales incorrectas. Verifique e intente nuevamente.'**
+  String get invalidCredentialsErr;
+
+  /// No description provided for @addedBy.
+  ///
+  /// In es, this message translates to:
+  /// **'Agregado por: {name}'**
+  String addedBy(String name);
+
+  /// No description provided for @itemAlreadyInList.
+  ///
+  /// In es, this message translates to:
+  /// **'\'{name}\' ya está en la lista.'**
+  String itemAlreadyInList(String name);
 }
 
 class _AppLocalizationsDelegate

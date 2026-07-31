@@ -1,7 +1,7 @@
 class MongoConfig {
   /// Cadena de conexión URI de tu base de datos en MongoDB Atlas
   static String mongoUri =
-      "mongodb+srv://lista_compras_user:SR4aWABFrn9mMBw@agenda-servicios.ekqaaeb.mongodb.net/lista_compras?retryWrites=true&w=majority";
+      "mongodb+srv://lista_compras_user:SR4aWABFrn9mMBw@agenda-servicios.ekqaaeb.mongodb.net/lista_compras?retryWrites=true&w=majority&safeAtlas=true";
 
   /// Nombre de la base de datos
   static const String databaseName = "lista_compras";

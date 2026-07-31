@@ -20,7 +20,7 @@
   
   "registerTitle": "Create Account",
   "registerSubtitle": "Join to manage your purchases",
-  "fullName": "Full Name",
+  "fullName": "Name",
   "usernameOptional": "Username (Optional)",
   "email": "Email Address",
   "confirmPassword": "Confirm Password",
@@ -125,5 +125,18 @@
   "confirmLeaveFamilyMsg": "Are you sure you want to leave this family? You will lose access to its shared shopping lists.",
   "addOrJoinFamily": "+ Create or Join another family",
   "noFamiliesYet": "No family assigned",
-  "leftFamilySuccess": "You have left the family successfully."
+  "leftFamilySuccess": "You have left the family successfully.",
+  "invalidCredentialsErr": "Wrong credentials. Verify them.",
+  "addedBy": "Added by: {name}",
+  "@addedBy": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "itemAlreadyInList": "'{name}' is already in the list.",
+  "@itemAlreadyInList": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  }
 }

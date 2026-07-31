@@ -55,14 +55,25 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     final cleanName = itemName.trim();
     if (cleanName.isEmpty) return;
 
+    final l10n = AppLocalizations.of(context)!;
     final db = context.read<DatabaseService>();
-    await db.addCustomItemToCatalogAndList(
+    final added = await db.addCustomItemToCatalogAndList(
       idListaCompra: widget.shoppingList.idListaCompra,
       nbArticulo: cleanName,
     );
+
+    if (!added && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.itemAlreadyInList(cleanName)),
+          backgroundColor: Colors.orange[800],
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+
     _searchController.clear();
     FocusManager.instance.primaryFocus?.unfocus();
-    db.fetchFamilyData();
   }
 
   void _showAddCustomItemDialog() {
@@ -430,14 +441,24 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                             ),
                             trailing: const Icon(Icons.add_rounded, color: Colors.blue),
                             onTap: () async {
-                              await db.addItemToList(
+                              final added = await db.addItemToList(
                                 idListaCompra: widget.shoppingList.idListaCompra,
                                 idArticulo: catItem.idArticulo,
                                 nbArticulo: name,
                               );
+
+                              if (!added && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(l10n.itemAlreadyInList(name)),
+                                    backgroundColor: Colors.orange[800],
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+
                               _searchController.clear();
                               FocusManager.instance.primaryFocus?.unfocus();
-                              db.fetchFamilyData();
                             },
                           );
                         },
@@ -492,6 +513,8 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                     separatorBuilder: (context, index) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final item = completedItems[index];
+                      final addedByName = db.getUserDisplayName(item.idUsuarioAgrego);
+                      final hasNote = item.dsDetalle != null && item.dsDetalle!.trim().isNotEmpty;
                       return ListTile(
                         dense: true,
                         leading: const Icon(Icons.check_box_rounded, color: Colors.green),
@@ -502,14 +525,33 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                             color: Colors.grey[700],
                           ),
                         ),
-                        subtitle: item.dsDetalle != null && item.dsDetalle!.trim().isNotEmpty
-                            ? Text(
-                                item.dsDetalle!,
-                                style: TextStyle(
-                                  decoration: TextDecoration.lineThrough,
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
+                        subtitle: (hasNote || addedByName.isNotEmpty)
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (hasNote)
+                                    Text(
+                                      item.dsDetalle!,
+                                      style: TextStyle(
+                                        decoration: TextDecoration.lineThrough,
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  if (addedByName.isNotEmpty)
+                                    Align(
+                                      alignment: Alignment.bottomRight,
+                                      child: Text(
+                                        l10n.addedBy(addedByName),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontStyle: FontStyle.italic,
+                                          color: Colors.grey[500],
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               )
                             : null,
                       );
@@ -586,7 +628,9 @@ class _PendingItemTileState extends State<PendingItemTile> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final db = context.watch<DatabaseService>();
     final noteText = widget.item.dsDetalle?.trim() ?? "";
+    final addedByName = db.getUserDisplayName(widget.item.idUsuarioAgrego);
 
     return InkWell(
       onTap: () {
@@ -596,73 +640,92 @@ class _PendingItemTileState extends State<PendingItemTile> {
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.item.nbArticulo,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                  ),
-                  const SizedBox(height: 4),
-
-                  if (_isEditingNote) ...[
-                    TextField(
-                      controller: _noteController,
-                      focusNode: _focusNode,
-                      textInputAction: TextInputAction.done,
-                      style: const TextStyle(fontSize: 13, color: Colors.black87),
-                      decoration: InputDecoration(
-                        hintText: l10n.addDetailHint,
-                        hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: Colors.deepPurple, width: 1.5),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
-                        ),
-                      ),
-                      onSubmitted: (val) {
-                        setState(() {
-                          _isEditingNote = false;
-                        });
-                        widget.onSaveNote(val);
-                      },
-                    ),
-                  ] else ...[
-                    GestureDetector(
-                      onTap: _startEditing,
-                      child: Text(
-                        noteText.isNotEmpty ? noteText : l10n.tapToAddDetail,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontStyle: noteText.isEmpty ? FontStyle.italic : FontStyle.normal,
-                          color: noteText.isNotEmpty ? Colors.deepPurple[700] : Colors.grey[500],
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Row(
-              mainAxisSize: MainAxisSize.min,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.swipe_right_rounded, color: Colors.green, size: 16),
-                SizedBox(width: 2),
-                Icon(Icons.swipe_left_rounded, color: Colors.red, size: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.item.nbArticulo,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                      ),
+                      const SizedBox(height: 4),
+
+                      if (_isEditingNote) ...[
+                        TextField(
+                          controller: _noteController,
+                          focusNode: _focusNode,
+                          textInputAction: TextInputAction.done,
+                          style: const TextStyle(fontSize: 13, color: Colors.black87),
+                          decoration: InputDecoration(
+                            hintText: l10n.addDetailHint,
+                            hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(color: Colors.deepPurple, width: 1.5),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
+                            ),
+                          ),
+                          onSubmitted: (val) {
+                            setState(() {
+                              _isEditingNote = false;
+                            });
+                            widget.onSaveNote(val);
+                          },
+                        ),
+                      ] else ...[
+                        GestureDetector(
+                          onTap: _startEditing,
+                          child: Text(
+                            noteText.isNotEmpty ? noteText : l10n.tapToAddDetail,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontStyle: noteText.isEmpty ? FontStyle.italic : FontStyle.normal,
+                              color: noteText.isNotEmpty ? Colors.deepPurple[700] : Colors.grey[500],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.swipe_right_rounded, color: Colors.green, size: 16),
+                    SizedBox(width: 2),
+                    Icon(Icons.swipe_left_rounded, color: Colors.red, size: 16),
+                  ],
+                ),
               ],
             ),
+            if (addedByName.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: Text(
+                  l10n.addedBy(addedByName),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

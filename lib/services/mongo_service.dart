@@ -4,24 +4,40 @@ import '../config/mongo_config.dart';
 
 class MongoService {
   static Db? _db;
+  static Future<Db?>? _connectingFuture;
 
   static Future<Db?> _getDb() async {
     if (MongoConfig.mongoUri == "TU_MONGODB_URI_AQUI" || MongoConfig.mongoUri.isEmpty) {
       debugPrint("[MONGO SERVICE] ERROR: URI de MongoDB no está configurado.");
       return null;
     }
-    if (_db == null || !_db!.isConnected) {
+
+    if (_db != null && _db!.isConnected) {
+      return _db;
+    }
+
+    if (_connectingFuture != null) {
+      return await _connectingFuture;
+    }
+
+    _connectingFuture = () async {
       try {
         debugPrint("[MONGO SERVICE] Conectando a MongoDB Atlas...");
-        _db = await Db.create(MongoConfig.mongoUri);
-        await _db!.open();
+        final dbInstance = await Db.create(MongoConfig.mongoUri);
+        await dbInstance.open();
+        _db = dbInstance;
         debugPrint("[MONGO SERVICE] ¡Conexión exitosa a MongoDB!");
+        return _db;
       } catch (e) {
         debugPrint("[MONGO SERVICE] ERROR DE CONEXIÓN A MONGODB: $e");
+        _db = null;
         return null;
+      } finally {
+        _connectingFuture = null;
       }
-    }
-    return _db;
+    }();
+
+    return await _connectingFuture;
   }
 
   /// Busca un documento en MongoDB Cloud
@@ -75,6 +91,26 @@ class MongoService {
       final res = await collection.insertOne(document);
       return res.isSuccess || res.document != null;
     } catch (_) {
+      return false;
+    }
+  }
+
+  /// Inserta múltiples documentos en lote en MongoDB Cloud
+  static Future<bool> insertMany({
+    required String collectionName,
+    required List<Map<String, dynamic>> documents,
+  }) async {
+    if (documents.isEmpty) return true;
+    final db = await _getDb();
+    if (db == null) return false;
+
+    try {
+      final collection = db.collection(collectionName);
+      final res = await collection.insertMany(documents);
+      debugPrint("[MONGO SERVICE] insertMany exitoso de ${documents.length} documentos en $collectionName");
+      return res.isSuccess;
+    } catch (e) {
+      debugPrint("[MONGO SERVICE] insertMany ERROR en $collectionName: $e");
       return false;
     }
   }
