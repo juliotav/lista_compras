@@ -138,5 +138,32 @@
     "placeholders": {
       "name": { "type": "String" }
     }
-  }
+  },
+  "forgotPasswordLink": "¿Olvidaste tu contraseña?",
+  "forgotPasswordTitle": "Recuperar Contraseña",
+  "enterEmailMsg": "Ingresa tu correo o usuario registrado para recibir un código de verificación de 6 dígitos.",
+  "sendCodeBtn": "Enviar Código",
+  "enterPinMsg": "Hemos enviado un código de 6 dígitos a {email}.",
+  "@enterPinMsg": {
+    "placeholders": {
+      "email": { "type": "String" }
+    }
+  },
+  "pinLabel": "Código de Verificación (6 dígitos)",
+  "verifyCodeBtn": "Verificar Código",
+  "newPasswordLabel": "Nueva Contraseña",
+  "confirmNewPasswordLabel": "Confirmar Nueva Contraseña",
+  "saveNewPasswordBtn": "Guardar Nueva Contraseña",
+  "passwordResetSuccessMsg": "Tu contraseña ha sido actualizada con éxito.",
+  "invalidOrExpiredPin": "El código de verificación es incorrecto o ha expirado.",
+  "userNotFoundErr": "No se encontró ninguna cuenta registrada con esa información.",
+  "resetEmailSentMsg": "Si la información ingresada está registrada, hemos enviado un código de recuperación de 6 dígitos a su correo.",
+  "expiresIn": "Expira en: {time}",
+  "@expiresIn": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "statusSecure": "Segura ✓",
+  "statusIncomplete": "Incompleta"
 }

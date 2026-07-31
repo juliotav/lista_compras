@@ -10,6 +10,7 @@ import '../models/shopping_list_model.dart';
 import '../models/item_catalog_model.dart';
 import '../models/list_detail_item_model.dart';
 import '../models/user_family_model.dart';
+import 'email_service.dart';
 import 'mongo_service.dart';
 import 'security_service.dart';
 
@@ -484,6 +485,153 @@ class DatabaseService extends ChangeNotifier {
     _currentUser = null;
     await _clearSession();
     notifyListeners();
+  }
+
+  // --- RECUPERACIÓN DE CONTRASEÑA CON OTP PIN ---
+  /// Solicita el restablecimiento de contraseña enviando un PIN de 6 dígitos por correo
+  Future<Map<String, dynamic>> requestPasswordReset(String emailOrUsername) async {
+    final cleanInput = emailOrUsername.trim().toLowerCase();
+    if (cleanInput.isEmpty) {
+      return {'success': false, 'message': 'invalidEmail'};
+    }
+
+    final escapedInput = RegExp.escape(cleanInput);
+
+    Map<String, dynamic>? userMap = await MongoService.findOne(
+      collectionName: MongoConfig.colUsuario,
+      filter: {
+        'nb_email': {r'$regex': '^$escapedInput\$', r'$options': 'i'}
+      },
+    );
+
+    userMap ??= await MongoService.findOne(
+      collectionName: MongoConfig.colUsuario,
+      filter: {
+        'nb_usuario': {r'$regex': '^$escapedInput\$', r'$options': 'i'}
+      },
+    );
+
+    if (userMap == null) {
+      // Prevención de enumeración de usuarios (Estándar de Seguridad OWASP):
+      // Si el correo/usuario no existe, retornamos success = true para simular el mismo comportamiento y proteger la información
+      debugPrint("[DB_SERVICE LOG] requestPasswordReset: Usuario no existe en DB, simulando respuesta exitosa por seguridad OWASP.");
+      return {'success': true, 'email': cleanInput, 'userExists': false};
+    }
+
+    final targetEmail = (userMap['nb_email'] as String).toLowerCase();
+
+    // Generar un PIN aleatorio de 6 dígitos
+    final rnd = Random();
+    final pinCode = (100000 + rnd.nextInt(900000)).toString();
+    final pinHash = SecurityService.hashPassword(pinCode);
+    final expiresAt = DateTime.now().toUtc().add(const Duration(minutes: 10)).toIso8601String();
+
+    debugPrint("[DB_SERVICE LOG] PIN generado: '$pinCode', Hash PIN: '$pinHash', Expiración UTC: '$expiresAt'");
+
+    // Guardar el hash del PIN y fecha de expiración en MongoDB Atlas
+    await MongoService.updateOne(
+      collectionName: MongoConfig.colUsuario,
+      filter: {'id_usuario': userMap['id_usuario']},
+      update: {
+        '\$set': {
+          'cd_reset_pin': pinHash,
+          'fh_reset_expires': expiresAt,
+        }
+      },
+    );
+
+    // Enviar correo con EmailService (vía Resend / EmailJS API)
+    final sent = await EmailService.sendResetPinEmail(
+      toEmail: targetEmail,
+      pinCode: pinCode,
+    );
+
+    if (sent) {
+      return {'success': true, 'email': targetEmail};
+    } else {
+      return {'success': false, 'message': 'sendEmailErr'};
+    }
+  }
+
+  /// Verifica si el PIN de 6 dígitos ingresado es válido y no ha expirado
+  Future<bool> verifyResetPin(String email, String pinCode) async {
+    final cleanEmail = email.trim().toLowerCase();
+    final cleanPin = pinCode.trim();
+    if (cleanEmail.isEmpty || cleanPin.length != 6) return false;
+
+    final pinHash = SecurityService.hashPassword(cleanPin);
+
+    debugPrint("[DB_SERVICE LOG] verifyResetPin para email: '$cleanEmail', PIN: '$cleanPin'");
+    debugPrint("[DB_SERVICE LOG] Hash del PIN ingresado: '$pinHash'");
+
+    final escapedEmail = RegExp.escape(cleanEmail);
+
+    final userMap = await MongoService.findOne(
+      collectionName: MongoConfig.colUsuario,
+      filter: {
+        'nb_email': {r'$regex': '^$escapedEmail\$', r'$options': 'i'}
+      },
+    );
+
+    if (userMap == null) {
+      debugPrint("[DB_SERVICE LOG] verifyResetPin ERROR: Usuario no encontrado por email.");
+      return false;
+    }
+
+    final storedPinHash = userMap['cd_reset_pin'] as String?;
+    final storedExpiresStr = userMap['fh_reset_expires'] as String?;
+
+    debugPrint("[DB_SERVICE LOG] Hash PIN en DB: '$storedPinHash'");
+    debugPrint("[DB_SERVICE LOG] Expiración en DB: '$storedExpiresStr'");
+
+    if (storedPinHash == null || storedExpiresStr == null) {
+      debugPrint("[DB_SERVICE LOG] verifyResetPin ERROR: No hay PIN guardado en DB.");
+      return false;
+    }
+
+    if (storedPinHash != pinHash) {
+      debugPrint("[DB_SERVICE LOG] verifyResetPin ERROR: El hash del PIN ingresado no coincide con el guardado.");
+      return false;
+    }
+
+    try {
+      final expiresAt = DateTime.parse(storedExpiresStr).toUtc();
+      final nowUtc = DateTime.now().toUtc();
+      debugPrint("[DB_SERVICE LOG] Comparando hora UTC: ahora=$nowUtc, expira=$expiresAt");
+      if (nowUtc.isAfter(expiresAt)) {
+        debugPrint("[DB_SERVICE LOG] verifyResetPin ERROR: El PIN ya expiró.");
+        return false;
+      }
+    } catch (e) {
+      debugPrint("[DB_SERVICE LOG] verifyResetPin ERROR parseando fecha: $e");
+      return false;
+    }
+
+    debugPrint("[DB_SERVICE LOG] ¡PIN verificado con ÉXITO!");
+    return true;
+  }
+
+  /// Restablece la contraseña del usuario tras validar el PIN
+  Future<bool> resetPasswordWithPin(String email, String pinCode, String newPassword) async {
+    final isValid = await verifyResetPin(email, pinCode);
+    if (!isValid) return false;
+
+    final cleanEmail = email.trim().toLowerCase();
+    final newPassHash = SecurityService.hashPassword(newPassword.trim());
+    final escapedEmail = RegExp.escape(cleanEmail);
+
+    final success = await MongoService.updateOne(
+      collectionName: MongoConfig.colUsuario,
+      filter: {
+        'nb_email': {r'$regex': '^$escapedEmail\$', r'$options': 'i'}
+      },
+      update: {
+        '\$set': {'cl_pass': newPassHash},
+        '\$unset': {'cd_reset_pin': '', 'fh_reset_expires': ''}
+      },
+    );
+
+    return success;
   }
 
   /// Cambia la familia activa seleccionada por el usuario y recarga sus listas de compras

@@ -138,5 +138,32 @@
     "placeholders": {
       "name": { "type": "String" }
     }
-  }
+  },
+  "forgotPasswordLink": "Forgot password?",
+  "forgotPasswordTitle": "Reset Password",
+  "enterEmailMsg": "Enter your registered email or username to receive a 6-digit verification code.",
+  "sendCodeBtn": "Send Code",
+  "enterPinMsg": "We sent a 6-digit code to {email}.",
+  "@enterPinMsg": {
+    "placeholders": {
+      "email": { "type": "String" }
+    }
+  },
+  "pinLabel": "Verification Code (6 digits)",
+  "verifyCodeBtn": "Verify Code",
+  "newPasswordLabel": "New Password",
+  "confirmNewPasswordLabel": "Confirm New Password",
+  "saveNewPasswordBtn": "Save New Password",
+  "passwordResetSuccessMsg": "Your password has been updated successfully.",
+  "invalidOrExpiredPin": "Verification code is invalid or has expired.",
+  "userNotFoundErr": "No registered account found with that information.",
+  "resetEmailSentMsg": "If the information entered is registered, we have sent a 6-digit recovery code to your email.",
+  "expiresIn": "Expires in: {time}",
+  "@expiresIn": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "statusSecure": "Secure ✓",
+  "statusIncomplete": "Incomplete"
 }

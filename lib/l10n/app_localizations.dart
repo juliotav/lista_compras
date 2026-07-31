@@ -769,6 +769,108 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'\'{name}\' ya está en la lista.'**
   String itemAlreadyInList(String name);
+
+  /// No description provided for @forgotPasswordLink.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Olvidaste tu contraseña?'**
+  String get forgotPasswordLink;
+
+  /// No description provided for @forgotPasswordTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Recuperar Contraseña'**
+  String get forgotPasswordTitle;
+
+  /// No description provided for @enterEmailMsg.
+  ///
+  /// In es, this message translates to:
+  /// **'Ingresa tu correo o usuario registrado para recibir un código de verificación de 6 dígitos.'**
+  String get enterEmailMsg;
+
+  /// No description provided for @sendCodeBtn.
+  ///
+  /// In es, this message translates to:
+  /// **'Enviar Código'**
+  String get sendCodeBtn;
+
+  /// No description provided for @enterPinMsg.
+  ///
+  /// In es, this message translates to:
+  /// **'Hemos enviado un código de 6 dígitos a {email}.'**
+  String enterPinMsg(String email);
+
+  /// No description provided for @pinLabel.
+  ///
+  /// In es, this message translates to:
+  /// **'Código de Verificación (6 dígitos)'**
+  String get pinLabel;
+
+  /// No description provided for @verifyCodeBtn.
+  ///
+  /// In es, this message translates to:
+  /// **'Verificar Código'**
+  String get verifyCodeBtn;
+
+  /// No description provided for @newPasswordLabel.
+  ///
+  /// In es, this message translates to:
+  /// **'Nueva Contraseña'**
+  String get newPasswordLabel;
+
+  /// No description provided for @confirmNewPasswordLabel.
+  ///
+  /// In es, this message translates to:
+  /// **'Confirmar Nueva Contraseña'**
+  String get confirmNewPasswordLabel;
+
+  /// No description provided for @saveNewPasswordBtn.
+  ///
+  /// In es, this message translates to:
+  /// **'Guardar Nueva Contraseña'**
+  String get saveNewPasswordBtn;
+
+  /// No description provided for @passwordResetSuccessMsg.
+  ///
+  /// In es, this message translates to:
+  /// **'Tu contraseña ha sido actualizada con éxito.'**
+  String get passwordResetSuccessMsg;
+
+  /// No description provided for @invalidOrExpiredPin.
+  ///
+  /// In es, this message translates to:
+  /// **'El código de verificación es incorrecto o ha expirado.'**
+  String get invalidOrExpiredPin;
+
+  /// No description provided for @userNotFoundErr.
+  ///
+  /// In es, this message translates to:
+  /// **'No se encontró ninguna cuenta registrada con esa información.'**
+  String get userNotFoundErr;
+
+  /// No description provided for @resetEmailSentMsg.
+  ///
+  /// In es, this message translates to:
+  /// **'Si la información ingresada está registrada, hemos enviado un código de recuperación de 6 dígitos a su correo.'**
+  String get resetEmailSentMsg;
+
+  /// No description provided for @expiresIn.
+  ///
+  /// In es, this message translates to:
+  /// **'Expira en: {time}'**
+  String expiresIn(String time);
+
+  /// No description provided for @statusSecure.
+  ///
+  /// In es, this message translates to:
+  /// **'Segura ✓'**
+  String get statusSecure;
+
+  /// No description provided for @statusIncomplete.
+  ///
+  /// In es, this message translates to:
+  /// **'Incompleta'**
+  String get statusIncomplete;
 }
 
 class _AppLocalizationsDelegate

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/database_service.dart';
 import 'family_setup_screen.dart';
+import 'forgot_password_screen.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 
@@ -133,7 +134,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   validator: (v) => v == null || v.isEmpty ? l10n.password : null,
                 ),
-                const SizedBox(height: 32),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                      );
+                    },
+                    child: Text(
+                      l10n.forgotPasswordLink,
+                      style: TextStyle(color: theme.colorScheme.primary),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
 
                 SizedBox(
                   height: 52,

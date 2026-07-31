@@ -363,4 +363,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String itemAlreadyInList(String name) {
     return '\'$name\' is already in the list.';
   }
+
+  @override
+  String get forgotPasswordLink => 'Forgot password?';
+
+  @override
+  String get forgotPasswordTitle => 'Reset Password';
+
+  @override
+  String get enterEmailMsg =>
+      'Enter your registered email or username to receive a 6-digit verification code.';
+
+  @override
+  String get sendCodeBtn => 'Send Code';
+
+  @override
+  String enterPinMsg(String email) {
+    return 'We sent a 6-digit code to $email.';
+  }
+
+  @override
+  String get pinLabel => 'Verification Code (6 digits)';
+
+  @override
+  String get verifyCodeBtn => 'Verify Code';
+
+  @override
+  String get newPasswordLabel => 'New Password';
+
+  @override
+  String get confirmNewPasswordLabel => 'Confirm New Password';
+
+  @override
+  String get saveNewPasswordBtn => 'Save New Password';
+
+  @override
+  String get passwordResetSuccessMsg =>
+      'Your password has been updated successfully.';
+
+  @override
+  String get invalidOrExpiredPin =>
+      'Verification code is invalid or has expired.';
+
+  @override
+  String get userNotFoundErr =>
+      'No registered account found with that information.';
+
+  @override
+  String get resetEmailSentMsg =>
+      'If the information entered is registered, we have sent a 6-digit recovery code to your email.';
+
+  @override
+  String expiresIn(String time) {
+    return 'Expires in: $time';
+  }
+
+  @override
+  String get statusSecure => 'Secure ✓';
+
+  @override
+  String get statusIncomplete => 'Incomplete';
 }

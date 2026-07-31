@@ -366,4 +366,64 @@ class AppLocalizationsEs extends AppLocalizations {
   String itemAlreadyInList(String name) {
     return '\'$name\' ya está en la lista.';
   }
+
+  @override
+  String get forgotPasswordLink => '¿Olvidaste tu contraseña?';
+
+  @override
+  String get forgotPasswordTitle => 'Recuperar Contraseña';
+
+  @override
+  String get enterEmailMsg =>
+      'Ingresa tu correo o usuario registrado para recibir un código de verificación de 6 dígitos.';
+
+  @override
+  String get sendCodeBtn => 'Enviar Código';
+
+  @override
+  String enterPinMsg(String email) {
+    return 'Hemos enviado un código de 6 dígitos a $email.';
+  }
+
+  @override
+  String get pinLabel => 'Código de Verificación (6 dígitos)';
+
+  @override
+  String get verifyCodeBtn => 'Verificar Código';
+
+  @override
+  String get newPasswordLabel => 'Nueva Contraseña';
+
+  @override
+  String get confirmNewPasswordLabel => 'Confirmar Nueva Contraseña';
+
+  @override
+  String get saveNewPasswordBtn => 'Guardar Nueva Contraseña';
+
+  @override
+  String get passwordResetSuccessMsg =>
+      'Tu contraseña ha sido actualizada con éxito.';
+
+  @override
+  String get invalidOrExpiredPin =>
+      'El código de verificación es incorrecto o ha expirado.';
+
+  @override
+  String get userNotFoundErr =>
+      'No se encontró ninguna cuenta registrada con esa información.';
+
+  @override
+  String get resetEmailSentMsg =>
+      'Si la información ingresada está registrada, hemos enviado un código de recuperación de 6 dígitos a su correo.';
+
+  @override
+  String expiresIn(String time) {
+    return 'Expira en: $time';
+  }
+
+  @override
+  String get statusSecure => 'Segura ✓';
+
+  @override
+  String get statusIncomplete => 'Incompleta';
 }
