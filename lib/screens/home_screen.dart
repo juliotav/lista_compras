@@ -7,6 +7,7 @@ import '../services/database_service.dart';
 import '../services/locale_provider.dart';
 import 'about_privacy_screen.dart';
 import 'family_members_screen.dart';
+import 'family_setup_screen.dart';
 import 'list_detail_screen.dart';
 import 'login_screen.dart';
 
@@ -143,6 +144,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = db.currentUser;
     final shoppingLists = db.getActiveShoppingLists();
 
+    final userFamilies = db.userFamilies;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.homeTitle),
@@ -174,6 +177,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.family_restroom_rounded),
+              title: Text(l10n.addOrJoinFamily),
+              onTap: () async {
+                Navigator.pop(context);
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+                );
+                _refreshData();
+              },
             ),
             ListTile(
               leading: const Icon(Icons.people_rounded),
@@ -260,21 +275,131 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                   borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
                 ),
                 child: Column(
                   children: [
-                    Text(
-                      family?.nbFamilia ?? l10n.defaultFamily,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
+                    if (userFamilies.isNotEmpty)
+                      PopupMenuButton<String>(
+                        tooltip: l10n.selectFamily,
+                        offset: const Offset(0, 48),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 6,
+                        onSelected: (String val) async {
+                          if (val == '__add_new_family__') {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+                            );
+                            _refreshData();
+                          } else {
+                            await db.switchFamily(val);
+                          }
+                        },
+                        itemBuilder: (context) {
+                          final items = <PopupMenuEntry<String>>[];
+                          for (final fam in userFamilies) {
+                            final isSelected = fam.idFamilia == family?.idFamilia;
+                            items.add(
+                              PopupMenuItem<String>(
+                                value: fam.idFamilia,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isSelected ? Icons.check_circle_rounded : Icons.family_restroom_rounded,
+                                      color: isSelected ? theme.colorScheme.primary : Colors.grey,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        fam.nbFamilia,
+                                        style: TextStyle(
+                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                          color: isSelected ? theme.colorScheme.primary : Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+                          items.add(const PopupMenuDivider());
+                          items.add(
+                            PopupMenuItem<String>(
+                              value: '__add_new_family__',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.add_circle_outline_rounded, color: theme.colorScheme.primary, size: 20),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    l10n.addOrJoinFamily,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                          return items;
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                            border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.home_work_rounded, color: theme.colorScheme.primary, size: 22),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  family?.nbFamilia ?? l10n.defaultFamily,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(Icons.keyboard_arrow_down_rounded, color: theme.colorScheme.primary),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.group_add_rounded),
+                        label: Text(l10n.addOrJoinFamily),
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        onPressed: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+                          );
+                          _refreshData();
+                        },
                       ),
-                    ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 10),
                     if (family != null)
                       InkWell(
                         onTap: () {

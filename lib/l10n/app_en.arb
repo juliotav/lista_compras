@@ -118,5 +118,12 @@
   
   "spanish": "Spanish",
   "english": "English",
-  "systemDefault": "System Default"
+  "systemDefault": "System Default",
+  "selectFamily": "Select Family",
+  "leaveFamily": "Leave this family",
+  "confirmLeaveFamilyTitle": "Leave Family",
+  "confirmLeaveFamilyMsg": "Are you sure you want to leave this family? You will lose access to its shared shopping lists.",
+  "addOrJoinFamily": "+ Create or Join another family",
+  "noFamiliesYet": "No family assigned",
+  "leftFamilySuccess": "You have left the family successfully."
 }

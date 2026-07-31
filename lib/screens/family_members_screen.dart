@@ -150,6 +150,54 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                             },
                           ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      icon: const Icon(Icons.exit_to_app_rounded),
+                      label: Text(l10n.leaveFamily, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (dialogContext) {
+                            return AlertDialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              title: Text(l10n.confirmLeaveFamilyTitle),
+                              content: Text(l10n.confirmLeaveFamilyMsg),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext),
+                                  child: Text(l10n.btnCancel),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                  onPressed: () async {
+                                    Navigator.pop(dialogContext);
+                                    final screenNav = Navigator.of(context);
+                                    final messenger = ScaffoldMessenger.of(context);
+
+                                    await db.leaveFamily(family.idFamilia);
+
+                                    messenger.showSnackBar(
+                                      SnackBar(content: Text(l10n.leftFamilySuccess)),
+                                    );
+
+                                    screenNav.pop();
+                                  },
+                                  child: Text(l10n.leaveFamily, style: const TextStyle(color: Colors.white)),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
             ),

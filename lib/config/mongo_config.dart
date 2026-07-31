@@ -11,5 +11,6 @@ class MongoConfig {
   static const String colFamilia = "familia";
   static const String colListasCompra = "lista_compra"; // Nombre exacto en singular
   static const String colCArticulo = "c_articulo";
+  static const String colUsuarioFamilia = "usuario_familia";
   static const String colDetalleLista = "detalle_lista_compra";
 }

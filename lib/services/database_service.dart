@@ -8,6 +8,7 @@ import '../models/family_model.dart';
 import '../models/shopping_list_model.dart';
 import '../models/item_catalog_model.dart';
 import '../models/list_detail_item_model.dart';
+import '../models/user_family_model.dart';
 import 'mongo_service.dart';
 import 'security_service.dart';
 
@@ -16,6 +17,9 @@ class DatabaseService extends ChangeNotifier {
 
   final List<UserModel> _users = [];
   final List<FamilyModel> _families = [];
+  final List<FamilyModel> _userFamilies = [];
+  List<FamilyModel> get userFamilies => List.unmodifiable(_userFamilies);
+
   final List<ShoppingListModel> _shoppingLists = [];
   final List<ItemCatalogModel> _catalogItems = [];
   final List<ListDetailItemModel> _listDetailItems = [];
@@ -97,15 +101,111 @@ class DatabaseService extends ChangeNotifier {
     await prefs.remove('session_user_id');
   }
 
-  /// Sincroniza y descarga en tiempo real todos los datos compartidos de la familia desde MongoDB Cloud
+  /// Obtiene todas las familias a las que está vinculado el usuario actual
+  Future<void> fetchUserFamilies() async {
+    final userId = _currentUser?.idUsuario;
+    if (userId == null) return;
+
+    try {
+      // 1. Consultar colección puente 'usuario_familia'
+      var userFamDocs = await MongoService.find(
+        collectionName: MongoConfig.colUsuarioFamilia,
+        filter: {'id_usuario': userId},
+      );
+
+      final Set<String> knownFamIds = userFamDocs
+          .map((doc) => doc['id_familia'] as String?)
+          .where((id) => id != null && id.isNotEmpty)
+          .cast<String>()
+          .toSet();
+
+      // 2. Auto-recuperar familias creadas por el usuario que no estén en usuario_familia
+      final createdFamDocs = await MongoService.find(
+        collectionName: MongoConfig.colFamilia,
+        filter: {'id_creador': userId},
+      );
+
+      for (var famDoc in createdFamDocs) {
+        final famId = famDoc['id_familia'] as String?;
+        if (famId != null && famId.isNotEmpty && !knownFamIds.contains(famId)) {
+          final newLink = UserFamilyModel(
+            idUsuario: userId,
+            idFamilia: famId,
+            fechaUnion: DateTime.now(),
+          );
+          await MongoService.insertOne(
+            collectionName: MongoConfig.colUsuarioFamilia,
+            document: newLink.toMap(),
+          );
+          knownFamIds.add(famId);
+        }
+      }
+
+      // 3. Auto-recuperar si el usuario tiene id_familia activo pero no en usuario_familia
+      if (_currentUser?.idFamilia != null &&
+          _currentUser!.idFamilia!.isNotEmpty &&
+          !knownFamIds.contains(_currentUser!.idFamilia!)) {
+        final activeFamId = _currentUser!.idFamilia!;
+        final newLink = UserFamilyModel(
+          idUsuario: userId,
+          idFamilia: activeFamId,
+          fechaUnion: DateTime.now(),
+        );
+        await MongoService.insertOne(
+          collectionName: MongoConfig.colUsuarioFamilia,
+          document: newLink.toMap(),
+        );
+        knownFamIds.add(activeFamId);
+      }
+
+      // 4. Cargar los objetos FamilyModel de todas las familias vinculadas
+      final List<FamilyModel> loadedFamilies = [];
+      for (var famId in knownFamIds) {
+        final famDocs = await MongoService.find(
+          collectionName: MongoConfig.colFamilia,
+          filter: {'id_familia': famId},
+        );
+        if (famDocs.isNotEmpty) {
+          loadedFamilies.add(FamilyModel.fromMap(famDocs.first));
+        }
+      }
+
+      _userFamilies.clear();
+      _userFamilies.addAll(loadedFamilies);
+
+      // Si no hay familia activa seleccionada pero el usuario tiene familias, seleccionar la primera
+      if ((_currentUser?.idFamilia == null ||
+              !_userFamilies.any((f) => f.idFamilia == _currentUser!.idFamilia)) &&
+          _userFamilies.isNotEmpty) {
+        final activeFamId = _userFamilies.first.idFamilia;
+        _currentUser = _currentUser!.copyWith(idFamilia: activeFamId);
+        await MongoService.updateOne(
+          collectionName: MongoConfig.colUsuario,
+          filter: {'id_usuario': userId},
+          update: {
+            '\$set': {'id_familia': activeFamId}
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint("[DB_SERVICE LOG] Error en fetchUserFamilies: $e");
+    }
+  }
+
+  /// Sincroniza y descarga en tiempo real todos los datos compartidos de la familia seleccionada desde MongoDB Cloud
   Future<void> fetchFamilyData() async {
-    final famId = _currentUser?.idFamilia;
-    if (famId == null) return;
+    final userId = _currentUser?.idUsuario;
+    if (userId == null) return;
 
     _isSyncing = true;
     notifyListeners();
 
     try {
+      await fetchUserFamilies();
+
+      final famId = _currentUser?.idFamilia;
+      if (famId == null || famId.isEmpty) return;
+
       // 1. Obtener la Familia actualizada
       final famDocs = await MongoService.find(
         collectionName: MongoConfig.colFamilia,
@@ -121,18 +221,29 @@ class DatabaseService extends ChangeNotifier {
         }
       }
 
-      // 2. Obtener todos los Integrantes/Usuarios de la Familia desde MongoDB
-      final userDocs = await MongoService.find(
-        collectionName: MongoConfig.colUsuario,
+      // 2. Obtener todos los Integrantes/Usuarios de esta Familia desde usuario_familia + usuario
+      final memberLinks = await MongoService.find(
+        collectionName: MongoConfig.colUsuarioFamilia,
         filter: {'id_familia': famId},
       );
-      for (var doc in userDocs) {
-        final u = UserModel.fromMap(doc);
-        final idx = _users.indexWhere((existing) => existing.idUsuario == u.idUsuario);
-        if (idx != -1) {
-          _users[idx] = u;
-        } else {
+      
+      final memberUserIds = memberLinks.map((l) => l['id_usuario'] as String).toList();
+      if (!memberUserIds.contains(userId)) {
+        memberUserIds.add(userId);
+      }
+
+      _users.clear();
+      for (var mId in memberUserIds) {
+        final uDoc = await MongoService.findOne(
+          collectionName: MongoConfig.colUsuario,
+          filter: {'id_usuario': mId},
+        );
+        if (uDoc != null) {
+          final u = UserModel.fromMap(uDoc);
           _users.add(u);
+          if (u.idUsuario == userId) {
+            _currentUser = u.copyWith(idFamilia: famId);
+          }
         }
       }
 
@@ -142,14 +253,9 @@ class DatabaseService extends ChangeNotifier {
         filter: {'id_familia': famId},
       );
 
+      _shoppingLists.clear();
       for (var doc in listDocs) {
-        final listModel = ShoppingListModel.fromMap(doc);
-        final idx = _shoppingLists.indexWhere((l) => l.idListaCompra == listModel.idListaCompra);
-        if (idx != -1) {
-          _shoppingLists[idx] = listModel;
-        } else {
-          _shoppingLists.add(listModel);
-        }
+        _shoppingLists.add(ShoppingListModel.fromMap(doc));
       }
 
       // 4. Obtener Catálogo Fast-Select de la Familia desde MongoDB
@@ -157,31 +263,21 @@ class DatabaseService extends ChangeNotifier {
         collectionName: MongoConfig.colCArticulo,
         filter: {'id_familia': famId},
       );
+      _catalogItems.clear();
       for (var doc in catalogDocs) {
-        final catModel = ItemCatalogModel.fromMap(doc);
-        final idx = _catalogItems.indexWhere((c) => c.idArticulo == catModel.idArticulo);
-        if (idx != -1) {
-          _catalogItems[idx] = catModel;
-        } else {
-          _catalogItems.add(catModel);
-        }
+        _catalogItems.add(ItemCatalogModel.fromMap(doc));
       }
 
       // 5. Obtener los detalles/artículos de las listas de la familia desde MongoDB
       final activeListIds = _shoppingLists.map((l) => l.idListaCompra).toList();
+      _listDetailItems.clear();
       for (var listId in activeListIds) {
         final detailDocs = await MongoService.find(
           collectionName: MongoConfig.colDetalleLista,
           filter: {'id_lista_compra': listId},
         );
         for (var doc in detailDocs) {
-          final detailModel = ListDetailItemModel.fromMap(doc);
-          final idx = _listDetailItems.indexWhere((d) => d.idDetalle == detailModel.idDetalle);
-          if (idx != -1) {
-            _listDetailItems[idx] = detailModel;
-          } else {
-            _listDetailItems.add(detailModel);
-          }
+          _listDetailItems.add(ListDetailItemModel.fromMap(doc));
         }
       }
     } catch (_) {
@@ -198,21 +294,25 @@ class DatabaseService extends ChangeNotifier {
     required String nbEmail,
     required String password,
   }) async {
+    final cleanEmail = nbEmail.trim().toLowerCase();
+    final cleanUsername = nbUsuario?.trim().toLowerCase();
+    final cleanPass = password.trim();
+
     final remoteUser = await MongoService.findOne(
       collectionName: MongoConfig.colUsuario,
-      filter: {'nb_email': nbEmail.toLowerCase()},
+      filter: {'nb_email': cleanEmail},
     );
 
-    if (remoteUser != null || _users.any((u) => u.nbEmail.toLowerCase() == nbEmail.toLowerCase())) {
+    if (remoteUser != null || _users.any((u) => u.nbEmail.toLowerCase() == cleanEmail)) {
       throw Exception("El correo electrónico ya está registrado.");
     }
 
-    final passHash = SecurityService.hashPassword(password);
+    final passHash = SecurityService.hashPassword(cleanPass);
     final newUser = UserModel(
       idUsuario: _uuid.v4(),
-      nbCompleto: nbCompleto,
-      nbUsuario: nbUsuario,
-      nbEmail: nbEmail,
+      nbCompleto: nbCompleto.trim(),
+      nbUsuario: cleanUsername?.isEmpty == true ? null : cleanUsername,
+      nbEmail: cleanEmail,
       clPass: passHash,
     );
 
@@ -234,36 +334,79 @@ class DatabaseService extends ChangeNotifier {
   }
 
   Future<bool> loginUser(String emailOrUsername, String password) async {
-    final passHash = SecurityService.hashPassword(password);
+    final cleanInput = emailOrUsername.trim().toLowerCase();
+    final cleanPass = password.trim();
+    final passHash = SecurityService.hashPassword(cleanPass);
 
-    final remoteUserMap = await MongoService.findOne(
+    debugPrint("[DB_SERVICE LOG] loginUser iniciado. Buscando: '$cleanInput'");
+    debugPrint("[DB_SERVICE LOG] Hash generado para la contraseña ingresada: '$passHash'");
+
+    final escapedInput = RegExp.escape(cleanInput);
+
+    // 1. Buscar usuario en MongoDB Cloud por email (insensible a mayúsculas)
+    debugPrint("[DB_SERVICE LOG] 1. Buscando en MongoDB por nb_email (\$regex: '$cleanInput')...");
+    Map<String, dynamic>? remoteUserMap = await MongoService.findOne(
       collectionName: MongoConfig.colUsuario,
       filter: {
-        'cl_pass': passHash,
-        '\$or': [
-          {'nb_email': emailOrUsername.toLowerCase()},
-          {'nb_usuario': emailOrUsername.toLowerCase()},
-        ],
+        'nb_email': {r'$regex': '^$escapedInput\$', r'$options': 'i'}
       },
     );
 
+    remoteUserMap ??= await MongoService.findOne(
+      collectionName: MongoConfig.colUsuario,
+      filter: {
+        'nb_usuario': {r'$regex': '^$escapedInput\$', r'$options': 'i'}
+      },
+    );
+
+    remoteUserMap ??= await MongoService.findOne(
+      collectionName: MongoConfig.colUsuario,
+      filter: {'nb_email': cleanInput},
+    );
+
     if (remoteUserMap != null) {
-      _currentUser = UserModel.fromMap(remoteUserMap);
-      await _saveSession(_currentUser!.idUsuario);
-      if (_currentUser?.idFamilia != null) {
-        await fetchFamilyData();
+      debugPrint("[DB_SERVICE LOG] ¡Usuario encontrado en MongoDB!");
+      debugPrint("[DB_SERVICE LOG] Documento retornado: id_usuario='${remoteUserMap['id_usuario']}', email='${remoteUserMap['nb_email']}', nb_usuario='${remoteUserMap['nb_usuario']}'");
+
+      final storedPass = remoteUserMap['cl_pass'] as String?;
+      debugPrint("[DB_SERVICE LOG] Hash almacenado en DB: '$storedPass'");
+      debugPrint("[DB_SERVICE LOG] Hash ingresado:          '$passHash'");
+
+      if (storedPass == passHash) {
+        debugPrint("[DB_SERVICE LOG] ¡Contraseña CORRECTA! Iniciando sesión...");
+        _currentUser = UserModel.fromMap(remoteUserMap);
+        await _saveSession(_currentUser!.idUsuario);
+        if (_currentUser?.idFamilia != null) {
+          await fetchFamilyData();
+        }
+        notifyListeners();
+        return true;
+      } else {
+        debugPrint("[DB_SERVICE LOG] ERROR: La contraseña no coincide (HashMismatch).");
+        return false;
       }
-      notifyListeners();
-      return true;
+    } else {
+      debugPrint("[DB_SERVICE LOG] Usuario NO encontrado en MongoDB Cloud con el valor '$cleanInput'.");
+      // Consultar usuarios registrados en la DB para auditar el valor guardado
+      final allUsers = await MongoService.find(
+        collectionName: MongoConfig.colUsuario,
+        filter: {},
+      );
+      debugPrint("[DB_SERVICE LOG] Total de usuarios registrados en la colección 'usuario': ${allUsers.length}");
+      for (var u in allUsers) {
+        debugPrint("   -> ID: '${u['id_usuario']}', Email en DB: '${u['nb_email']}', Usuario en DB: '${u['nb_usuario']}'");
+      }
     }
 
+    debugPrint("[DB_SERVICE LOG] Buscando en usuarios semilla/locales...");
     try {
       final user = _users.firstWhere(
         (u) =>
-            (u.nbEmail.toLowerCase() == emailOrUsername.toLowerCase() ||
-                (u.nbUsuario != null && u.nbUsuario!.toLowerCase() == emailOrUsername.toLowerCase())) &&
+            (u.nbEmail.toLowerCase() == cleanInput ||
+                (u.nbUsuario != null && u.nbUsuario!.toLowerCase() == cleanInput)) &&
             u.clPass == passHash,
       );
+      debugPrint("[DB_SERVICE LOG] Usuario encontrado en datos semilla locales.");
       _currentUser = user;
       await _saveSession(user.idUsuario);
       if (_currentUser?.idFamilia != null) {
@@ -272,6 +415,7 @@ class DatabaseService extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (_) {
+      debugPrint("[DB_SERVICE LOG] ERROR: Usuario tampoco se encuentra en datos semilla locales.");
       return false;
     }
   }
@@ -280,6 +424,66 @@ class DatabaseService extends ChangeNotifier {
     _currentUser = null;
     await _clearSession();
     notifyListeners();
+  }
+
+  /// Cambia la familia activa seleccionada por el usuario y recarga sus listas de compras
+  Future<void> switchFamily(String idFamilia) async {
+    if (_currentUser == null) return;
+    if (_currentUser!.idFamilia == idFamilia) return;
+
+    _currentUser = _currentUser!.copyWith(idFamilia: idFamilia);
+    await MongoService.updateOne(
+      collectionName: MongoConfig.colUsuario,
+      filter: {'id_usuario': _currentUser!.idUsuario},
+      update: {
+        '\$set': {'id_familia': idFamilia}
+      },
+    );
+
+    await fetchFamilyData();
+  }
+
+  /// Permite al usuario salir voluntariamente de la familia especificada
+  Future<void> leaveFamily(String idFamilia) async {
+    final userId = _currentUser?.idUsuario;
+    if (userId == null) return;
+
+    // 1. Eliminar vínculo de usuario_familia
+    await MongoService.deleteOne(
+      collectionName: MongoConfig.colUsuarioFamilia,
+      filter: {
+        'id_usuario': userId,
+        'id_familia': idFamilia,
+      },
+    );
+
+    _userFamilies.removeWhere((f) => f.idFamilia == idFamilia);
+
+    // 2. Si salimos de la familia actualmente activa
+    if (_currentUser?.idFamilia == idFamilia) {
+      if (_userFamilies.isNotEmpty) {
+        final newActiveFamId = _userFamilies.first.idFamilia;
+        _currentUser = _currentUser!.copyWith(idFamilia: newActiveFamId);
+        await MongoService.updateOne(
+          collectionName: MongoConfig.colUsuario,
+          filter: {'id_usuario': userId},
+          update: {
+            '\$set': {'id_familia': newActiveFamId}
+          },
+        );
+      } else {
+        _currentUser = _currentUser!.copyWith(clearFamilia: true);
+        await MongoService.updateOne(
+          collectionName: MongoConfig.colUsuario,
+          filter: {'id_usuario': userId},
+          update: {
+            '\$unset': {'id_familia': ""}
+          },
+        );
+      }
+    }
+
+    await fetchFamilyData();
   }
 
   // --- GESTIÓN DE FAMILIA ---
@@ -311,6 +515,17 @@ class DatabaseService extends ChangeNotifier {
     );
 
     _families.add(family);
+
+    // Registrar en tabla puente usuario_familia
+    final userFamilyLink = UserFamilyModel(
+      idUsuario: _currentUser!.idUsuario,
+      idFamilia: idFam,
+      fechaUnion: DateTime.now(),
+    );
+    await MongoService.insertOne(
+      collectionName: MongoConfig.colUsuarioFamilia,
+      document: userFamilyLink.toMap(),
+    );
 
     _currentUser = _currentUser!.copyWith(idFamilia: idFam);
     await MongoService.updateOne(
@@ -374,6 +589,27 @@ class DatabaseService extends ChangeNotifier {
       }
     }
 
+    // Verificar e insertar en usuario_familia si no existe la relación
+    final existingLink = await MongoService.findOne(
+      collectionName: MongoConfig.colUsuarioFamilia,
+      filter: {
+        'id_usuario': _currentUser!.idUsuario,
+        'id_familia': family.idFamilia,
+      },
+    );
+
+    if (existingLink == null) {
+      final link = UserFamilyModel(
+        idUsuario: _currentUser!.idUsuario,
+        idFamilia: family.idFamilia,
+        fechaUnion: DateTime.now(),
+      );
+      await MongoService.insertOne(
+        collectionName: MongoConfig.colUsuarioFamilia,
+        document: link.toMap(),
+      );
+    }
+
     _currentUser = _currentUser!.copyWith(idFamilia: family.idFamilia);
 
     await MongoService.updateOne(
@@ -425,13 +661,24 @@ class DatabaseService extends ChangeNotifier {
   List<UserModel> getFamilyMembers() {
     final famId = _currentUser?.idFamilia;
     if (famId == null) return [];
-    return _users.where((u) => u.idFamilia == famId).toList();
+    return _users.toList();
   }
 
   Future<void> removeFamilyMember(String idUsuario) async {
+    final famId = _currentUser?.idFamilia;
+    if (famId == null) return;
+
+    await MongoService.deleteOne(
+      collectionName: MongoConfig.colUsuarioFamilia,
+      filter: {
+        'id_usuario': idUsuario,
+        'id_familia': famId,
+      },
+    );
+
     await MongoService.updateOne(
       collectionName: MongoConfig.colUsuario,
-      filter: {'id_usuario': idUsuario},
+      filter: {'id_usuario': idUsuario, 'id_familia': famId},
       update: {
         '\$unset': {'id_familia': ""}
       },
@@ -439,7 +686,7 @@ class DatabaseService extends ChangeNotifier {
 
     final userIdx = _users.indexWhere((u) => u.idUsuario == idUsuario);
     if (userIdx != -1) {
-      _users[userIdx] = _users[userIdx].copyWith(clearFamilia: true);
+      _users.removeAt(userIdx);
       notifyListeners();
     }
   }

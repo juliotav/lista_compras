@@ -118,5 +118,12 @@
   
   "spanish": "Español",
   "english": "Inglés",
-  "systemDefault": "Predeterminado del Sistema"
+  "systemDefault": "Predeterminado del Sistema",
+  "selectFamily": "Seleccionar Familia",
+  "leaveFamily": "Salir de esta familia",
+  "confirmLeaveFamilyTitle": "Abandonar Familia",
+  "confirmLeaveFamilyMsg": "¿Estás seguro de que deseas salir de esta familia? Perderás el acceso a sus listas de compra compartidas.",
+  "addOrJoinFamily": "+ Crear o Unirse a otra familia",
+  "noFamiliesYet": "Sin familia asignada",
+  "leftFamilySuccess": "Has salido de la familia correctamente."
 }

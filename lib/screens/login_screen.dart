@@ -24,6 +24,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
+    debugPrint("=========================================");
+    debugPrint("[UI LOG] Botón Iniciar Sesión presionado");
+    debugPrint("[UI LOG] Usuario/Email ingresado: '${_emailOrUsernameController.text.trim()}'");
+    debugPrint("=========================================");
+
     setState(() => _isLoading = true);
 
     final db = context.read<DatabaseService>();
@@ -34,6 +39,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!mounted) return;
     setState(() => _isLoading = false);
+
+    debugPrint("[UI LOG] Resultado del Login: success=$success");
 
     if (success) {
       if (db.currentFamily != null) {

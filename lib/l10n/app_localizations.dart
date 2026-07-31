@@ -709,6 +709,48 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Predeterminado del Sistema'**
   String get systemDefault;
+
+  /// No description provided for @selectFamily.
+  ///
+  /// In es, this message translates to:
+  /// **'Seleccionar Familia'**
+  String get selectFamily;
+
+  /// No description provided for @leaveFamily.
+  ///
+  /// In es, this message translates to:
+  /// **'Salir de esta familia'**
+  String get leaveFamily;
+
+  /// No description provided for @confirmLeaveFamilyTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Abandonar Familia'**
+  String get confirmLeaveFamilyTitle;
+
+  /// No description provided for @confirmLeaveFamilyMsg.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Estás seguro de que deseas salir de esta familia? Perderás el acceso a sus listas de compra compartidas.'**
+  String get confirmLeaveFamilyMsg;
+
+  /// No description provided for @addOrJoinFamily.
+  ///
+  /// In es, this message translates to:
+  /// **'+ Crear o Unirse a otra familia'**
+  String get addOrJoinFamily;
+
+  /// No description provided for @noFamiliesYet.
+  ///
+  /// In es, this message translates to:
+  /// **'Sin familia asignada'**
+  String get noFamiliesYet;
+
+  /// No description provided for @leftFamilySuccess.
+  ///
+  /// In es, this message translates to:
+  /// **'Has salido de la familia correctamente.'**
+  String get leftFamilySuccess;
 }
 
 class _AppLocalizationsDelegate

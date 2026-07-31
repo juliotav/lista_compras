@@ -328,4 +328,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get systemDefault => 'System Default';
+
+  @override
+  String get selectFamily => 'Select Family';
+
+  @override
+  String get leaveFamily => 'Leave this family';
+
+  @override
+  String get confirmLeaveFamilyTitle => 'Leave Family';
+
+  @override
+  String get confirmLeaveFamilyMsg =>
+      'Are you sure you want to leave this family? You will lose access to its shared shopping lists.';
+
+  @override
+  String get addOrJoinFamily => '+ Create or Join another family';
+
+  @override
+  String get noFamiliesYet => 'No family assigned';
+
+  @override
+  String get leftFamilySuccess => 'You have left the family successfully.';
 }
