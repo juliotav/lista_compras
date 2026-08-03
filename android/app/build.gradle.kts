@@ -1,5 +1,6 @@
 import java.util.Properties
 import java.io.FileInputStream
+import java.util.Base64
 
 plugins {
     id("com.android.application")
@@ -14,9 +15,23 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+val dartEnvironmentVariables = if (project.hasProperty("dart-defines")) {
+    (project.property("dart-defines") as String).split(",").mapNotNull { entry ->
+        runCatching {
+            val pair = String(Base64.getDecoder().decode(entry), Charsets.UTF_8).split("=")
+            pair[0] to pair.getOrElse(1) { "" }
+        }.getOrNull()
+    }.toMap()
+} else {
+    emptyMap()
+}
+
+val admobAppId = dartEnvironmentVariables["ADMOB_APP_ID_ANDROID"]?.takeIf { it.isNotEmpty() }
+    ?: "ca-app-pub-3940256099942544~3347511713"
+
 android {
     namespace = "com.sonorodevs.lista_compras"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -34,6 +49,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["admobAppId"] = admobAppId
     }
 
     signingConfigs {

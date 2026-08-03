@@ -6,6 +6,7 @@ import '../models/list_detail_item_model.dart';
 import '../models/shopping_list_model.dart';
 import '../services/database_service.dart';
 import '../services/locale_provider.dart';
+import '../widgets/ad_banner_widget.dart';
 
 class ListDetailScreen extends StatefulWidget {
   final ShoppingListModel shoppingList;
@@ -450,9 +451,17 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
 
                               return ListTile(
                                 dense: true,
-                                title: Text(
-                                  name,
-                                  style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+                                title: Row(
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+                                    ),
+                                    if (catItem.nuUso > 0) ...[
+                                      const SizedBox(width: 6),
+                                      const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 16),
+                                    ],
+                                  ],
                                 ),
                                 trailing: const Icon(Icons.add_rounded, color: Colors.blue),
                                 onTap: () async {
@@ -579,6 +588,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: const SafeArea(
+        child: AdBannerWidget(),
       ),
     );
   }

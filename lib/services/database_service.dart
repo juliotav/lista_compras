@@ -1133,6 +1133,7 @@ class DatabaseService extends ChangeNotifier {
     // 1. Marcar todos los elementos pendientes de esta lista en memoria y MongoDB como comprados
     for (int i = 0; i < _listDetailItems.length; i++) {
       if (_listDetailItems[i].idListaCompra == idListaCompra && _listDetailItems[i].isPending) {
+        _incrementCatalogUsage(_listDetailItems[i].idArticulo, _listDetailItems[i].nbArticulo);
         _listDetailItems[i] = _listDetailItems[i].copyWith(
           status: 'completed',
           fechaCompra: DateTime.now(),
@@ -1205,11 +1206,53 @@ class DatabaseService extends ChangeNotifier {
         .toList();
   }
 
-  /// Retorna ÚNICAMENTE los artículos del catálogo pertenecientes a la familia del usuario activo
+  /// Retorna ÚNICAMENTE los artículos del catálogo pertenecientes a la familia del usuario activo,
+  /// ordenados por productos más comprados/usados primero (nuUso descendente)
   List<ItemCatalogModel> getCatalogItems() {
     final famId = _currentUser?.idFamilia;
     if (famId == null) return [];
-    return _catalogItems.where((c) => c.idFamilia == famId).toList();
+    final items = _catalogItems.where((c) => c.idFamilia == famId).toList();
+    items.sort((a, b) {
+      final cmp = b.nuUso.compareTo(a.nuUso); // Más comprados arriba
+      if (cmp != 0) return cmp;
+      return a.nbArticuloEs.toLowerCase().compareTo(b.nbArticuloEs.toLowerCase());
+    });
+    return items;
+  }
+
+  /// Incrementa el contador de uso (nuUso) del artículo en el catálogo local y en MongoDB ($inc)
+  void _incrementCatalogUsage(String? idArticulo, String nbArticulo) {
+    final famId = _currentUser?.idFamilia;
+    if (famId == null) return;
+
+    final cleanNameLower = nbArticulo.trim().toLowerCase();
+
+    int idx = -1;
+    if (idArticulo != null && idArticulo.isNotEmpty) {
+      idx = _catalogItems.indexWhere((c) => c.idArticulo == idArticulo);
+    }
+    if (idx == -1) {
+      idx = _catalogItems.indexWhere(
+        (c) =>
+            c.idFamilia == famId &&
+            (c.nbArticuloEs.toLowerCase() == cleanNameLower ||
+                c.nbArticuloEn.toLowerCase() == cleanNameLower),
+      );
+    }
+
+    if (idx != -1) {
+      final target = _catalogItems[idx];
+      _catalogItems[idx] = target.copyWith(nuUso: target.nuUso + 1);
+
+      // Incrementar atómicamente en MongoDB Atlas de fondo ($inc: {nu_uso: 1})
+      MongoService.updateOne(
+        collectionName: MongoConfig.colCArticulo,
+        filter: {'id_articulo': target.idArticulo},
+        update: {
+          '\$inc': {'nu_uso': 1}
+        },
+      );
+    }
   }
 
   /// Obtiene el nombre a mostrar de un usuario (prioriza nb_usuario si fue capturado; de lo contrario, usa el primer nombre de nb_completo)
@@ -1390,6 +1433,7 @@ class DatabaseService extends ChangeNotifier {
         idUsuarioFinalizo: _currentUser?.idUsuario,
       );
       _listDetailItems[idx] = updated;
+      _incrementCatalogUsage(updated.idArticulo, updated.nbArticulo);
       await MongoService.updateOne(
         collectionName: MongoConfig.colDetalleLista,
         filter: {'id_detalle': idDetalle},

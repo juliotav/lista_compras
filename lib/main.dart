@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'l10n/app_localizations.dart';
 import 'screens/family_setup_screen.dart';
@@ -8,8 +10,11 @@ import 'screens/intro_slides_screen.dart';
 import 'services/database_service.dart';
 import 'services/locale_provider.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb) {
+    await MobileAds.instance.initialize();
+  }
   runApp(
     MultiProvider(
       providers: [

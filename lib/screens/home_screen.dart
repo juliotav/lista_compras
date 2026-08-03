@@ -10,6 +10,7 @@ import 'family_members_screen.dart';
 import 'family_setup_screen.dart';
 import 'list_detail_screen.dart';
 import 'login_screen.dart';
+import '../widgets/ad_banner_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -550,6 +551,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: const SafeArea(
+        child: AdBannerWidget(),
       ),
     );
   }
