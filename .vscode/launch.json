@@ -5,6 +5,9 @@
             "name": "lista_compras (Dev .env)",
             "request": "launch",
             "type": "dart",
+            "toolArgs": [
+                "--dart-define-from-file=.env"
+            ],
             "args": [
                 "--dart-define-from-file=.env"
             ]
@@ -14,6 +17,9 @@
             "request": "launch",
             "type": "dart",
             "deviceId": "R5CY90W0RVR",
+            "toolArgs": [
+                "--dart-define-from-file=.env"
+            ],
             "args": [
                 "--dart-define-from-file=.env"
             ]
@@ -23,6 +29,9 @@
             "request": "launch",
             "type": "dart",
             "deviceId": "emulator-5554",
+            "toolArgs": [
+                "--dart-define-from-file=.env"
+            ],
             "args": [
                 "--dart-define-from-file=.env"
             ]
@@ -32,6 +41,9 @@
             "request": "launch",
             "type": "dart",
             "deviceId": "chrome",
+            "toolArgs": [
+                "--dart-define-from-file=.env"
+            ],
             "args": [
                 "--dart-define-from-file=.env"
             ]
@@ -40,6 +52,9 @@
             "name": "lista_compras (Servidor Web para iPhone / Safari)",
             "request": "launch",
             "type": "dart",
+            "toolArgs": [
+                "--dart-define-from-file=.env"
+            ],
             "args": [
                 "-d",
                 "web-server",

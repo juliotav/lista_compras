@@ -6,7 +6,7 @@ class EmailService {
   /// Clave API de Resend (Se puede configurar vía --dart-define=RESEND_API_KEY=tu_clave)
   static String resendApiKey = const String.fromEnvironment(
     'RESEND_API_KEY',
-    defaultValue: "0384d0aa-cfb9-4ee4-8403-a3aa4dce9eb0",
+    defaultValue: "TU_RESEND_API_KEY_AQUI",
   );
 
   /// Correo emisor configurado en Resend (ej: "Lista de Compras (noreply@tudominio.com)")
