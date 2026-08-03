@@ -165,5 +165,26 @@
     }
   },
   "statusSecure": "Segura ✓",
-  "statusIncomplete": "Incompleta"
+  "statusIncomplete": "Incompleta",
+  "createdFamiliesCount": "Familias creadas: {current} de {max} ({remaining} disponibles)",
+  "@createdFamiliesCount": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "max": { "type": "int" },
+      "remaining": { "type": "int" }
+    }
+  },
+  "maxFamiliesReachedErr": "Has alcanzado el límite máximo de 5 familias creadas. Puedes eliminar una de tus familias para liberar espacio o unirte a otras familias de forma ilimitada.",
+  "unlimitedJoinInfo": "Puedes unirte a cuantas familias desees de forma ilimitada.",
+  "deleteFamilyTitle": "Eliminar Familia",
+  "deleteFamilyConfirmTitle": "¿Eliminar la familia '{name}'?",
+  "@deleteFamilyConfirmTitle": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "deleteFamilyWarning": "Esta acción es irreversible y eliminará físicamente:\n\n• La familia y su código de acceso.\n• La relación de todos los integrantes con esta familia.\n• Todas las listas de compras creadas en esta familia.\n• Todos los productos y detalles dentro de esas listas.\n• El catálogo de productos personalizado de esta familia.\n\nℹ️ Los usuarios integrantes NO serán eliminados del sistema, únicamente su vínculo con esta familia.",
+  "myFamiliesHeader": "Mis Familias",
+  "creatorBadge": "Creador",
+  "memberBadge": "Miembro"
 }

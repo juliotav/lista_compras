@@ -13,4 +13,7 @@ class MongoConfig {
   static const String colCArticulo = "c_articulo";
   static const String colUsuarioFamilia = "usuario_familia";
   static const String colDetalleLista = "detalle_lista_compra";
+
+  /// Versión visible para el usuario en la aplicación (sin número de compilación)
+  static const String appVersion = "1.0.5";
 }

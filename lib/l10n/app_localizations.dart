@@ -871,6 +871,60 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Incompleta'**
   String get statusIncomplete;
+
+  /// No description provided for @createdFamiliesCount.
+  ///
+  /// In es, this message translates to:
+  /// **'Familias creadas: {current} de {max} ({remaining} disponibles)'**
+  String createdFamiliesCount(int current, int max, int remaining);
+
+  /// No description provided for @maxFamiliesReachedErr.
+  ///
+  /// In es, this message translates to:
+  /// **'Has alcanzado el límite máximo de 5 familias creadas. Puedes eliminar una de tus familias para liberar espacio o unirte a otras familias de forma ilimitada.'**
+  String get maxFamiliesReachedErr;
+
+  /// No description provided for @unlimitedJoinInfo.
+  ///
+  /// In es, this message translates to:
+  /// **'Puedes unirte a cuantas familias desees de forma ilimitada.'**
+  String get unlimitedJoinInfo;
+
+  /// No description provided for @deleteFamilyTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar Familia'**
+  String get deleteFamilyTitle;
+
+  /// No description provided for @deleteFamilyConfirmTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Eliminar la familia \'{name}\'?'**
+  String deleteFamilyConfirmTitle(String name);
+
+  /// No description provided for @deleteFamilyWarning.
+  ///
+  /// In es, this message translates to:
+  /// **'Esta acción es irreversible y eliminará físicamente:\n\n• La familia y su código de acceso.\n• La relación de todos los integrantes con esta familia.\n• Todas las listas de compras creadas en esta familia.\n• Todos los productos y detalles dentro de esas listas.\n• El catálogo de productos personalizado de esta familia.\n\nℹ️ Los usuarios integrantes NO serán eliminados del sistema, únicamente su vínculo con esta familia.'**
+  String get deleteFamilyWarning;
+
+  /// No description provided for @myFamiliesHeader.
+  ///
+  /// In es, this message translates to:
+  /// **'Mis Familias'**
+  String get myFamiliesHeader;
+
+  /// No description provided for @creatorBadge.
+  ///
+  /// In es, this message translates to:
+  /// **'Creador'**
+  String get creatorBadge;
+
+  /// No description provided for @memberBadge.
+  ///
+  /// In es, this message translates to:
+  /// **'Miembro'**
+  String get memberBadge;
 }
 
 class _AppLocalizationsDelegate

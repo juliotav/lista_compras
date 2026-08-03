@@ -16,7 +16,7 @@ class ListDetailScreen extends StatefulWidget {
   State<ListDetailScreen> createState() => _ListDetailScreenState();
 }
 
-class _ListDetailScreenState extends State<ListDetailScreen> {
+class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBindingObserver {
   Timer? _syncTimer;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
@@ -24,6 +24,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<DatabaseService>().fetchFamilyData();
@@ -45,7 +46,16 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      debugPrint("[LIST_DETAIL LOG] App reanudada desde segundo plano. Sincronizando en segundo plano...");
+      context.read<DatabaseService>().fetchFamilyData();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _syncTimer?.cancel();
     _searchController.dispose();
     super.dispose();
@@ -386,7 +396,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
               const SizedBox(height: 12),
 
               Container(
-                constraints: const BoxConstraints(minHeight: 100),
+                height: 220,
                 decoration: BoxDecoration(
                   color: Colors.amber.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(16),
@@ -419,49 +429,56 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                       ),
 
                     if (filteredCatalog.isEmpty && (_searchQuery.isEmpty || hasExactMatch))
-                      Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Center(child: Text(l10n.noCatalogItemsFound)),
+                      Expanded(
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(l10n.noCatalogItemsFound),
+                          ),
+                        ),
                       )
                     else
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: filteredCatalog.length,
-                        separatorBuilder: (context, index) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final catItem = filteredCatalog[index];
-                          final name = catItem.getLocalizedName(currentLang);
+                      Expanded(
+                        child: Scrollbar(
+                          child: ListView.separated(
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: filteredCatalog.length,
+                            separatorBuilder: (context, index) => const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final catItem = filteredCatalog[index];
+                              final name = catItem.getLocalizedName(currentLang);
 
-                          return ListTile(
-                            dense: true,
-                            title: Text(
-                              name,
-                              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
-                            ),
-                            trailing: const Icon(Icons.add_rounded, color: Colors.blue),
-                            onTap: () async {
-                              final added = await db.addItemToList(
-                                idListaCompra: widget.shoppingList.idListaCompra,
-                                idArticulo: catItem.idArticulo,
-                                nbArticulo: name,
+                              return ListTile(
+                                dense: true,
+                                title: Text(
+                                  name,
+                                  style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+                                ),
+                                trailing: const Icon(Icons.add_rounded, color: Colors.blue),
+                                onTap: () async {
+                                  final added = await db.addItemToList(
+                                    idListaCompra: widget.shoppingList.idListaCompra,
+                                    idArticulo: catItem.idArticulo,
+                                    nbArticulo: name,
+                                  );
+
+                                  if (!added && context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(l10n.itemAlreadyInList(name)),
+                                        backgroundColor: Colors.orange[800],
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  }
+
+                                  _searchController.clear();
+                                  FocusManager.instance.primaryFocus?.unfocus();
+                                },
                               );
-
-                              if (!added && context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(l10n.itemAlreadyInList(name)),
-                                    backgroundColor: Colors.orange[800],
-                                    duration: const Duration(seconds: 2),
-                                  ),
-                                );
-                              }
-
-                              _searchController.clear();
-                              FocusManager.instance.primaryFocus?.unfocus();
                             },
-                          );
-                        },
+                          ),
+                        ),
                       ),
                   ],
                 ),

@@ -149,4 +149,23 @@ class MongoService {
       return false;
     }
   }
+
+  /// Elimina múltiples documentos que coincidan con el filtro en MongoDB Cloud
+  static Future<bool> deleteMany({
+    required String collectionName,
+    required Map<String, dynamic> filter,
+  }) async {
+    final db = await _getDb();
+    if (db == null) return false;
+
+    try {
+      final collection = db.collection(collectionName);
+      final res = await collection.deleteMany(filter);
+      debugPrint("[MONGO SERVICE] deleteMany exitoso en $collectionName");
+      return res.isSuccess;
+    } catch (e) {
+      debugPrint("[MONGO SERVICE] deleteMany ERROR en $collectionName: $e");
+      return false;
+    }
+  }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/mongo_config.dart';
 import '../l10n/app_localizations.dart';
 
 class AboutPrivacyScreen extends StatelessWidget {
@@ -36,7 +37,7 @@ class AboutPrivacyScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "Versión 1.0.0",
+                    "Versión ${MongoConfig.appVersion}",
                     style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
                   ),
                 ],

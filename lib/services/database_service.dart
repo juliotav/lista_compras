@@ -192,8 +192,38 @@ class DatabaseService extends ChangeNotifier {
           },
         );
       }
+      // Limpieza automática de artículos huérfanos de familias que fueron borradas previamente
+      await cleanOrphanCatalogItems();
     } catch (e) {
       debugPrint("[DB_SERVICE LOG] Error en fetchUserFamilies: $e");
+    }
+  }
+
+  /// Limpia automáticamente cualquier artículo huérfano en c_articulo que pertenezca a familias ya eliminadas en MongoDB
+  Future<void> cleanOrphanCatalogItems() async {
+    try {
+      final allFamilies = await MongoService.find(
+        collectionName: MongoConfig.colFamilia,
+        filter: {},
+      );
+      final validFamIds = allFamilies.map((f) => f['id_familia'] as String).toSet();
+
+      final allCatalogDocs = await MongoService.find(
+        collectionName: MongoConfig.colCArticulo,
+        filter: {},
+      );
+      for (var doc in allCatalogDocs) {
+        final famId = doc['id_familia'] as String?;
+        if (famId != null && famId.isNotEmpty && !validFamIds.contains(famId)) {
+          debugPrint("[DB_SERVICE LOG] Limpiando automáticamente artículos huérfanos en c_articulo de la familia eliminada '$famId'...");
+          await MongoService.deleteMany(
+            collectionName: MongoConfig.colCArticulo,
+            filter: {'id_familia': famId},
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("[DB_SERVICE LOG] Error limpiando catálogo huérfano: $e");
     }
   }
 
@@ -316,7 +346,7 @@ class DatabaseService extends ChangeNotifier {
 
       // 5. Obtener los detalles/artículos de las listas de la familia desde MongoDB
       final activeListIds = _shoppingLists.map((l) => l.idListaCompra).toList();
-      _listDetailItems.clear();
+      final List<ListDetailItemModel> freshItems = [];
       for (var listId in activeListIds) {
         final detailDocs = await MongoService.find(
           collectionName: MongoConfig.colDetalleLista,
@@ -338,7 +368,23 @@ class DatabaseService extends ChangeNotifier {
             }
             seenPendingNames.add(normName);
           }
-          _listDetailItems.add(item);
+          freshItems.add(item);
+        }
+      }
+
+      // Preservar la memoria local si la reconexión de red al retornar del segundo plano aún no ha retornado datos
+      if (freshItems.isNotEmpty || _listDetailItems.isEmpty) {
+        _listDetailItems.clear();
+        _listDetailItems.addAll(freshItems);
+      } else {
+        // Actualizar/fusionar los datos remotos recibidos sin vaciar la lista existente
+        for (var item in freshItems) {
+          final idx = _listDetailItems.indexWhere((i) => i.idDetalle == item.idDetalle);
+          if (idx != -1) {
+            _listDetailItems[idx] = item;
+          } else {
+            _listDetailItems.add(item);
+          }
         }
       }
     } catch (_) {
@@ -694,6 +740,99 @@ class DatabaseService extends ChangeNotifier {
     await fetchFamilyData();
   }
 
+  /// Elimina físicamente una familia creada por el usuario y todos sus datos relacionados de MongoDB Cloud
+  Future<bool> deleteFamily(String idFamilia) async {
+    final userId = _currentUser?.idUsuario;
+    if (userId == null) return false;
+
+    // Verificar que el usuario sea el creador de la familia
+    final famIndex = _userFamilies.indexWhere((f) => f.idFamilia == idFamilia);
+    if (famIndex == -1) return false;
+
+    final family = _userFamilies[famIndex];
+    if (family.idCreador != userId) {
+      debugPrint("[DB_SERVICE LOG] deleteFamily ERROR: Solo el creador puede eliminar esta familia.");
+      return false;
+    }
+
+    debugPrint("[DB_SERVICE LOG] Eliminando físicamente familia '$idFamilia' y todas sus entidades asociadas de MongoDB...");
+
+    try {
+      // 1. Obtener todas las listas de compras de esta familia para eliminar sus detalles
+      final familyListDocs = await MongoService.find(
+        collectionName: MongoConfig.colListasCompra,
+        filter: {'id_familia': idFamilia},
+      );
+      final familyListIds = familyListDocs.map((l) => l['id_lista_compra'] as String).toList();
+
+      // 2. Eliminar físicamente todos los detalles/artículos de las listas de esta familia
+      for (var listId in familyListIds) {
+        await MongoService.deleteMany(
+          collectionName: MongoConfig.colDetalleLista,
+          filter: {'id_lista_compra': listId},
+        );
+      }
+
+      // 3. Eliminar físicamente todas las listas de compras de la familia
+      await MongoService.deleteMany(
+        collectionName: MongoConfig.colListasCompra,
+        filter: {'id_familia': idFamilia},
+      );
+
+      // 4. Eliminar el catálogo de productos personalizado de la familia
+      await MongoService.deleteMany(
+        collectionName: MongoConfig.colCArticulo,
+        filter: {'id_familia': idFamilia},
+      );
+
+      // 5. Eliminar la relación de integrantes en usuario_familia (sin borrar a los usuarios del sistema)
+      await MongoService.deleteMany(
+        collectionName: MongoConfig.colUsuarioFamilia,
+        filter: {'id_familia': idFamilia},
+      );
+
+      // 6. Eliminar el documento de la familia en Mongo
+      await MongoService.deleteOne(
+        collectionName: MongoConfig.colFamilia,
+        filter: {'id_familia': idFamilia},
+      );
+
+      // 7. Remover de la memoria local
+      _userFamilies.removeWhere((f) => f.idFamilia == idFamilia);
+      _families.removeWhere((f) => f.idFamilia == idFamilia);
+
+      // 8. Si la familia eliminada era la familia activa actual del usuario
+      if (_currentUser?.idFamilia == idFamilia) {
+        if (_userFamilies.isNotEmpty) {
+          final newActiveId = _userFamilies.first.idFamilia;
+          _currentUser = _currentUser!.copyWith(idFamilia: newActiveId);
+          await MongoService.updateOne(
+            collectionName: MongoConfig.colUsuario,
+            filter: {'id_usuario': userId},
+            update: {
+              '\$set': {'id_familia': newActiveId}
+            },
+          );
+        } else {
+          _currentUser = _currentUser!.copyWith(clearFamilia: true);
+          await MongoService.updateOne(
+            collectionName: MongoConfig.colUsuario,
+            filter: {'id_usuario': userId},
+            update: {
+              '\$unset': {'id_familia': ""}
+            },
+          );
+        }
+      }
+
+      await fetchFamilyData();
+      return true;
+    } catch (e) {
+      debugPrint("[DB_SERVICE LOG] Error en deleteFamily: $e");
+      return false;
+    }
+  }
+
   // --- GESTIÓN DE FAMILIA ---
   String _generateFamilyCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -704,6 +843,12 @@ class DatabaseService extends ChangeNotifier {
 
   Future<FamilyModel> createFamily(String nbFamilia, String? dsFamilia) async {
     if (_currentUser == null) throw Exception("Usuario no autenticado");
+
+    // Regla de negocio: Máximo 5 familias creadas por el usuario
+    final createdCount = _userFamilies.where((f) => f.idCreador == _currentUser!.idUsuario).length;
+    if (createdCount >= 5) {
+      throw Exception("maxFamiliesReachedErr");
+    }
 
     final idFam = _uuid.v4();
     final clFam = _generateFamilyCode();
@@ -1067,19 +1212,25 @@ class DatabaseService extends ChangeNotifier {
     return _catalogItems.where((c) => c.idFamilia == famId).toList();
   }
 
-  /// Obtiene el primer nombre o nombre de usuario amigable de la persona que realizó una acción
+  /// Obtiene el nombre a mostrar de un usuario (prioriza nb_usuario si fue capturado; de lo contrario, usa el primer nombre de nb_completo)
   String getUserDisplayName(String? idUsuario) {
     if (idUsuario == null || idUsuario.isEmpty) return '';
     if (_currentUser != null && _currentUser!.idUsuario == idUsuario) {
+      final username = _currentUser!.nbUsuario?.trim();
+      if (username != null && username.isNotEmpty) {
+        return username;
+      }
       final name = _currentUser!.nbCompleto.trim();
-      final first = name.contains(' ') ? name.split(' ').first : name;
-      return first.isNotEmpty ? first : (_currentUser!.nbUsuario ?? '');
+      return name.contains(' ') ? name.split(' ').first : name;
     }
     try {
       final u = _users.firstWhere((user) => user.idUsuario == idUsuario);
+      final username = u.nbUsuario?.trim();
+      if (username != null && username.isNotEmpty) {
+        return username;
+      }
       final name = u.nbCompleto.trim();
-      final first = name.contains(' ') ? name.split(' ').first : name;
-      return first.isNotEmpty ? first : (u.nbUsuario ?? '');
+      return name.contains(' ') ? name.split(' ').first : name;
     } catch (_) {
       return '';
     }

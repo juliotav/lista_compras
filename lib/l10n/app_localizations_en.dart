@@ -423,4 +423,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statusIncomplete => 'Incomplete';
+
+  @override
+  String createdFamiliesCount(int current, int max, int remaining) {
+    return 'Created families: $current of $max ($remaining available)';
+  }
+
+  @override
+  String get maxFamiliesReachedErr =>
+      'You have reached the maximum limit of 5 created families. You can delete one of your created families to free up space or join existing families without limits.';
+
+  @override
+  String get unlimitedJoinInfo =>
+      'You can join as many families as you want without limits.';
+
+  @override
+  String get deleteFamilyTitle => 'Delete Family';
+
+  @override
+  String deleteFamilyConfirmTitle(String name) {
+    return 'Delete family \'$name\'?';
+  }
+
+  @override
+  String get deleteFamilyWarning =>
+      'This action is irreversible and will physically delete:\n\n• The family and its access code.\n• The link of all members with this family.\n• All shopping lists created in this family.\n• All products and details inside those lists.\n• The custom catalog of this family.\n\nℹ️ Member users will NOT be deleted from the system, only their link to this family.';
+
+  @override
+  String get myFamiliesHeader => 'My Families';
+
+  @override
+  String get creatorBadge => 'Creator';
+
+  @override
+  String get memberBadge => 'Member';
 }

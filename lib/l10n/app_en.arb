@@ -165,5 +165,26 @@
     }
   },
   "statusSecure": "Secure ✓",
-  "statusIncomplete": "Incomplete"
+  "statusIncomplete": "Incomplete",
+  "createdFamiliesCount": "Created families: {current} of {max} ({remaining} available)",
+  "@createdFamiliesCount": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "max": { "type": "int" },
+      "remaining": { "type": "int" }
+    }
+  },
+  "maxFamiliesReachedErr": "You have reached the maximum limit of 5 created families. You can delete one of your created families to free up space or join existing families without limits.",
+  "unlimitedJoinInfo": "You can join as many families as you want without limits.",
+  "deleteFamilyTitle": "Delete Family",
+  "deleteFamilyConfirmTitle": "Delete family '{name}'?",
+  "@deleteFamilyConfirmTitle": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "deleteFamilyWarning": "This action is irreversible and will physically delete:\n\n• The family and its access code.\n• The link of all members with this family.\n• All shopping lists created in this family.\n• All products and details inside those lists.\n• The custom catalog of this family.\n\nℹ️ Member users will NOT be deleted from the system, only their link to this family.",
+  "myFamiliesHeader": "My Families",
+  "creatorBadge": "Creator",
+  "memberBadge": "Member"
 }
