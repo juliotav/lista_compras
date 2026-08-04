@@ -258,10 +258,18 @@ class DatabaseService extends ChangeNotifier {
     }
   }
 
+  bool _isFetchingFamilyData = false;
+
   /// Sincroniza y descarga en tiempo real todos los datos compartidos de la familia seleccionada desde MongoDB Cloud
   Future<void> fetchFamilyData() async {
     final userId = _currentUser?.idUsuario;
     if (userId == null) return;
+
+    if (_isFetchingFamilyData) {
+      debugPrint("[DB_SERVICE LOG] fetchFamilyData en curso. Omitiendo llamada concurrente.");
+      return;
+    }
+    _isFetchingFamilyData = true;
 
     await flushPendingInserts();
 
@@ -308,20 +316,28 @@ class DatabaseService extends ChangeNotifier {
         memberUserIds.add(userId);
       }
 
-      _users.clear();
+      final List<UserModel> freshUsers = [];
+      final Set<String> seenUserIds = {};
+
       for (var mId in memberUserIds) {
+        if (seenUserIds.contains(mId)) continue;
+        seenUserIds.add(mId);
+
         final uDoc = await MongoService.findOne(
           collectionName: MongoConfig.colUsuario,
           filter: {'id_usuario': mId},
         );
         if (uDoc != null) {
           final u = UserModel.fromMap(uDoc);
-          _users.add(u);
+          freshUsers.add(u);
           if (u.idUsuario == userId) {
             _currentUser = u.copyWith(idFamilia: famId);
           }
         }
       }
+
+      _users.clear();
+      _users.addAll(freshUsers);
 
       // 3. Obtener todas las Listas de Compras de la Familia desde MongoDB ('lista_compra')
       final listDocs = await MongoService.find(
@@ -389,6 +405,7 @@ class DatabaseService extends ChangeNotifier {
       }
     } catch (_) {
     } finally {
+      _isFetchingFamilyData = false;
       _isSyncing = false;
       notifyListeners();
     }
@@ -915,7 +932,7 @@ class DatabaseService extends ChangeNotifier {
     return family;
   }
 
-  Future<bool> joinFamily(String clFamilia) async {
+  Future<String> joinFamily(String clFamilia) async {
     if (_currentUser == null) throw Exception("Usuario no autenticado");
 
     final cleanCode = clFamilia.trim().toUpperCase();
@@ -938,11 +955,17 @@ class DatabaseService extends ChangeNotifier {
       try {
         family = _families.firstWhere((f) => f.clFamilia.toUpperCase() == cleanCode);
       } catch (_) {
-        return false;
+        return 'invalid_code';
       }
     }
 
-    // Verificar e insertar en usuario_familia si no existe la relación
+    // 1. Validar si el usuario actual es el CREADOR de esta familia
+    if (family.idCreador == _currentUser!.idUsuario) {
+      debugPrint("[DB_SERVICE LOG] El usuario ya es el creador de la familia '${family.nbFamilia}'");
+      return 'already_creator';
+    }
+
+    // 2. Validar si el usuario ya es INTEGRANTE de esta familia (en BD o en memoria)
     final existingLink = await MongoService.findOne(
       collectionName: MongoConfig.colUsuarioFamilia,
       filter: {
@@ -951,17 +974,23 @@ class DatabaseService extends ChangeNotifier {
       },
     );
 
-    if (existingLink == null) {
-      final link = UserFamilyModel(
-        idUsuario: _currentUser!.idUsuario,
-        idFamilia: family.idFamilia,
-        fechaUnion: DateTime.now(),
-      );
-      await MongoService.insertOne(
-        collectionName: MongoConfig.colUsuarioFamilia,
-        document: link.toMap(),
-      );
+    final isAlreadyMemberInMemory = _userFamilies.any((f) => f.idFamilia == family!.idFamilia);
+
+    if (existingLink != null || isAlreadyMemberInMemory) {
+      debugPrint("[DB_SERVICE LOG] El usuario ya es integrante de la familia '${family.nbFamilia}'");
+      return 'already_member';
     }
+
+    // 3. Crear nuevo registro de relación en usuario_familia
+    final link = UserFamilyModel(
+      idUsuario: _currentUser!.idUsuario,
+      idFamilia: family.idFamilia,
+      fechaUnion: DateTime.now(),
+    );
+    await MongoService.insertOne(
+      collectionName: MongoConfig.colUsuarioFamilia,
+      document: link.toMap(),
+    );
 
     _currentUser = _currentUser!.copyWith(idFamilia: family.idFamilia);
 
@@ -981,7 +1010,7 @@ class DatabaseService extends ChangeNotifier {
     await fetchFamilyData();
 
     notifyListeners();
-    return true;
+    return 'success';
   }
 
   Future<void> _seedDefaultCatalog(String idFamilia) async {
@@ -1014,7 +1043,13 @@ class DatabaseService extends ChangeNotifier {
   List<UserModel> getFamilyMembers() {
     final famId = _currentUser?.idFamilia;
     if (famId == null) return [];
-    return _users.toList();
+    final Map<String, UserModel> uniqueMembers = {};
+    for (var u in _users) {
+      if (u.idUsuario.isNotEmpty) {
+        uniqueMembers[u.idUsuario] = u;
+      }
+    }
+    return uniqueMembers.values.toList();
   }
 
   Future<void> removeFamilyMember(String idUsuario) async {

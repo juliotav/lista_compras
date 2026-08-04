@@ -159,18 +159,24 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
                   final navigator = Navigator.of(context);
                   final dialogNav = Navigator.of(dialogContext);
 
-                  final success = await db.joinFamily(codeController.text.trim());
-                  if (success) {
+                  final result = await db.joinFamily(codeController.text.trim());
+                  if (result == 'success') {
                     dialogNav.pop();
                     navigator.pushAndRemoveUntil(
                       MaterialPageRoute(builder: (_) => const HomeScreen()),
                       (route) => false,
                     );
                   } else {
+                    String errorMsg = l10n.invalidFamilyCode;
+                    if (result == 'already_creator') {
+                      errorMsg = l10n.alreadyFamilyCreatorMsg;
+                    } else if (result == 'already_member') {
+                      errorMsg = l10n.alreadyFamilyMemberMsg;
+                    }
                     messenger.showSnackBar(
                       SnackBar(
-                        content: Text(l10n.invalidFamilyCode),
-                        backgroundColor: Colors.red,
+                        content: Text(errorMsg),
+                        backgroundColor: Colors.orange[900],
                       ),
                     );
                   }

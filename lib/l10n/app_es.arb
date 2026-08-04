@@ -186,5 +186,7 @@
   "deleteFamilyWarning": "Esta acción es irreversible y eliminará físicamente:\n\n• La familia y su código de acceso.\n• La relación de todos los integrantes con esta familia.\n• Todas las listas de compras creadas en esta familia.\n• Todos los productos y detalles dentro de esas listas.\n• El catálogo de productos personalizado de esta familia.\n\nℹ️ Los usuarios integrantes NO serán eliminados del sistema, únicamente su vínculo con esta familia.",
   "myFamiliesHeader": "Mis Familias",
   "creatorBadge": "Creador",
-  "memberBadge": "Miembro"
+  "memberBadge": "Miembro",
+  "alreadyFamilyCreatorMsg": "Tú eres el creador de esta familia.",
+  "alreadyFamilyMemberMsg": "Ya perteneces a esta familia."
 }

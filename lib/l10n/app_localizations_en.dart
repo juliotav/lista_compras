@@ -457,4 +457,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get memberBadge => 'Member';
+
+  @override
+  String get alreadyFamilyCreatorMsg => 'You are the creator of this family.';
+
+  @override
+  String get alreadyFamilyMemberMsg =>
+      'You are already a member of this family.';
 }

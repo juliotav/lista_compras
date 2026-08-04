@@ -84,38 +84,55 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                               final isMe = member.idUsuario == currentUser?.idUsuario;
 
                               return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: isThisMemberCreator ? Colors.amber : Colors.blueGrey,
-                                  child: Text(
-                                    member.nbCompleto.isNotEmpty ? member.nbCompleto[0].toUpperCase() : 'U',
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                                title: Row(
+                                leading: Stack(
+                                  clipBehavior: Clip.none,
                                   children: [
-                                    Text(
-                                      member.nbCompleto,
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    CircleAvatar(
+                                      radius: 20,
+                                      backgroundColor: isThisMemberCreator ? Colors.amber[700] : Colors.deepPurple[400],
+                                      child: Text(
+                                        member.nbCompleto.isNotEmpty ? member.nbCompleto[0].toUpperCase() : 'U',
+                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
                                     ),
-                                    if (isMe)
-                                      const Padding(
-                                        padding: EdgeInsets.only(left: 6.0),
-                                        child: Text("(Tú)", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                    if (isThisMemberCreator)
+                                      Positioned(
+                                        right: -2,
+                                        bottom: -2,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber[800],
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: Colors.white, width: 1.5),
+                                          ),
+                                          child: const Icon(
+                                            Icons.star_rounded,
+                                            color: Colors.white,
+                                            size: 10,
+                                          ),
+                                        ),
                                       ),
                                   ],
                                 ),
-                                subtitle: Text(member.nbEmail),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (isThisMemberCreator)
-                                      Chip(
-                                        label: Text(l10n.creatorTag),
-                                        backgroundColor: Colors.amber.withValues(alpha: 0.2),
-                                        labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                                      ),
-                                    if (isCreator && !isThisMemberCreator)
-                                      IconButton(
+                                title: Text(
+                                  "${member.nbCompleto}${isMe ? ' (Tú)' : ''}",
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                                subtitle: Text(
+                                  "${member.nbEmail}${isThisMemberCreator ? ' • ${l10n.creatorTag}' : ''}",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isThisMemberCreator ? Colors.amber[900] : Colors.grey[600],
+                                    fontWeight: isThisMemberCreator ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                                trailing: isCreator && !isThisMemberCreator
+                                    ? IconButton(
                                         icon: const Icon(Icons.person_remove_rounded, color: Colors.red),
                                         tooltip: l10n.removeMember,
                                         onPressed: () {
@@ -143,9 +160,8 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                                             },
                                           );
                                         },
-                                      ),
-                                  ],
-                                ),
+                                      )
+                                    : null,
                               );
                             },
                           ),

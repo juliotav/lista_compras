@@ -925,6 +925,18 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Miembro'**
   String get memberBadge;
+
+  /// No description provided for @alreadyFamilyCreatorMsg.
+  ///
+  /// In es, this message translates to:
+  /// **'Tú eres el creador de esta familia.'**
+  String get alreadyFamilyCreatorMsg;
+
+  /// No description provided for @alreadyFamilyMemberMsg.
+  ///
+  /// In es, this message translates to:
+  /// **'Ya perteneces a esta familia.'**
+  String get alreadyFamilyMemberMsg;
 }
 
 class _AppLocalizationsDelegate

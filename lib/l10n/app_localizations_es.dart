@@ -460,4 +460,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get memberBadge => 'Miembro';
+
+  @override
+  String get alreadyFamilyCreatorMsg => 'Tú eres el creador de esta familia.';
+
+  @override
+  String get alreadyFamilyMemberMsg => 'Ya perteneces a esta familia.';
 }
