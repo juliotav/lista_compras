@@ -22,10 +22,24 @@ class AdMobConfig {
     'ADMOB_BANNER_ID_IOS_PR',
   );
 
+  /// Interstitial Test Unit IDs oficiales de Google AdMob
+  static const String _testInterstitialIdAndroid =
+      'ca-app-pub-3940256099942544/1033173712';
+  static const String _testInterstitialIdIOS =
+      'ca-app-pub-3940256099942544/4411468910';
+
+  /// Interstitial Unit IDs de producción pasados vía --dart-define o .env
+  static const String _prodInterstitialIdAndroid = String.fromEnvironment(
+    'ADMOB_INTERSTITIAL_ID_ANDROID_PR',
+  );
+  static const String _prodInterstitialIdIOS = String.fromEnvironment(
+    'ADMOB_INTERSTITIAL_ID_IOS_PR',
+  );
+
   /// Retorna true si estamos en entorno de producción
   static bool get isProduction => environment.trim().toLowerCase() == 'pr';
 
-  /// Retorna el Ad Unit ID correspondiente según el entorno (dev/qa/pr) y la plataforma
+  /// Retorna el Banner Ad Unit ID correspondiente según el entorno (dev/qa/pr) y la plataforma
   static String get bannerAdUnitId {
     if (kIsWeb) {
       return ''; // AdMob nativo no soporta Flutter Web directamente
@@ -53,6 +67,38 @@ class AdMobConfig {
       return _testBannerIdAndroid;
     } else if (Platform.isIOS) {
       return _testBannerIdIOS;
+    }
+
+    return '';
+  }
+
+  /// Retorna el Interstitial Ad Unit ID correspondiente según el entorno (dev/qa/pr) y la plataforma
+  static String get interstitialAdUnitId {
+    if (kIsWeb) {
+      return '';
+    }
+
+    if (isProduction) {
+      if (Platform.isAndroid) {
+        if (_prodInterstitialIdAndroid.isNotEmpty) {
+          return _prodInterstitialIdAndroid;
+        }
+        debugPrint(
+          '[ADMOB] AVISO: ENV=pr pero ADMOB_INTERSTITIAL_ID_ANDROID_PR no está configurado. Usando Test ID.',
+        );
+        return _testInterstitialIdAndroid;
+      } else if (Platform.isIOS) {
+        if (_prodInterstitialIdIOS.isNotEmpty) {
+          return _prodInterstitialIdIOS;
+        }
+        return _testInterstitialIdIOS;
+      }
+    }
+
+    if (Platform.isAndroid) {
+      return _testInterstitialIdAndroid;
+    } else if (Platform.isIOS) {
+      return _testInterstitialIdIOS;
     }
 
     return '';

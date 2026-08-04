@@ -11,6 +11,7 @@ import 'family_setup_screen.dart';
 import 'list_detail_screen.dart';
 import 'login_screen.dart';
 import '../widgets/ad_banner_widget.dart';
+import '../services/ad_interstitial_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    AdInterstitialService.preloadAd();
     _refreshData();
   }
 
@@ -182,13 +184,18 @@ class _HomeScreenState extends State<HomeScreen> {
             ListTile(
               leading: const Icon(Icons.family_restroom_rounded),
               title: Text(l10n.addOrJoinFamily),
-              onTap: () async {
+              onTap: () {
                 Navigator.pop(context);
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+                AdInterstitialService.showAdIfAllowedThenNavigate(
+                  context: context,
+                  onNavigate: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+                    );
+                    _refreshData();
+                  },
                 );
-                _refreshData();
               },
             ),
             ListTile(
@@ -291,11 +298,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         elevation: 6,
                         onSelected: (String val) async {
                           if (val == '__add_new_family__') {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+                            AdInterstitialService.showAdIfAllowedThenNavigate(
+                              context: context,
+                              onNavigate: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+                                );
+                                _refreshData();
+                              },
                             );
-                            _refreshData();
                           } else {
                             await db.switchFamily(val);
                           }
@@ -392,12 +404,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
-                        onPressed: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+                        onPressed: () {
+                          AdInterstitialService.showAdIfAllowedThenNavigate(
+                            context: context,
+                            onNavigate: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+                              );
+                              _refreshData();
+                            },
                           );
-                          _refreshData();
                         },
                       ),
                     const SizedBox(height: 10),

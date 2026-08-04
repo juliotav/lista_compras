@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../models/family_model.dart';
 import '../services/database_service.dart';
+import '../widgets/ad_banner_widget.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 
@@ -515,6 +516,9 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: const SafeArea(
+        child: AdBannerWidget(),
       ),
     );
   }

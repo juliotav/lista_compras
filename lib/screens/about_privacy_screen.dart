@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/mongo_config.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/ad_banner_widget.dart';
 
 class AboutPrivacyScreen extends StatelessWidget {
   const AboutPrivacyScreen({super.key});
@@ -69,6 +70,9 @@ class AboutPrivacyScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: const SafeArea(
+        child: AdBannerWidget(),
       ),
     );
   }

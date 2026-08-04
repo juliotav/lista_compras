@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/database_service.dart';
+import '../widgets/ad_banner_widget.dart';
 
 class FamilyMembersScreen extends StatefulWidget {
   const FamilyMembersScreen({super.key});
@@ -217,6 +218,9 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                 ],
               ),
             ),
+      bottomNavigationBar: const SafeArea(
+        child: AdBannerWidget(),
+      ),
     );
   }
 }
