@@ -466,4 +466,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get alreadyFamilyMemberMsg => 'Ya perteneces a esta familia.';
+
+  @override
+  String get pushNotificationTitle => 'Lista de Compras';
+
+  @override
+  String pushNotificationBody(String userName, String listName) {
+    return '$userName ha agregado productos a la lista \"$listName\"';
+  }
 }

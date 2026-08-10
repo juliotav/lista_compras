@@ -21,6 +21,8 @@ dependencies:
   mongo_dart: ^0.10.3
   cupertino_icons: ^1.0.8
   google_mobile_ads: ^5.2.0
+  firebase_core: ^3.12.1
+  firebase_messaging: ^15.2.4
 
 dev_dependencies:
   flutter_test:

@@ -9,11 +9,13 @@ import 'screens/home_screen.dart';
 import 'screens/intro_slides_screen.dart';
 import 'services/database_service.dart';
 import 'services/locale_provider.dart';
+import 'services/push_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!kIsWeb) {
     await MobileAds.instance.initialize();
+    await PushNotificationService.initialize();
   }
   runApp(
     MultiProvider(

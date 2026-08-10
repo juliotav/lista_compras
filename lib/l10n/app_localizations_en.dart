@@ -464,4 +464,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get alreadyFamilyMemberMsg =>
       'You are already a member of this family.';
+
+  @override
+  String get pushNotificationTitle => 'Shopping List';
+
+  @override
+  String pushNotificationBody(String userName, String listName) {
+    return '$userName added items to the \"$listName\" list';
+  }
 }

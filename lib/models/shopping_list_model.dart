@@ -5,6 +5,7 @@ class ShoppingListModel {
   final bool isDefault; // Para la lista "Super" fija arriba
   final bool isActive;  // Para borrado lógico
   final bool isCompleted; // Indica si fue marcada como hecha
+  final DateTime? feUltimaNotificacion; // Timestamp para el control de cooldown de 10 min
 
   ShoppingListModel({
     required this.idListaCompra,
@@ -13,6 +14,7 @@ class ShoppingListModel {
     this.isDefault = false,
     this.isActive = true,
     this.isCompleted = false,
+    this.feUltimaNotificacion,
   });
 
   ShoppingListModel copyWith({
@@ -22,6 +24,8 @@ class ShoppingListModel {
     bool? isDefault,
     bool? isActive,
     bool? isCompleted,
+    DateTime? feUltimaNotificacion,
+    bool clearFeUltimaNotificacion = false,
   }) {
     return ShoppingListModel(
       idListaCompra: idListaCompra ?? this.idListaCompra,
@@ -30,6 +34,9 @@ class ShoppingListModel {
       isDefault: isDefault ?? this.isDefault,
       isActive: isActive ?? this.isActive,
       isCompleted: isCompleted ?? this.isCompleted,
+      feUltimaNotificacion: clearFeUltimaNotificacion
+          ? null
+          : (feUltimaNotificacion ?? this.feUltimaNotificacion),
     );
   }
 
@@ -41,6 +48,7 @@ class ShoppingListModel {
       'is_default': isDefault,
       'is_active': isActive,
       'is_completed': isCompleted,
+      'fe_ultima_notificacion': feUltimaNotificacion?.toIso8601String(),
     };
   }
 
@@ -52,6 +60,9 @@ class ShoppingListModel {
       isDefault: map['is_default'] ?? false,
       isActive: map['is_active'] ?? true,
       isCompleted: map['is_completed'] ?? false,
+      feUltimaNotificacion: map['fe_ultima_notificacion'] != null
+          ? DateTime.tryParse(map['fe_ultima_notificacion'].toString())
+          : null,
     );
   }
 }

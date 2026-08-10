@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../config/mongo_config.dart';
+import '../config/notification_config.dart';
 import '../models/user_model.dart';
 import '../models/family_model.dart';
 import '../models/shopping_list_model.dart';
@@ -13,6 +14,7 @@ import '../models/list_detail_item_model.dart';
 import '../models/user_family_model.dart';
 import 'email_service.dart';
 import 'mongo_service.dart';
+import 'push_notification_service.dart';
 import 'security_service.dart';
 
 class DatabaseService extends ChangeNotifier {
@@ -111,6 +113,7 @@ class DatabaseService extends ChangeNotifier {
         if (_currentUser?.idFamilia != null) {
           await _loadLocalCache(_currentUser!.idFamilia!);
           fetchFamilyData();
+          PushNotificationService.subscribeToFamily(_currentUser!.idFamilia);
         }
       }
     } catch (_) {
@@ -813,6 +816,7 @@ class DatabaseService extends ChangeNotifier {
     );
 
     await fetchFamilyData();
+    PushNotificationService.subscribeToFamily(idFamilia);
   }
 
   /// Permite al usuario salir voluntariamente de la familia especificada
@@ -1488,6 +1492,9 @@ class DatabaseService extends ChangeNotifier {
         },
       );
 
+      // Disparar notificación push con control de cooldown de 10 minutos
+      _checkAndTriggerListNotification(idListaCompra);
+
       return true;
     }
 
@@ -1511,7 +1518,61 @@ class DatabaseService extends ChangeNotifier {
     _pendingInsertQueue.add(newItem);
     _scheduleBatchInsert();
 
+    // Disparar notificación push con control de cooldown de 10 minutos
+    _checkAndTriggerListNotification(idListaCompra);
+
     return true;
+  }
+
+  /// Verifica el cooldown de 10 minutos para la lista específica y dispara la notificación push si corresponde
+  Future<void> _checkAndTriggerListNotification(String idListaCompra) async {
+    final famId = _currentUser?.idFamilia;
+    final userId = _currentUser?.idUsuario;
+    if (famId == null || userId == null) return;
+
+    final listIdx = _shoppingLists.indexWhere((l) => l.idListaCompra == idListaCompra);
+    if (listIdx == -1) return;
+
+    final targetList = _shoppingLists[listIdx];
+    final lastNotif = targetList.feUltimaNotificacion;
+    final now = DateTime.now();
+
+    final canSendNotification = lastNotif == null ||
+        now.difference(lastNotif) >= NotificationConfig.listNotificationCooldown;
+
+    if (!canSendNotification) {
+      final elapsedMin = now.difference(lastNotif).inMinutes;
+      debugPrint(
+        "[PUSH_NOTIF LOG] Cooldown ACTIVO en lista '${targetList.nbLista}'. "
+        "Transcurridos: $elapsedMin min (Requiere >= ${NotificationConfig.listNotificationCooldown.inMinutes} min). Omitiendo push.",
+      );
+      return;
+    }
+
+    debugPrint("[PUSH_NOTIF LOG] Cooldown CUMPLIDO en lista '${targetList.nbLista}'. Disparando notificación push...");
+
+    // Actualizar fe_ultima_notificacion en memoria local y caché
+    _shoppingLists[listIdx] = targetList.copyWith(feUltimaNotificacion: now);
+    _saveLocalCache();
+
+    // Actualizar fe_ultima_notificacion en MongoDB Atlas de fondo
+    MongoService.updateOne(
+      collectionName: MongoConfig.colListasCompra,
+      filter: {'id_lista_compra': idListaCompra},
+      update: {
+        '\$set': {'fe_ultima_notificacion': now.toIso8601String()}
+      },
+    );
+
+    // Disparar envío push al backend PHP de Hostinger
+    final senderName = getUserDisplayName(userId);
+    PushNotificationService.sendListProductsAddedNotification(
+      idFamilia: famId,
+      idListaCompra: idListaCompra,
+      nbLista: targetList.nbLista,
+      senderUserId: userId,
+      senderName: senderName.isNotEmpty ? senderName : 'Un integrante',
+    );
   }
 
   Future<bool> addCustomItemToCatalogAndList({

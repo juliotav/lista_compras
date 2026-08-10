@@ -188,5 +188,13 @@
   "creatorBadge": "Creator",
   "memberBadge": "Member",
   "alreadyFamilyCreatorMsg": "You are the creator of this family.",
-  "alreadyFamilyMemberMsg": "You are already a member of this family."
+  "alreadyFamilyMemberMsg": "You are already a member of this family.",
+  "pushNotificationTitle": "Shopping List",
+  "pushNotificationBody": "{userName} added items to the \"{listName}\" list",
+  "@pushNotificationBody": {
+    "placeholders": {
+      "userName": { "type": "String" },
+      "listName": { "type": "String" }
+    }
+  }
 }

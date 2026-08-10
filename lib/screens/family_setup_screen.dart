@@ -82,6 +82,7 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
               ),
               onPressed: () async {
                 if (formKey.currentState!.validate()) {
+                  final messenger = ScaffoldMessenger.of(context);
                   final navigator = Navigator.of(context);
                   final dialogNav = Navigator.of(dialogContext);
 
@@ -90,14 +91,16 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
                       nameController.text.trim(),
                       descController.text.trim().isEmpty ? null : descController.text.trim(),
                     );
-                    dialogNav.pop();
-                    navigator.pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const HomeScreen()),
-                      (route) => false,
-                    );
+                    if (mounted) {
+                      dialogNav.pop();
+                      navigator.pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const HomeScreen()),
+                        (route) => false,
+                      );
+                    }
                   } catch (e) {
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         SnackBar(
                           content: Text(l10n.maxFamiliesReachedErr),
                           backgroundColor: Colors.red,
@@ -161,6 +164,9 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
                   final dialogNav = Navigator.of(dialogContext);
 
                   final result = await db.joinFamily(codeController.text.trim());
+
+                  if (!mounted) return;
+
                   if (result == 'success') {
                     dialogNav.pop();
                     navigator.pushAndRemoveUntil(

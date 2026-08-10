@@ -937,6 +937,18 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Ya perteneces a esta familia.'**
   String get alreadyFamilyMemberMsg;
+
+  /// No description provided for @pushNotificationTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Lista de Compras'**
+  String get pushNotificationTitle;
+
+  /// No description provided for @pushNotificationBody.
+  ///
+  /// In es, this message translates to:
+  /// **'{userName} ha agregado productos a la lista \"{listName}\"'**
+  String pushNotificationBody(String userName, String listName);
 }
 
 class _AppLocalizationsDelegate
