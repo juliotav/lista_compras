@@ -32,8 +32,8 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
       }
     });
 
-    // Auto-sincronización al vuelo cada 4 segundos mientras la pantalla está abierta
-    _syncTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+    // Auto-sincronización en segundo plano cada 6 segundos mientras la pantalla está abierta
+    _syncTimer = Timer.periodic(const Duration(seconds: 6), (_) {
       if (mounted) {
         context.read<DatabaseService>().fetchFamilyData();
       }

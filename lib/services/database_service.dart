@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -64,13 +65,29 @@ class DatabaseService extends ChangeNotifier {
     _users.add(demoUser);
   }
 
-  /// Carga la sesión guardada del usuario usando SharedPreferences
+  /// Carga la sesión guardada del usuario usando SharedPreferences y el caché local (0ms delay)
   Future<void> initSession() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedUserId = prefs.getString('session_user_id');
 
       if (savedUserId != null && savedUserId.isNotEmpty) {
+        // Cargar usuario guardado en caché si existe
+        final savedUserJson = prefs.getString('cache_user_$savedUserId');
+        if (savedUserJson != null && savedUserJson.isNotEmpty) {
+          try {
+            final userMap = jsonDecode(savedUserJson);
+            _currentUser = UserModel.fromMap(Map<String, dynamic>.from(userMap));
+            if (!_users.any((u) => u.idUsuario == _currentUser!.idUsuario)) {
+              _users.add(_currentUser!);
+            }
+            if (_currentUser?.idFamilia != null) {
+              await _loadLocalCache(_currentUser!.idFamilia!);
+            }
+          } catch (_) {}
+        }
+
+        // Consultar usuario en MongoDB de fondo
         final remoteUser = await MongoService.findOne(
           collectionName: MongoConfig.colUsuario,
           filter: {'id_usuario': savedUserId},
@@ -78,7 +95,13 @@ class DatabaseService extends ChangeNotifier {
 
         if (remoteUser != null) {
           _currentUser = UserModel.fromMap(remoteUser);
-          _users.add(_currentUser!);
+          final uIdx = _users.indexWhere((u) => u.idUsuario == _currentUser!.idUsuario);
+          if (uIdx != -1) {
+            _users[uIdx] = _currentUser!;
+          } else {
+            _users.add(_currentUser!);
+          }
+          await prefs.setString('cache_user_$savedUserId', jsonEncode(_currentUser!.toMap()));
         } else {
           try {
             _currentUser = _users.firstWhere((u) => u.idUsuario == savedUserId);
@@ -86,13 +109,77 @@ class DatabaseService extends ChangeNotifier {
         }
 
         if (_currentUser?.idFamilia != null) {
-          await fetchFamilyData();
+          await _loadLocalCache(_currentUser!.idFamilia!);
+          fetchFamilyData();
         }
       }
     } catch (_) {
     } finally {
       _isInitialized = true;
       notifyListeners();
+    }
+  }
+
+  /// Guarda el snapshot de las listas, catálogo y detalles en SharedPreferences para carga instantánea
+  Future<void> _saveLocalCache() async {
+    final famId = _currentUser?.idFamilia;
+    if (famId == null || famId.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final listsJson = jsonEncode(_shoppingLists.map((l) => l.toMap()).toList());
+      await prefs.setString('cache_lists_$famId', listsJson);
+
+      final catalogJson = jsonEncode(
+        _catalogItems.where((c) => c.idFamilia == famId).map((c) => c.toMap()).toList(),
+      );
+      await prefs.setString('cache_catalog_$famId', catalogJson);
+
+      final detailsJson = jsonEncode(_listDetailItems.map((d) => d.toMap()).toList());
+      await prefs.setString('cache_details_$famId', detailsJson);
+    } catch (e) {
+      debugPrint("[CACHE LOG] Error guardando caché local: $e");
+    }
+  }
+
+  /// Carga instantáneamente desde SharedPreferences las listas, catálogo y productos guardados localmente
+  Future<void> _loadLocalCache(String famId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // 1. Cargar listas
+      final listsStr = prefs.getString('cache_lists_$famId');
+      if (listsStr != null && listsStr.isNotEmpty) {
+        final List decoded = jsonDecode(listsStr);
+        _shoppingLists.clear();
+        for (var map in decoded) {
+          _shoppingLists.add(ShoppingListModel.fromMap(Map<String, dynamic>.from(map)));
+        }
+      }
+
+      // 2. Cargar catálogo
+      final catalogStr = prefs.getString('cache_catalog_$famId');
+      if (catalogStr != null && catalogStr.isNotEmpty) {
+        final List decoded = jsonDecode(catalogStr);
+        _catalogItems.removeWhere((c) => c.idFamilia == famId);
+        for (var map in decoded) {
+          _catalogItems.add(ItemCatalogModel.fromMap(Map<String, dynamic>.from(map)));
+        }
+      }
+
+      // 3. Cargar detalles
+      final detailsStr = prefs.getString('cache_details_$famId');
+      if (detailsStr != null && detailsStr.isNotEmpty) {
+        final List decoded = jsonDecode(detailsStr);
+        _listDetailItems.clear();
+        for (var map in decoded) {
+          _listDetailItems.add(ListDetailItemModel.fromMap(Map<String, dynamic>.from(map)));
+        }
+      }
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint("[CACHE LOG] Error cargando caché local: $e");
     }
   }
 
@@ -345,9 +432,10 @@ class DatabaseService extends ChangeNotifier {
         filter: {'id_familia': famId},
       );
 
-      _shoppingLists.clear();
-      for (var doc in listDocs) {
-        _shoppingLists.add(ShoppingListModel.fromMap(doc));
+      final freshLists = listDocs.map((doc) => ShoppingListModel.fromMap(doc)).toList();
+      if (freshLists.isNotEmpty || _shoppingLists.isEmpty) {
+        _shoppingLists.clear();
+        _shoppingLists.addAll(freshLists);
       }
 
       // 4. Obtener Catálogo Fast-Select de la Familia desde MongoDB
@@ -355,14 +443,17 @@ class DatabaseService extends ChangeNotifier {
         collectionName: MongoConfig.colCArticulo,
         filter: {'id_familia': famId},
       );
-      _catalogItems.clear();
-      for (var doc in catalogDocs) {
-        _catalogItems.add(ItemCatalogModel.fromMap(doc));
+      final freshCatalog = catalogDocs.map((doc) => ItemCatalogModel.fromMap(doc)).toList();
+      if (freshCatalog.isNotEmpty) {
+        _catalogItems.removeWhere((c) => c.idFamilia == famId);
+        _catalogItems.addAll(freshCatalog);
+      } else if (_catalogItems.where((c) => c.idFamilia == famId).isEmpty) {
+        await _seedDefaultCatalog(famId);
       }
 
       // 5. Obtener los detalles/artículos de las listas de la familia desde MongoDB
       final activeListIds = _shoppingLists.map((l) => l.idListaCompra).toList();
-      final List<ListDetailItemModel> freshItems = [];
+      final List<ListDetailItemModel> remoteItems = [];
       for (var listId in activeListIds) {
         final detailDocs = await MongoService.find(
           collectionName: MongoConfig.colDetalleLista,
@@ -384,26 +475,34 @@ class DatabaseService extends ChangeNotifier {
             }
             seenPendingNames.add(normName);
           }
-          freshItems.add(item);
+          remoteItems.add(item);
         }
       }
 
-      // Preservar la memoria local si la reconexión de red al retornar del segundo plano aún no ha retornado datos
-      if (freshItems.isNotEmpty || _listDetailItems.isEmpty) {
-        _listDetailItems.clear();
-        _listDetailItems.addAll(freshItems);
-      } else {
-        // Actualizar/fusionar los datos remotos recibidos sin vaciar la lista existente
-        for (var item in freshItems) {
-          final idx = _listDetailItems.indexWhere((i) => i.idDetalle == item.idDetalle);
-          if (idx != -1) {
-            _listDetailItems[idx] = item;
-          } else {
-            _listDetailItems.add(item);
-          }
+      // FUSIÓN ATÓMICA INTELIGENTE (Atomic Merge):
+      // Preservar elementos en cola de inserción pendiente (_pendingInsertQueue) para que nunca desaparezcan
+      final pendingQueueIds = _pendingInsertQueue.map((p) => p.idDetalle).toSet();
+      final Map<String, ListDetailItemModel> mergedMap = {};
+
+      // 1. Añadir elementos remotos recibidos de MongoDB
+      for (var item in remoteItems) {
+        mergedMap[item.idDetalle] = item;
+      }
+
+      // 2. Preservar elementos locales que están actualmente en cola o recién agregados localmente
+      for (var localItem in _listDetailItems) {
+        if (pendingQueueIds.contains(localItem.idDetalle)) {
+          mergedMap[localItem.idDetalle] = localItem;
         }
       }
-    } catch (_) {
+
+      _listDetailItems.clear();
+      _listDetailItems.addAll(mergedMap.values);
+
+      // Guardar snapshot actualizado en caché local de SharedPreferences
+      await _saveLocalCache();
+    } catch (e) {
+      debugPrint("[DB_SERVICE LOG] Error en fetchFamilyData: $e");
     } finally {
       _isFetchingFamilyData = false;
       _isSyncing = false;
@@ -703,6 +802,8 @@ class DatabaseService extends ChangeNotifier {
     if (_currentUser!.idFamilia == idFamilia) return;
 
     _currentUser = _currentUser!.copyWith(idFamilia: idFamilia);
+    await _loadLocalCache(idFamilia);
+
     await MongoService.updateOne(
       collectionName: MongoConfig.colUsuario,
       filter: {'id_usuario': _currentUser!.idUsuario},
@@ -1135,6 +1236,7 @@ class DatabaseService extends ChangeNotifier {
     );
     _shoppingLists.add(newList);
     notifyListeners();
+    _saveLocalCache();
   }
 
   bool hasPendingItems(String idListaCompra) {
@@ -1157,6 +1259,7 @@ class DatabaseService extends ChangeNotifier {
         },
       );
       notifyListeners();
+      _saveLocalCache();
     }
   }
 
@@ -1206,6 +1309,7 @@ class DatabaseService extends ChangeNotifier {
     }
 
     notifyListeners();
+    _saveLocalCache();
   }
 
   Future<bool> markListAsCompleted(String idListaCompra) async {
@@ -1223,6 +1327,7 @@ class DatabaseService extends ChangeNotifier {
         },
       );
       notifyListeners();
+      _saveLocalCache();
       return true;
     }
     return false;
@@ -1325,19 +1430,68 @@ class DatabaseService extends ChangeNotifier {
 
     final cleanNameLower = cleanName.toLowerCase();
 
-    // Evitar agregar elementos duplicados con el mismo nombre o idArticulo en la misma lista
-    final alreadyExists = _listDetailItems.any(
+    // 1. Verificar si ya existe un elemento ACTIVO/PENDIENTE con este nombre en la lista de compras
+    final activeExistingIdx = _listDetailItems.indexWhere(
       (i) =>
           i.idListaCompra == idListaCompra &&
+          i.isPending &&
           (i.nbArticulo.trim().toLowerCase() == cleanNameLower ||
-              (idArticulo.isNotEmpty && i.idArticulo == idArticulo)),
+              (idArticulo.isNotEmpty && i.idArticulo.isNotEmpty && i.idArticulo == idArticulo)),
     );
 
-    if (alreadyExists) {
-      debugPrint("[DB_SERVICE LOG] Omitiendo adición: '$cleanName' ya se encuentra en la lista.");
+    if (activeExistingIdx != -1) {
+      debugPrint("[DB_SERVICE LOG] Omitiendo adición: '$cleanName' ya se encuentra activo/pendiente en la lista.");
       return false;
     }
 
+    // 2. Verificar si existía un elemento COMPLETADO (comprado previamente) con este nombre/idArticulo
+    final completedExistingIdx = _listDetailItems.indexWhere(
+      (i) =>
+          i.idListaCompra == idListaCompra &&
+          i.isCompleted &&
+          (i.nbArticulo.trim().toLowerCase() == cleanNameLower ||
+              (idArticulo.isNotEmpty && i.idArticulo.isNotEmpty && i.idArticulo == idArticulo)),
+    );
+
+    if (completedExistingIdx != -1) {
+      // Reactivar el elemento completado volviéndolo a pasar a 'pending'
+      final existingItem = _listDetailItems[completedExistingIdx];
+      final reactivatedItem = existingItem.copyWith(
+        status: 'pending',
+        fechaCompra: null,
+        idUsuarioAgrego: _currentUser?.idUsuario,
+        dsDetalle: dsDetalle ?? existingItem.dsDetalle,
+      );
+
+      _listDetailItems[completedExistingIdx] = reactivatedItem;
+      notifyListeners();
+      _saveLocalCache();
+
+      // Actualizar en MongoDB Atlas de fondo
+      final Map<String, dynamic> setFields = {
+        'status': 'pending',
+        'id_usuario_agrego': reactivatedItem.idUsuarioAgrego,
+      };
+      if (dsDetalle != null) {
+        setFields['ds_detalle'] = dsDetalle;
+      }
+
+      MongoService.updateOne(
+        collectionName: MongoConfig.colDetalleLista,
+        filter: {'id_detalle': reactivatedItem.idDetalle},
+        update: {
+          '\$set': setFields,
+          '\$unset': {
+            'fecha_compra': '',
+            'id_usuario_finalizo': '',
+          }
+        },
+      );
+
+      return true;
+    }
+
+    // 3. Crear nuevo elemento en caso de no existir previamente
     final newItem = ListDetailItemModel(
       idDetalle: _uuid.v4(),
       idListaCompra: idListaCompra,
@@ -1348,11 +1502,12 @@ class DatabaseService extends ChangeNotifier {
       idUsuarioAgrego: _currentUser?.idUsuario,
     );
 
-    // 2. Agregar DE INMEDIATO en memoria local (0ms delay UI) y notificar a los listeners
+    // Agregar DE INMEDIATO en memoria local (0ms delay UI) y notificar a los listeners
     _listDetailItems.add(newItem);
     notifyListeners();
+    _saveLocalCache();
 
-    // 3. Encolar para procesamiento en lote agrupado (Batching)
+    // Encolar para procesamiento en lote agrupado (Batching)
     _pendingInsertQueue.add(newItem);
     _scheduleBatchInsert();
 
@@ -1372,19 +1527,20 @@ class DatabaseService extends ChangeNotifier {
 
     final cleanNameLower = cleanName.toLowerCase();
 
-    // Verificar si ya existe en la lista de compras antes de registrar en catálogo
-    final alreadyInList = _listDetailItems.any(
+    // 1. Verificar si ya existe como ACTIVO/PENDIENTE en la lista de compras
+    final alreadyPending = _listDetailItems.any(
       (i) =>
           i.idListaCompra == idListaCompra &&
+          i.isPending &&
           i.nbArticulo.trim().toLowerCase() == cleanNameLower,
     );
 
-    if (alreadyInList) {
-      debugPrint("[DB_SERVICE LOG] Omitiendo adición personalizada: '$cleanName' ya está en la lista.");
+    if (alreadyPending) {
+      debugPrint("[DB_SERVICE LOG] Omitiendo adición personalizada: '$cleanName' ya está activo/pendiente en la lista.");
       return false;
     }
 
-    // Verificar si el artículo ya existe en el catálogo exclusivo de ESTA familia
+    // 2. Verificar si el artículo ya existe en el catálogo exclusivo de ESTA familia
     final familyCatalog = getCatalogItems();
     final existingIdx = familyCatalog.indexWhere(
       (c) =>
@@ -1408,11 +1564,14 @@ class DatabaseService extends ChangeNotifier {
         nbArticuloEs: cleanName,
         nbArticuloEn: cleanName,
       );
+
+      _catalogItems.add(newCatalogItem);
+      _saveLocalCache();
+
       await MongoService.insertOne(
         collectionName: MongoConfig.colCArticulo,
         document: newCatalogItem.toMap(),
       );
-      _catalogItems.add(newCatalogItem);
 
       return await addItemToList(
         idListaCompra: idListaCompra,
@@ -1447,16 +1606,19 @@ class DatabaseService extends ChangeNotifier {
         );
       }
       notifyListeners();
+      _saveLocalCache();
     }
   }
 
   Future<void> removeListDetailItem(String idDetalle) async {
     _listDetailItems.removeWhere((item) => item.idDetalle == idDetalle);
+    _pendingInsertQueue.removeWhere((item) => item.idDetalle == idDetalle);
     await MongoService.deleteOne(
       collectionName: MongoConfig.colDetalleLista,
       filter: {'id_detalle': idDetalle},
     );
     notifyListeners();
+    _saveLocalCache();
   }
 
   Future<void> markItemAsCompleted(String idDetalle) async {
@@ -1481,6 +1643,7 @@ class DatabaseService extends ChangeNotifier {
         },
       );
       notifyListeners();
+      _saveLocalCache();
     }
   }
 }
