@@ -5,7 +5,8 @@ class ShoppingListModel {
   final bool isDefault; // Para la lista "Super" fija arriba
   final bool isActive;  // Para borrado lógico
   final bool isCompleted; // Indica si fue marcada como hecha
-  final DateTime? feUltimaNotificacion; // Timestamp para el control de cooldown de 10 min
+  final DateTime? feUltimaNotificacion; // Cooldown para adición de productos (10 min)
+  final DateTime? feUltimaNotificacionCompra; // Cooldown para marcado de compra (10 min)
 
   ShoppingListModel({
     required this.idListaCompra,
@@ -15,6 +16,7 @@ class ShoppingListModel {
     this.isActive = true,
     this.isCompleted = false,
     this.feUltimaNotificacion,
+    this.feUltimaNotificacionCompra,
   });
 
   ShoppingListModel copyWith({
@@ -26,6 +28,8 @@ class ShoppingListModel {
     bool? isCompleted,
     DateTime? feUltimaNotificacion,
     bool clearFeUltimaNotificacion = false,
+    DateTime? feUltimaNotificacionCompra,
+    bool clearFeUltimaNotificacionCompra = false,
   }) {
     return ShoppingListModel(
       idListaCompra: idListaCompra ?? this.idListaCompra,
@@ -37,6 +41,9 @@ class ShoppingListModel {
       feUltimaNotificacion: clearFeUltimaNotificacion
           ? null
           : (feUltimaNotificacion ?? this.feUltimaNotificacion),
+      feUltimaNotificacionCompra: clearFeUltimaNotificacionCompra
+          ? null
+          : (feUltimaNotificacionCompra ?? this.feUltimaNotificacionCompra),
     );
   }
 
@@ -49,6 +56,7 @@ class ShoppingListModel {
       'is_active': isActive,
       'is_completed': isCompleted,
       'fe_ultima_notificacion': feUltimaNotificacion?.toIso8601String(),
+      'fe_ultima_notificacion_compra': feUltimaNotificacionCompra?.toIso8601String(),
     };
   }
 
@@ -62,6 +70,9 @@ class ShoppingListModel {
       isCompleted: map['is_completed'] ?? false,
       feUltimaNotificacion: map['fe_ultima_notificacion'] != null
           ? DateTime.tryParse(map['fe_ultima_notificacion'].toString())
+          : null,
+      feUltimaNotificacionCompra: map['fe_ultima_notificacion_compra'] != null
+          ? DateTime.tryParse(map['fe_ultima_notificacion_compra'].toString())
           : null,
     );
   }

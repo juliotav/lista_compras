@@ -13,6 +13,13 @@ import 'services/push_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Capturar errores no manejados de sockets asíncronos cuando Android suspende la app en segundo plano
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint("[GLOBAL DISPATCHER LOG] Excepción asíncrona interceptada y amortiguada: $error");
+    return true; // Retorna true para evitar pausas en el depurador o cierres inesperados
+  };
+
   if (!kIsWeb) {
     await MobileAds.instance.initialize();
     await PushNotificationService.initialize();
@@ -28,14 +35,41 @@ void main() async {
   );
 }
 
-class ShoppingListApp extends StatelessWidget {
+class ShoppingListApp extends StatefulWidget {
   const ShoppingListApp({super.key});
+
+  @override
+  State<ShoppingListApp> createState() => _ShoppingListAppState();
+}
+
+class _ShoppingListAppState extends State<ShoppingListApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      debugPrint("[APP_LIFECYCLE] App reanudada (resumed). Disparando sincronización en segundo plano...");
+      final db = Provider.of<DatabaseService>(context, listen: false);
+      db.onAppResume();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final localeProvider = context.watch<LocaleProvider>();
 
     return MaterialApp(
+      navigatorKey: PushNotificationService.navigatorKey,
       title: 'Lista lista',
       debugShowCheckedModeBanner: false,
       locale: localeProvider.effectiveLocale,

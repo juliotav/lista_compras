@@ -137,26 +137,43 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                                         icon: const Icon(Icons.person_remove_rounded, color: Colors.red),
                                         tooltip: l10n.removeMember,
                                         onPressed: () {
+                                          bool isRemoving = false;
                                           showDialog(
                                             context: context,
+                                            barrierDismissible: false,
                                             builder: (dialogContext) {
-                                              return AlertDialog(
-                                                title: Text(l10n.removeMember),
-                                                content: Text(l10n.confirmRemoveMember),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () => Navigator.pop(dialogContext),
-                                                    child: Text(l10n.btnCancel),
-                                                  ),
-                                                  ElevatedButton(
-                                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                                    onPressed: () {
-                                                      db.removeFamilyMember(member.idUsuario);
-                                                      Navigator.pop(dialogContext);
-                                                    },
-                                                    child: Text(l10n.btnDelete, style: const TextStyle(color: Colors.white)),
-                                                  ),
-                                                ],
+                                              return StatefulBuilder(
+                                                builder: (context, setDialogState) {
+                                                  return AlertDialog(
+                                                    title: Text(l10n.removeMember),
+                                                    content: Text(l10n.confirmRemoveMember),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: isRemoving ? null : () => Navigator.pop(dialogContext),
+                                                        child: Text(l10n.btnCancel),
+                                                      ),
+                                                      ElevatedButton(
+                                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                                        onPressed: isRemoving
+                                                            ? null
+                                                            : () async {
+                                                                setDialogState(() => isRemoving = true);
+                                                                await db.removeFamilyMember(member.idUsuario);
+                                                                if (context.mounted) {
+                                                                  Navigator.pop(dialogContext);
+                                                                }
+                                                              },
+                                                        child: isRemoving
+                                                            ? const SizedBox(
+                                                                width: 18,
+                                                                height: 18,
+                                                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                                              )
+                                                            : Text(l10n.btnDelete, style: const TextStyle(color: Colors.white)),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
                                               );
                                             },
                                           );
@@ -179,36 +196,52 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                       icon: const Icon(Icons.exit_to_app_rounded),
                       label: Text(l10n.leaveFamily, style: const TextStyle(fontWeight: FontWeight.bold)),
                       onPressed: () {
+                        bool isLeaving = false;
                         showDialog(
                           context: context,
+                          barrierDismissible: false,
                           builder: (dialogContext) {
-                            return AlertDialog(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                              title: Text(l10n.confirmLeaveFamilyTitle),
-                              content: Text(l10n.confirmLeaveFamilyMsg),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(dialogContext),
-                                  child: Text(l10n.btnCancel),
-                                ),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                  onPressed: () async {
-                                    Navigator.pop(dialogContext);
-                                    final screenNav = Navigator.of(context);
-                                    final messenger = ScaffoldMessenger.of(context);
+                            return StatefulBuilder(
+                              builder: (context, setDialogState) {
+                                return AlertDialog(
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                  title: Text(l10n.confirmLeaveFamilyTitle),
+                                  content: Text(l10n.confirmLeaveFamilyMsg),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: isLeaving ? null : () => Navigator.pop(dialogContext),
+                                      child: Text(l10n.btnCancel),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                      onPressed: isLeaving
+                                          ? null
+                                          : () async {
+                                              setDialogState(() => isLeaving = true);
+                                              final dialogNav = Navigator.of(dialogContext);
+                                              final screenNav = Navigator.of(context);
+                                              final messenger = ScaffoldMessenger.of(context);
 
-                                    await db.leaveFamily(family.idFamilia);
+                                              await db.leaveFamily(family.idFamilia);
+                                              dialogNav.pop();
 
-                                    messenger.showSnackBar(
-                                      SnackBar(content: Text(l10n.leftFamilySuccess)),
-                                    );
+                                              messenger.showSnackBar(
+                                                SnackBar(content: Text(l10n.leftFamilySuccess)),
+                                              );
 
-                                    screenNav.pop();
-                                  },
-                                  child: Text(l10n.leaveFamily, style: const TextStyle(color: Colors.white)),
-                                ),
-                              ],
+                                              screenNav.pop();
+                                            },
+                                      child: isLeaving
+                                          ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                            )
+                                          : Text(l10n.leaveFamily, style: const TextStyle(color: Colors.white)),
+                                    ),
+                                  ],
+                                );
+                              },
                             );
                           },
                         );

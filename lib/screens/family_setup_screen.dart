@@ -36,83 +36,101 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
     final nameController = TextEditingController();
     final descController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(l10n.createFamilyTitle),
-          content: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    decoration: InputDecoration(
-                      labelText: l10n.familyNameLabel,
-                      hintText: l10n.familyNameHint,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    validator: (v) => v == null || v.trim().isEmpty ? l10n.familyNameLabel : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: descController,
-                    decoration: InputDecoration(
-                      labelText: l10n.familyDescLabel,
-                      hintText: l10n.familyDescHint,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(l10n.btnCancel),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () async {
-                if (formKey.currentState!.validate()) {
-                  final messenger = ScaffoldMessenger.of(context);
-                  final navigator = Navigator.of(context);
-                  final dialogNav = Navigator.of(dialogContext);
-
-                  try {
-                    await db.createFamily(
-                      nameController.text.trim(),
-                      descController.text.trim().isEmpty ? null : descController.text.trim(),
-                    );
-                    if (mounted) {
-                      dialogNav.pop();
-                      navigator.pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const HomeScreen()),
-                        (route) => false,
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text(l10n.maxFamiliesReachedErr),
-                          backgroundColor: Colors.red,
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text(l10n.createFamilyTitle),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: nameController,
+                        enabled: !isSubmitting,
+                        decoration: InputDecoration(
+                          labelText: l10n.familyNameLabel,
+                          hintText: l10n.familyNameHint,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                      );
-                    }
-                  }
-                }
-              },
-              child: Text(l10n.btnSaveFamily),
-            ),
-          ],
+                        validator: (v) => v == null || v.trim().isEmpty ? l10n.familyNameLabel : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: descController,
+                        enabled: !isSubmitting,
+                        decoration: InputDecoration(
+                          labelText: l10n.familyDescLabel,
+                          hintText: l10n.familyDescHint,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(dialogContext),
+                  child: Text(l10n.btnCancel),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          if (formKey.currentState!.validate()) {
+                            setDialogState(() => isSubmitting = true);
+                            final messenger = ScaffoldMessenger.of(context);
+                            final navigator = Navigator.of(context);
+                            final dialogNav = Navigator.of(dialogContext);
+
+                            try {
+                              await db.createFamily(
+                                nameController.text.trim(),
+                                descController.text.trim().isEmpty ? null : descController.text.trim(),
+                              );
+                              if (mounted) {
+                                dialogNav.pop();
+                                navigator.pushAndRemoveUntil(
+                                  MaterialPageRoute(builder: (_) => const HomeScreen()),
+                                  (route) => false,
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                setDialogState(() => isSubmitting = false);
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(l10n.maxFamiliesReachedErr),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : Text(l10n.btnSaveFamily),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -122,76 +140,93 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
     final l10n = AppLocalizations.of(context)!;
     final codeController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(l10n.btnJoinFamily),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: codeController,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(
-                    labelText: l10n.familyCodeLabel,
-                    hintText: l10n.familyCodeHint,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text(l10n.btnJoinFamily),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: codeController,
+                      enabled: !isSubmitting,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: InputDecoration(
+                        labelText: l10n.familyCodeLabel,
+                        hintText: l10n.familyCodeHint,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      validator: (v) => v == null || v.trim().isEmpty ? l10n.familyCodeLabel : null,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(dialogContext),
+                  child: Text(l10n.btnCancel),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  validator: (v) => v == null || v.trim().isEmpty ? l10n.familyCodeLabel : null,
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          if (formKey.currentState!.validate()) {
+                            setDialogState(() => isSubmitting = true);
+                            final db = dialogContext.read<DatabaseService>();
+                            final messenger = ScaffoldMessenger.of(context);
+                            final navigator = Navigator.of(context);
+                            final dialogNav = Navigator.of(dialogContext);
+
+                            final result = await db.joinFamily(codeController.text.trim());
+
+                            if (!mounted) return;
+
+                            if (result == 'success') {
+                              dialogNav.pop();
+                              navigator.pushAndRemoveUntil(
+                                MaterialPageRoute(builder: (_) => const HomeScreen()),
+                                (route) => false,
+                              );
+                            } else {
+                              setDialogState(() => isSubmitting = false);
+                              String errorMsg = l10n.invalidFamilyCode;
+                              if (result == 'already_creator') {
+                                errorMsg = l10n.alreadyFamilyCreatorMsg;
+                              } else if (result == 'already_member') {
+                                errorMsg = l10n.alreadyFamilyMemberMsg;
+                              }
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(errorMsg),
+                                  backgroundColor: Colors.orange[900],
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : Text(l10n.btnJoin),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(l10n.btnCancel),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () async {
-                if (formKey.currentState!.validate()) {
-                  final db = dialogContext.read<DatabaseService>();
-                  final messenger = ScaffoldMessenger.of(context);
-                  final navigator = Navigator.of(context);
-                  final dialogNav = Navigator.of(dialogContext);
-
-                  final result = await db.joinFamily(codeController.text.trim());
-
-                  if (!mounted) return;
-
-                  if (result == 'success') {
-                    dialogNav.pop();
-                    navigator.pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const HomeScreen()),
-                      (route) => false,
-                    );
-                  } else {
-                    String errorMsg = l10n.invalidFamilyCode;
-                    if (result == 'already_creator') {
-                      errorMsg = l10n.alreadyFamilyCreatorMsg;
-                    } else if (result == 'already_member') {
-                      errorMsg = l10n.alreadyFamilyMemberMsg;
-                    }
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(errorMsg),
-                        backgroundColor: Colors.orange[900],
-                      ),
-                    );
-                  }
-                }
-              },
-              child: Text(l10n.btnJoin),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -200,60 +235,77 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
   void _confirmDeleteFamily(BuildContext context, FamilyModel family) {
     final l10n = AppLocalizations.of(context)!;
     final db = context.read<DatabaseService>();
+    bool isDeleting = false;
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
-              const SizedBox(width: 8),
-              Expanded(
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      l10n.deleteFamilyConfirmTitle(family.nbFamilia),
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
                 child: Text(
-                  l10n.deleteFamilyConfirmTitle(family.nbFamilia),
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  l10n.deleteFamilyWarning,
+                  style: const TextStyle(fontSize: 13, height: 1.4, color: Colors.black87),
                 ),
               ),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Text(
-              l10n.deleteFamilyWarning,
-              style: const TextStyle(fontSize: 13, height: 1.4, color: Colors.black87),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(l10n.btnCancel),
-            ),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              icon: const Icon(Icons.delete_forever_rounded, size: 18),
-              label: Text(l10n.btnDelete),
-              onPressed: () async {
-                final nav = Navigator.of(dialogContext);
-                final messenger = ScaffoldMessenger.of(context);
-                nav.pop();
+              actions: [
+                TextButton(
+                  onPressed: isDeleting ? null : () => Navigator.pop(dialogContext),
+                  child: Text(l10n.btnCancel),
+                ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: isDeleting
+                      ? const SizedBox.shrink()
+                      : const Icon(Icons.delete_forever_rounded, size: 18),
+                  label: isDeleting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : Text(l10n.btnDelete),
+                  onPressed: isDeleting
+                      ? null
+                      : () async {
+                          setDialogState(() => isDeleting = true);
+                          final nav = Navigator.of(dialogContext);
+                          final messenger = ScaffoldMessenger.of(context);
 
-                final success = await db.deleteFamily(family.idFamilia);
-                if (success) {
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text("Familia '${family.nbFamilia}' eliminada permanentemente."),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              },
-            ),
-          ],
+                          final success = await db.deleteFamily(family.idFamilia);
+                          nav.pop();
+                          if (success) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text("Familia '${family.nbFamilia}' eliminada permanentemente."),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        },
+                ),
+              ],
+            );
+          },
         );
       },
     );

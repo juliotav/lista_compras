@@ -2,8 +2,9 @@ class NotificationConfig {
   /// URL del endpoint PHP seguro en tu servidor Hostinger
   static const String endpointUrl = String.fromEnvironment(
     'NOTIFICATION_ENDPOINT_URL',
-    // defaultValue: 'https://sonorodevs.com/api/notify.php',
-    defaultValue: 'http://10.0.2.2/lista-api/notify.php',
+    defaultValue:
+        'https://yellowgreen-fly-883530.hostingersite.com/api/notification/notify.php',
+    // defaultValue: 'http://10.0.2.2/lista-api/notify.php',
   );
 
   /// Clave secreta compartida para autorizar las peticiones entre la app móvil y el script PHP

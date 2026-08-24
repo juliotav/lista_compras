@@ -453,9 +453,12 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                                 dense: true,
                                 title: Row(
                                   children: [
-                                    Text(
-                                      name,
-                                      style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+                                    Expanded(
+                                      child: Text(
+                                        name,
+                                        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+                                        softWrap: true,
+                                      ),
                                     ),
                                     if (catItem.nuUso > 0) ...[
                                       const SizedBox(width: 6),

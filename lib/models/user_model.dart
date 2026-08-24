@@ -5,6 +5,7 @@ class UserModel {
   final String nbEmail;
   final String clPass;
   final String? idFamilia;
+  final String? dsVersionApp;
 
   UserModel({
     required this.idUsuario,
@@ -13,6 +14,7 @@ class UserModel {
     required this.nbEmail,
     required this.clPass,
     this.idFamilia,
+    this.dsVersionApp,
   });
 
   UserModel copyWith({
@@ -23,6 +25,7 @@ class UserModel {
     String? clPass,
     String? idFamilia,
     bool clearFamilia = false,
+    String? dsVersionApp,
   }) {
     return UserModel(
       idUsuario: idUsuario ?? this.idUsuario,
@@ -31,6 +34,7 @@ class UserModel {
       nbEmail: nbEmail ?? this.nbEmail,
       clPass: clPass ?? this.clPass,
       idFamilia: clearFamilia ? null : (idFamilia ?? this.idFamilia),
+      dsVersionApp: dsVersionApp ?? this.dsVersionApp,
     );
   }
 
@@ -42,6 +46,7 @@ class UserModel {
       'nb_email': nbEmail,
       'cl_pass': clPass,
       'id_familia': idFamilia,
+      'ds_version_app': dsVersionApp,
     };
   }
 
@@ -53,6 +58,7 @@ class UserModel {
       nbEmail: map['nb_email'] ?? '',
       clPass: map['cl_pass'] ?? '',
       idFamilia: map['id_familia'],
+      dsVersionApp: map['ds_version_app'],
     );
   }
 }

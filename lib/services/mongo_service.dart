@@ -12,8 +12,15 @@ class MongoService {
       return null;
     }
 
-    if (_db != null && _db!.isConnected) {
-      return _db;
+    if (_db != null) {
+      if (_db!.isConnected) {
+        return _db;
+      } else {
+        try {
+          await _db?.close();
+        } catch (_) {}
+        _db = null;
+      }
     }
 
     if (_connectingFuture != null) {
@@ -29,7 +36,10 @@ class MongoService {
         debugPrint("[MONGO SERVICE] ¡Conexión exitosa a MongoDB!");
         return _db;
       } catch (e) {
-        debugPrint("[MONGO SERVICE] ERROR DE CONEXIÓN A MONGODB: $e");
+        debugPrint("[MONGO SERVICE] Error de conexión a MongoDB (se reintentará automáticamente): $e");
+        try {
+          await _db?.close();
+        } catch (_) {}
         _db = null;
         return null;
       } finally {
@@ -45,18 +55,16 @@ class MongoService {
     required String collectionName,
     required Map<String, dynamic> filter,
   }) async {
-    final db = await _getDb();
-    if (db == null) {
-      debugPrint("[MONGO SERVICE] db es null. No se pudo realizar findOne en '$collectionName'");
-      return null;
-    }
-
     try {
+      final db = await _getDb();
+      if (db == null) return null;
+
       final collection = db.collection(collectionName);
       final res = await collection.findOne(filter);
       return res;
     } catch (e) {
-      debugPrint("[MONGO SERVICE] findOne ERROR en $collectionName con filtro $filter: $e");
+      debugPrint("[MONGO SERVICE] findOne ERROR en $collectionName: $e");
+      _db = null;
       return null;
     }
   }
