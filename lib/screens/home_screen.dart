@@ -5,6 +5,7 @@ import '../l10n/app_localizations.dart';
 import '../models/shopping_list_model.dart';
 import '../services/database_service.dart';
 import '../services/locale_provider.dart';
+import '../services/theme_provider.dart';
 import 'about_privacy_screen.dart';
 import 'family_members_screen.dart';
 import 'family_setup_screen.dart';
@@ -51,6 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
             key: formKey,
             child: TextFormField(
               controller: listNameController,
+              textCapitalization: TextCapitalization.sentences,
               autofocus: true,
               decoration: InputDecoration(
                 labelText: l10n.listNameLabel,
@@ -166,17 +168,27 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: EdgeInsets.zero,
           children: [
             UserAccountsDrawerHeader(
-              decoration: BoxDecoration(color: theme.colorScheme.primary),
-              accountName: Text(user?.nbCompleto ?? l10n.defaultUser),
-              accountEmail: Text(user?.nbEmail ?? ''),
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF261843)
+                    : Colors.deepPurple,
+              ),
+              accountName: Text(
+                user?.nbCompleto ?? l10n.defaultUser,
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              accountEmail: Text(
+                user?.nbEmail ?? '',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+              ),
               currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
+                backgroundColor: theme.colorScheme.primary,
                 child: Text(
                   user?.nbCompleto.isNotEmpty == true ? user!.nbCompleto[0].toUpperCase() : 'U',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
+                    color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E1035) : Colors.white,
                   ),
                 ),
               ),
@@ -260,6 +272,54 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+            Consumer<ThemeProvider>(
+              builder: (context, themeProvider, child) {
+                String currentTheme;
+                if (themeProvider.themeMode == ThemeMode.light) {
+                  currentTheme = 'light';
+                } else if (themeProvider.themeMode == ThemeMode.dark) {
+                  currentTheme = 'dark';
+                } else {
+                  currentTheme = 'system';
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.brightness_6_rounded, color: Colors.grey),
+                          SizedBox(width: 12),
+                          Text("Tema visual", style: TextStyle(fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      DropdownButton<String>(
+                        isExpanded: true,
+                        value: currentTheme,
+                        underline: const SizedBox(),
+                        items: [
+                          DropdownMenuItem(value: 'system', child: Text(l10n.systemDefault)),
+                          const DropdownMenuItem(value: 'light', child: Text("Modo Claro")),
+                          const DropdownMenuItem(value: 'dark', child: Text("Modo Oscuro")),
+                        ],
+                        onChanged: (val) {
+                          if (val == 'light') {
+                            themeProvider.setThemeMode(ThemeMode.light);
+                          } else if (val == 'dark') {
+                            themeProvider.setThemeMode(ThemeMode.dark);
+                          } else {
+                            themeProvider.setThemeMode(ThemeMode.system);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.logout_rounded, color: Colors.red),
@@ -285,7 +345,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF1E1035)
+                      : theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                   borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
                 ),
                 child: Column(
@@ -323,7 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   children: [
                                     Icon(
                                       isSelected ? Icons.check_circle_rounded : Icons.family_restroom_rounded,
-                                      color: isSelected ? theme.colorScheme.primary : Colors.grey,
+                                      color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.6),
                                       size: 20,
                                     ),
                                     const SizedBox(width: 12),
@@ -332,7 +394,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         fam.nbFamilia,
                                         style: TextStyle(
                                           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                          color: isSelected ? theme.colorScheme.primary : Colors.black87,
+                                          color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
                                         ),
                                       ),
                                     ),
@@ -365,7 +427,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: theme.cardColor,
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
@@ -430,7 +492,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: theme.cardColor,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
                           ),
@@ -489,7 +551,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               borderRadius: BorderRadius.circular(16),
                               side: list.isDefault
                                   ? BorderSide(color: theme.colorScheme.primary, width: 2)
-                                  : BorderSide(color: Colors.grey[300]!),
+                                  : BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
                             ),
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -497,13 +559,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
                                   color: list.isDefault
-                                      ? theme.colorScheme.primary.withValues(alpha: 0.1)
-                                      : Colors.grey[100],
+                                      ? theme.colorScheme.primary.withValues(alpha: 0.15)
+                                      : theme.colorScheme.onSurface.withValues(alpha: 0.08),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
                                   list.isDefault ? Icons.star_rounded : Icons.shopping_bag_rounded,
-                                  color: list.isDefault ? theme.colorScheme.primary : Colors.grey[700],
+                                  color: list.isDefault ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.7),
                                 ),
                               ),
                               title: Text(
@@ -511,7 +573,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,
-                                  color: list.isDefault ? theme.colorScheme.primary : Colors.black87,
+                                  color: list.isDefault ? theme.colorScheme.primary : theme.colorScheme.onSurface,
                                 ),
                               ),
                               subtitle: list.isDefault

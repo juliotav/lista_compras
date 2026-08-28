@@ -173,6 +173,16 @@ class DatabaseService extends ChangeNotifier {
       _userFamilies.clear();
       _userFamilies.addAll(localFamilies);
 
+      final localUsers = await _localDb.getAllUsers();
+      for (var u in localUsers) {
+        final idx = _users.indexWhere((existing) => existing.idUsuario == u.idUsuario);
+        if (idx == -1) {
+          _users.add(u);
+        } else {
+          _users[idx] = u;
+        }
+      }
+
       notifyListeners();
     } catch (e) {
       debugPrint("[DB_SERVICE LOG] Error cargando de SQLite: $e");
@@ -333,6 +343,56 @@ class DatabaseService extends ChangeNotifier {
 
       // 2. Cargar estado de SQLite de inmediato
       await _loadFromLocalDb(famId);
+
+      // Sincronizar perfiles de integrantes de la familia activa
+      try {
+        final Set<String> memberIds = {};
+
+        // Creador de la familia
+        final fam = currentFamily;
+        if (fam != null && fam.idCreador.isNotEmpty) {
+          memberIds.add(fam.idCreador);
+        }
+
+        // Miembros vinculados en usuario_familia
+        final links = await MongoService.find(
+          collectionName: MongoConfig.colUsuarioFamilia,
+          filter: {'id_familia': famId},
+        );
+        for (var l in links) {
+          final mId = l['id_usuario'] as String?;
+          if (mId != null && mId.isNotEmpty) memberIds.add(mId);
+        }
+
+        // Miembros vinculados en usuario por id_familia
+        final usersWithFam = await MongoService.find(
+          collectionName: MongoConfig.colUsuario,
+          filter: {'id_familia': famId},
+        );
+        for (var uDoc in usersWithFam) {
+          final mId = uDoc['id_usuario'] as String?;
+          if (mId != null && mId.isNotEmpty) memberIds.add(mId);
+        }
+
+        for (var mId in memberIds) {
+          final userDoc = await MongoService.findOne(
+            collectionName: MongoConfig.colUsuario,
+            filter: {'id_usuario': mId},
+          );
+          if (userDoc != null) {
+            final user = UserModel.fromMap(userDoc).copyWith(idFamilia: famId);
+            await _localDb.saveUser(user);
+            final idx = _users.indexWhere((u) => u.idUsuario == user.idUsuario);
+            if (idx == -1) {
+              _users.add(user);
+            } else {
+              _users[idx] = user;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint("[DB_SERVICE LOG] Error sincronizando integrantes de familia: $e");
+      }
 
       // 3. Disparar sincronización delta en segundo plano
       await _syncService.pullDeltaSync(
@@ -910,11 +970,13 @@ class DatabaseService extends ChangeNotifier {
 
   List<UserModel> getFamilyMembers() {
     final famId = _currentUser?.idFamilia;
-    if (famId == null) return [];
+    if (famId == null || famId.isEmpty) return [];
     final Map<String, UserModel> uniqueMembers = {};
     for (var u in _users) {
-      if (u.idUsuario.isNotEmpty) {
-        uniqueMembers[u.idUsuario] = u;
+      if (u.idUsuario.isNotEmpty && u.idUsuario != 'usr_demo') {
+        if (u.idFamilia == famId || u.idUsuario == _currentUser?.idUsuario || u.idUsuario == currentFamily?.idCreador) {
+          uniqueMembers[u.idUsuario] = u;
+        }
       }
     }
     return uniqueMembers.values.toList();
@@ -1247,7 +1309,7 @@ class DatabaseService extends ChangeNotifier {
         payload: {
           'status': 'pending',
           'id_usuario_agrego': reactivatedItem.idUsuarioAgrego,
-          'ds_detalle':? dsDetalle,
+          'ds_detalle': dsDetalle,
         },
       );
 

@@ -9,7 +9,7 @@ import 'screens/home_screen.dart';
 import 'screens/intro_slides_screen.dart';
 import 'services/database_service.dart';
 import 'services/locale_provider.dart';
-import 'services/push_notification_service.dart';
+import 'services/push_notification_service.dart';import 'services/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +28,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => LocaleProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => DatabaseService()),
       ],
       child: const ShoppingListApp(),
@@ -67,6 +68,7 @@ class _ShoppingListAppState extends State<ShoppingListApp> with WidgetsBindingOb
   @override
   Widget build(BuildContext context) {
     final localeProvider = context.watch<LocaleProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp(
       navigatorKey: PushNotificationService.navigatorKey,
@@ -94,10 +96,13 @@ class _ShoppingListAppState extends State<ShoppingListApp> with WidgetsBindingOb
         Locale('es'), // Español
         Locale('en'), // Inglés
       ],
+      themeMode: themeProvider.themeMode,
       theme: ThemeData(
         useMaterial3: true,
+        brightness: Brightness.light,
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepPurple,
+          brightness: Brightness.light,
           primary: Colors.deepPurple,
           secondary: Colors.teal,
         ),
@@ -109,6 +114,32 @@ class _ShoppingListAppState extends State<ShoppingListApp> with WidgetsBindingOb
           centerTitle: true,
           titleTextStyle: TextStyle(
             color: Colors.black87,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFFEFD5FF),
+          primaryContainer: Color(0xFF381E72),
+          onPrimaryContainer: Color(0xFFF2E7FF),
+          secondary: Colors.tealAccent,
+          surface: Color(0xFF1E1E2C),
+          onSurface: Colors.white,
+        ),
+        scaffoldBackgroundColor: const Color(0xFF12121E),
+        cardColor: const Color(0xFF1E1E2C),
+        dialogTheme: const DialogThemeData(backgroundColor: Color(0xFF1E1E2C)),
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          centerTitle: true,
+          titleTextStyle: TextStyle(
+            color: Colors.white,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),

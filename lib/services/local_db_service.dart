@@ -249,6 +249,12 @@ class LocalDbService {
     return null;
   }
 
+  Future<List<UserModel>> getAllUsers() async {
+    final database = await db;
+    final res = await database.query('users');
+    return res.map((m) => UserModel.fromMap(m)).toList();
+  }
+
   // --- FAMILIAS ---
   Future<void> saveFamily(FamilyModel family) async {
     final database = await db;

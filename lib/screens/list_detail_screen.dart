@@ -102,6 +102,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
             key: formKey,
             child: TextFormField(
               controller: itemController,
+              textCapitalization: TextCapitalization.sentences,
               autofocus: true,
               decoration: InputDecoration(
                 labelText: l10n.itemNameLabel,
@@ -228,27 +229,27 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
               // --- SECCIÓN 1: ARTÍCULOS POR COMPRAR ---
               Row(
                 children: [
-                  const Icon(Icons.list_alt_rounded, color: Colors.deepPurple),
+                  Icon(Icons.list_alt_rounded, color: theme.colorScheme.primary),
                   const SizedBox(width: 8),
                   Text(
                     l10n.pendingItemsHeader,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
+                      color: theme.colorScheme.primary,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.deepPurple.withValues(alpha: 0.1),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       "${pendingItems.length}",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
+                        color: theme.colorScheme.primary,
                       ),
                     ),
                   ),
@@ -259,9 +260,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
               Container(
                 constraints: const BoxConstraints(minHeight: 120),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: theme.cardColor,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey[300]!),
+                  border: Border.all(color: theme.dividerColor),
                 ),
                 child: pendingItems.isEmpty
                     ? Center(
@@ -364,6 +365,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
               // CAMPO DE BÚSQUEDA AL VUELO
               TextField(
                 controller: _searchController,
+                textCapitalization: TextCapitalization.sentences,
                 textInputAction: TextInputAction.done,
                 onSubmitted: (value) {
                   if (value.trim().isNotEmpty) {
@@ -372,7 +374,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                 },
                 decoration: InputDecoration(
                   hintText: l10n.searchOrTypeItemHint,
-                  prefixIcon: const Icon(Icons.search_rounded, color: Colors.deepPurple),
+                  prefixIcon: Icon(Icons.search_rounded, color: theme.colorScheme.primary),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear_rounded, color: Colors.grey),
@@ -382,15 +384,15 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                         )
                       : null,
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: theme.cardColor,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.deepPurple.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
+                    borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
                   ),
                 ),
               ),
@@ -409,17 +411,17 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                     if (_searchQuery.isNotEmpty && !hasExactMatch)
                       ListTile(
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        tileColor: Colors.deepPurple.withValues(alpha: 0.08),
-                        leading: const CircleAvatar(
-                          backgroundColor: Colors.deepPurple,
+                        tileColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        leading: CircleAvatar(
+                          backgroundColor: theme.colorScheme.primary,
                           radius: 14,
-                          child: Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                          child: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
                         ),
                         title: Text(
                           l10n.addQueryToListOption(_searchQuery),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.deepPurple,
+                            color: theme.colorScheme.primary,
                           ),
                         ),
                         subtitle: Text(
@@ -693,21 +695,21 @@ class _PendingItemTileState extends State<PendingItemTile> {
                           controller: _noteController,
                           focusNode: _focusNode,
                           textInputAction: TextInputAction.done,
-                          style: const TextStyle(fontSize: 13, color: Colors.black87),
+                          style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
                           decoration: InputDecoration(
                             hintText: l10n.addDetailHint,
                             hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
                             isDense: true,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                             filled: true,
-                            fillColor: Colors.white,
+                            fillColor: Theme.of(context).cardColor,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: Colors.deepPurple, width: 1.5),
+                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: Colors.deepPurple, width: 2),
+                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
                             ),
                           ),
                           onSubmitted: (val) {
@@ -725,7 +727,7 @@ class _PendingItemTileState extends State<PendingItemTile> {
                             style: TextStyle(
                               fontSize: 13,
                               fontStyle: noteText.isEmpty ? FontStyle.italic : FontStyle.normal,
-                              color: noteText.isNotEmpty ? Colors.deepPurple[700] : Colors.grey[500],
+                              color: noteText.isNotEmpty ? Theme.of(context).colorScheme.primary : Colors.grey[500],
                             ),
                           ),
                         ),
@@ -753,7 +755,7 @@ class _PendingItemTileState extends State<PendingItemTile> {
                   style: TextStyle(
                     fontSize: 11,
                     fontStyle: FontStyle.italic,
-                    color: Colors.grey[600],
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600],
                   ),
                 ),
               ),
