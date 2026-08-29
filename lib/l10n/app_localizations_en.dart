@@ -472,4 +472,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String pushNotificationBody(String userName, String listName) {
     return '$userName added items to the \"$listName\" list';
   }
+
+  @override
+  String get updateRequiredTitle => 'Update Required!';
+
+  @override
+  String get updateRequiredDesc =>
+      'A new version of Lista lista is available. You must update the app to continue using it.';
+
+  @override
+  String get btnGoToStore => 'Go to Store';
+
+  @override
+  String get btnCloseApp => 'Close App';
 }

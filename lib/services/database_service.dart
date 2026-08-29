@@ -38,6 +38,12 @@ class DatabaseService extends ChangeNotifier {
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
 
+  bool _isUpdateRequired = false;
+  bool get isUpdateRequired => _isUpdateRequired;
+
+  String? _remoteAppVersion;
+  String? get remoteAppVersion => _remoteAppVersion;
+
   UserModel? _currentUser;
   UserModel? get currentUser => _currentUser;
 
@@ -124,6 +130,32 @@ class DatabaseService extends ChangeNotifier {
     } finally {
       _isInitialized = true;
       notifyListeners();
+      unawaited(checkAppVersion());
+    }
+  }
+
+  /// Consulta en MongoDB Atlas la versión en la colección `app_version` para `app_name: listalista`.
+  /// Si la versión almacenada no coincide con `MongoConfig.appVersion`, requiere actualización obligatoria.
+  Future<void> checkAppVersion() async {
+    try {
+      final doc = await MongoService.findOne(
+        collectionName: MongoConfig.colAppVersion,
+        filter: {'app_name': MongoConfig.appName},
+      );
+      if (doc != null && doc.containsKey('app_version')) {
+        final remoteVer = (doc['app_version'] as String?)?.trim();
+        _remoteAppVersion = remoteVer;
+        if (remoteVer != null && remoteVer.isNotEmpty && remoteVer != MongoConfig.appVersion.trim()) {
+          debugPrint("[VERSION CHECK] ¡Versión requerida no coincide! App actual: '${MongoConfig.appVersion}', BD: '$remoteVer'");
+          _isUpdateRequired = true;
+          notifyListeners();
+          return;
+        }
+      }
+      _isUpdateRequired = false;
+      notifyListeners();
+    } catch (e) {
+      debugPrint("[VERSION CHECK LOG] Error al consultar app_version en MongoDB: $e");
     }
   }
 
@@ -191,6 +223,7 @@ class DatabaseService extends ChangeNotifier {
 
   /// Reanudación desde segundo plano: Carga SQLite de inmediato y dispara delta sync no bloqueante
   Future<void> onAppResume() async {
+    unawaited(checkAppVersion());
     final famId = _currentUser?.idFamilia;
     if (famId != null && famId.isNotEmpty) {
       debugPrint("[DB_SERVICE LOG] App reanudada. Cargando SQLite de inmediato...");

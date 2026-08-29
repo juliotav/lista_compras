@@ -7,9 +7,11 @@ import 'l10n/app_localizations.dart';
 import 'screens/family_setup_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/intro_slides_screen.dart';
+import 'screens/update_required_screen.dart';
 import 'services/database_service.dart';
 import 'services/locale_provider.dart';
-import 'services/push_notification_service.dart';import 'services/theme_provider.dart';
+import 'services/push_notification_service.dart';
+import 'services/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -164,6 +166,10 @@ class RootSessionDecider extends StatelessWidget {
           child: CircularProgressIndicator(color: Colors.deepPurple),
         ),
       );
+    }
+
+    if (db.isUpdateRequired) {
+      return UpdateRequiredScreen(remoteVersion: db.remoteAppVersion);
     }
 
     if (db.currentUser != null) {

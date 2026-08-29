@@ -196,5 +196,9 @@
       "userName": { "type": "String" },
       "listName": { "type": "String" }
     }
-  }
+  },
+  "updateRequiredTitle": "¡Actualización requerida!",
+  "updateRequiredDesc": "Existe una nueva versión de Lista lista. Es necesario actualizar la aplicación para continuar utilizándola.",
+  "btnGoToStore": "Ir a la tienda",
+  "btnCloseApp": "Cerrar app"
 }

@@ -949,6 +949,30 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'{userName} ha agregado productos a la lista \"{listName}\"'**
   String pushNotificationBody(String userName, String listName);
+
+  /// No description provided for @updateRequiredTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'¡Actualización requerida!'**
+  String get updateRequiredTitle;
+
+  /// No description provided for @updateRequiredDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Existe una nueva versión de Lista lista. Es necesario actualizar la aplicación para continuar utilizándola.'**
+  String get updateRequiredDesc;
+
+  /// No description provided for @btnGoToStore.
+  ///
+  /// In es, this message translates to:
+  /// **'Ir a la tienda'**
+  String get btnGoToStore;
+
+  /// No description provided for @btnCloseApp.
+  ///
+  /// In es, this message translates to:
+  /// **'Cerrar app'**
+  String get btnCloseApp;
 }
 
 class _AppLocalizationsDelegate
