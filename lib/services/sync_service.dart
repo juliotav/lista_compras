@@ -52,18 +52,14 @@ class SyncService {
         bool success = false;
 
         try {
-          if (item.action == 'INSERT') {
-            success = await MongoService.insertOne(
-              collectionName: item.collectionName,
-              document: item.payload,
-            );
-          } else if (item.action == 'UPDATE') {
+          if (item.action == 'INSERT' || item.action == 'UPDATE') {
             final String primaryKeyField = _getPrimaryKeyField(item.collectionName);
             final filter = {primaryKeyField: item.entityId};
             success = await MongoService.updateOne(
               collectionName: item.collectionName,
               filter: filter,
               update: {'\$set': item.payload},
+              upsert: true,
             );
           } else if (item.action == 'DELETE') {
             final String primaryKeyField = _getPrimaryKeyField(item.collectionName);
@@ -191,14 +187,18 @@ class SyncService {
           mergedDetails[d.idDetalle] = d;
         }
       }
-      // FUSIÓN ATÓMICA: Preservar los productos que el usuario agregó o modificó localmente
+      // FUSIÓN ATÓMICA: Preservar los productos que el usuario agregó o modificó localmente colocándolos al final
       for (var d in localDetails) {
         if (pendingDetailIds.contains(d.idDetalle)) {
+          mergedDetails.remove(d.idDetalle);
           mergedDetails[d.idDetalle] = d;
         }
       }
 
-      await _localDb.saveListDetailItemsBatch(mergedDetails.values.toList());
+      await _localDb.saveListDetailItemsBatch(
+        mergedDetails.values.toList(),
+        activeListIds: activeListIds,
+      );
 
       hasChanges = true;
       onDataUpdated();

@@ -7,6 +7,7 @@ import '../models/shopping_list_model.dart';
 import '../services/database_service.dart';
 import '../services/locale_provider.dart';
 import '../widgets/ad_banner_widget.dart';
+import '../widgets/sync_indicator_widget.dart';
 
 class ListDetailScreen extends StatefulWidget {
   final ShoppingListModel shoppingList;
@@ -32,12 +33,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
       }
     });
 
-    // Auto-sincronización en segundo plano cada 6 segundos mientras la pantalla está abierta
-    _syncTimer = Timer.periodic(const Duration(seconds: 6), (_) {
-      if (mounted) {
-        context.read<DatabaseService>().fetchFamilyData();
-      }
-    });
+    _startSyncTimer();
 
     _searchController.addListener(() {
       setState(() {
@@ -46,18 +42,38 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     });
   }
 
+  void _startSyncTimer() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(seconds: 6), (_) {
+      if (mounted) {
+        context.read<DatabaseService>().fetchFamilyData(isSilentPeriodic: true);
+      }
+    });
+  }
+
+  void _stopSyncTimer() {
+    _syncTimer?.cancel();
+    _syncTimer = null;
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
-      debugPrint("[LIST_DETAIL LOG] App reanudada desde segundo plano. Sincronizando en segundo plano...");
-      context.read<DatabaseService>().fetchFamilyData();
+      debugPrint("[LIST_DETAIL LOG] App reanudada desde segundo plano. Cargando SQLite de inmediato...");
+      final db = context.read<DatabaseService>();
+      db.loadLocalDataOnly();
+      db.onAppResume();
+      _startSyncTimer();
+    } else if ((state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) && mounted) {
+      debugPrint("[LIST_DETAIL LOG] App en segundo plano. Deteniendo timer de sincronización...");
+      _stopSyncTimer();
     }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _syncTimer?.cancel();
+    _stopSyncTimer();
     _searchController.dispose();
     super.dispose();
   }
@@ -206,6 +222,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
       appBar: AppBar(
         title: Text(widget.shoppingList.nbLista),
         actions: [
+          const SyncIndicatorWidget(),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: l10n.syncTooltip,
@@ -532,61 +549,63 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                 ),
                 const SizedBox(height: 8),
                 Container(
+                  constraints: const BoxConstraints(maxHeight: 280),
                   decoration: BoxDecoration(
                     color: Colors.green.withValues(alpha: 0.04),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
                   ),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: completedItems.length,
-                    separatorBuilder: (context, index) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final item = completedItems[index];
-                      final addedByName = db.getUserDisplayName(item.idUsuarioAgrego);
-                      final hasNote = item.dsDetalle != null && item.dsDetalle!.trim().isNotEmpty;
-                      return ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.check_box_rounded, color: Colors.green),
-                        title: Text(
-                          item.nbArticulo,
-                          style: TextStyle(
-                            decoration: TextDecoration.lineThrough,
-                            color: Colors.grey[700],
+                  child: Scrollbar(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: completedItems.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final item = completedItems[index];
+                        final addedByName = db.getUserDisplayName(item.idUsuarioAgrego);
+                        final hasNote = item.dsDetalle != null && item.dsDetalle!.trim().isNotEmpty;
+                        return ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.check_box_rounded, color: Colors.green),
+                          title: Text(
+                            item.nbArticulo,
+                            style: TextStyle(
+                              decoration: TextDecoration.lineThrough,
+                              color: Colors.grey[700],
+                            ),
                           ),
-                        ),
-                        subtitle: (hasNote || addedByName.isNotEmpty)
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (hasNote)
-                                    Text(
-                                      item.dsDetalle!,
-                                      style: TextStyle(
-                                        decoration: TextDecoration.lineThrough,
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  if (addedByName.isNotEmpty)
-                                    Align(
-                                      alignment: Alignment.bottomRight,
-                                      child: Text(
-                                        l10n.addedBy(addedByName),
+                          subtitle: (hasNote || addedByName.isNotEmpty)
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (hasNote)
+                                      Text(
+                                        item.dsDetalle!,
                                         style: TextStyle(
-                                          fontSize: 11,
-                                          fontStyle: FontStyle.italic,
-                                          color: Colors.grey[500],
+                                          decoration: TextDecoration.lineThrough,
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
                                         ),
                                       ),
-                                    ),
-                                ],
-                              )
-                            : null,
-                      );
-                    },
+                                    if (addedByName.isNotEmpty)
+                                      Align(
+                                        alignment: Alignment.bottomRight,
+                                        child: Text(
+                                          l10n.addedBy(addedByName),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontStyle: FontStyle.italic,
+                                            color: Colors.grey[500],
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                )
+                              : null,
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],

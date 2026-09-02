@@ -128,15 +128,17 @@ class MongoService {
     required String collectionName,
     required Map<String, dynamic> filter,
     required Map<String, dynamic> update,
+    bool upsert = true,
   }) async {
     final db = await _getDb();
     if (db == null) return false;
 
     try {
       final collection = db.collection(collectionName);
-      final res = await collection.updateOne(filter, update);
+      final res = await collection.updateOne(filter, update, upsert: upsert);
       return res.isSuccess || res.writeError == null;
-    } catch (_) {
+    } catch (e) {
+      debugPrint("[MONGO SERVICE] updateOne ERROR en $collectionName: $e");
       return false;
     }
   }
@@ -174,6 +176,20 @@ class MongoService {
     } catch (e) {
       debugPrint("[MONGO SERVICE] deleteMany ERROR en $collectionName: $e");
       return false;
+    }
+  }
+
+  /// Cierra limpiamente la conexión activa de MongoDB si existe
+  static Future<void> close() async {
+    if (_db != null) {
+      try {
+        debugPrint("[MONGO SERVICE] Cerrando conexión de MongoDB por paso a segundo plano...");
+        await _db?.close();
+      } catch (e) {
+        debugPrint("[MONGO SERVICE] Error cerrando conexión de MongoDB: $e");
+      } finally {
+        _db = null;
+      }
     }
   }
 }

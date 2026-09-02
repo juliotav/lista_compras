@@ -485,4 +485,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get btnCloseApp => 'Close App';
+
+  @override
+  String get syncingStatus => 'Syncing...';
 }

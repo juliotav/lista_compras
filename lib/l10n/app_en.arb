@@ -200,5 +200,6 @@
   "updateRequiredTitle": "Update Required!",
   "updateRequiredDesc": "A new version of Lista lista is available. You must update the app to continue using it.",
   "btnGoToStore": "Go to Store",
-  "btnCloseApp": "Close App"
+  "btnCloseApp": "Close App",
+  "syncingStatus": "Syncing..."
 }

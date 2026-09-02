@@ -425,10 +425,17 @@ class LocalDbService {
     );
   }
 
-  Future<void> saveListDetailItemsBatch(List<ListDetailItemModel> items) async {
-    if (items.isEmpty) return;
+  Future<void> saveListDetailItemsBatch(List<ListDetailItemModel> items, {List<String>? activeListIds}) async {
     final database = await db;
     final batch = database.batch();
+    if (activeListIds != null && activeListIds.isNotEmpty) {
+      final placeholders = List.filled(activeListIds.length, '?').join(',');
+      batch.delete(
+        'list_detail_items',
+        where: 'id_lista_compra IN ($placeholders) AND sync_status = ?',
+        whereArgs: [...activeListIds, 'synced'],
+      );
+    }
     for (var item in items) {
       batch.insert(
         'list_detail_items',
@@ -470,7 +477,7 @@ class LocalDbService {
     final database = await db;
     final batch = database.batch();
     if (famId.isNotEmpty) {
-      batch.delete('item_catalog', where: 'id_familia = ?', whereArgs: [famId]);
+      batch.delete('item_catalog', where: 'id_familia = ? AND sync_status = ?', whereArgs: [famId, 'synced']);
     }
     for (var item in items) {
       batch.insert(

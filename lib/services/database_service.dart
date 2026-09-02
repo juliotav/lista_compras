@@ -35,6 +35,23 @@ class DatabaseService extends ChangeNotifier {
   final bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
 
+  bool _isBackgroundSyncing = false;
+  bool get isBackgroundSyncing => _isBackgroundSyncing;
+
+  void _startBackgroundSync() {
+    if (!_isBackgroundSyncing) {
+      _isBackgroundSyncing = true;
+      notifyListeners();
+    }
+  }
+
+  void _stopBackgroundSync() {
+    if (_isBackgroundSyncing) {
+      _isBackgroundSyncing = false;
+      notifyListeners();
+    }
+  }
+
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
 
@@ -93,6 +110,7 @@ class DatabaseService extends ChangeNotifier {
         }
 
         if (_currentUser != null) {
+          await _localDb.saveSessionUserId(_currentUser!.idUsuario);
           _checkAndUpdateUserAppVersion(_currentUser!);
         }
 
@@ -134,8 +152,28 @@ class DatabaseService extends ChangeNotifier {
     }
   }
 
+  /// Compara dos versiones semánticas (ej. "1.0.15" y "1.0.14").
+  /// Retorna < 0 si v1 < v2, 0 si v1 == v2, > 0 si v1 > v2.
+  int _compareVersions(String v1, String v2) {
+    final cleanV1 = v1.split('+').first.trim();
+    final cleanV2 = v2.split('+').first.trim();
+
+    final parts1 = cleanV1.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+    final parts2 = cleanV2.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+
+    final maxLength = max(parts1.length, parts2.length);
+    for (int i = 0; i < maxLength; i++) {
+      final num1 = i < parts1.length ? parts1[i] : 0;
+      final num2 = i < parts2.length ? parts2[i] : 0;
+      if (num1 != num2) {
+        return num1.compareTo(num2);
+      }
+    }
+    return 0;
+  }
+
   /// Consulta en MongoDB Atlas la versión en la colección `app_version` para `app_name: listalista`.
-  /// Si la versión almacenada no coincide con `MongoConfig.appVersion`, requiere actualización obligatoria.
+  /// Si la versión almacenada es estrictamente mayor que `MongoConfig.appVersion`, requiere actualización obligatoria.
   Future<void> checkAppVersion() async {
     try {
       final doc = await MongoService.findOne(
@@ -145,11 +183,14 @@ class DatabaseService extends ChangeNotifier {
       if (doc != null && doc.containsKey('app_version')) {
         final remoteVer = (doc['app_version'] as String?)?.trim();
         _remoteAppVersion = remoteVer;
-        if (remoteVer != null && remoteVer.isNotEmpty && remoteVer != MongoConfig.appVersion.trim()) {
-          debugPrint("[VERSION CHECK] ¡Versión requerida no coincide! App actual: '${MongoConfig.appVersion}', BD: '$remoteVer'");
-          _isUpdateRequired = true;
-          notifyListeners();
-          return;
+        if (remoteVer != null && remoteVer.isNotEmpty) {
+          final localVer = MongoConfig.appVersion.trim();
+          if (_compareVersions(localVer, remoteVer) < 0) {
+            debugPrint("[VERSION CHECK] ¡Versión de la app ($localVer) es menor a la versión requerida de la BD ($remoteVer)!");
+            _isUpdateRequired = true;
+            notifyListeners();
+            return;
+          }
         }
       }
       _isUpdateRequired = false;
@@ -221,6 +262,14 @@ class DatabaseService extends ChangeNotifier {
     }
   }
 
+  /// Carga instantáneamente desde SQLite los datos locales de la familia sin peticiones de red
+  Future<void> loadLocalDataOnly() async {
+    final famId = _currentUser?.idFamilia;
+    if (famId != null && famId.isNotEmpty) {
+      await _loadFromLocalDb(famId);
+    }
+  }
+
   /// Reanudación desde segundo plano: Carga SQLite de inmediato y dispara delta sync no bloqueante
   Future<void> onAppResume() async {
     unawaited(checkAppVersion());
@@ -228,12 +277,17 @@ class DatabaseService extends ChangeNotifier {
     if (famId != null && famId.isNotEmpty) {
       debugPrint("[DB_SERVICE LOG] App reanudada. Cargando SQLite de inmediato...");
       await _loadFromLocalDb(famId);
-      _syncService.pullDeltaSync(
-        famId: famId,
-        onDataUpdated: () async {
-          await _loadFromLocalDb(famId);
-        },
-      );
+      _startBackgroundSync();
+      try {
+        await _syncService.pullDeltaSync(
+          famId: famId,
+          onDataUpdated: () async {
+            await _loadFromLocalDb(famId);
+          },
+        );
+      } finally {
+        _stopBackgroundSync();
+      }
     }
   }
 
@@ -358,15 +412,25 @@ class DatabaseService extends ChangeNotifier {
   bool _isFetchingFamilyData = false;
 
   /// Sincroniza en segundo plano todos los datos de la familia sin bloquear la UI ni borrar datos locales
-  Future<void> fetchFamilyData() async {
+  Future<void> fetchFamilyData({bool isSilentPeriodic = false}) async {
     final userId = _currentUser?.idUsuario;
     if (userId == null) return;
+
+    if (!isSilentPeriodic) {
+      _startBackgroundSync();
+    }
 
     if (_isFetchingFamilyData) return;
     _isFetchingFamilyData = true;
 
     try {
-      // 1. Siempre buscar y sincronizar las familias del usuario desde MongoDB Atlas primero
+      // 1. Cargar estado de SQLite de inmediato si ya se cuenta con idFamilia (0ms delay UI)
+      final initialFamId = _currentUser?.idFamilia;
+      if (initialFamId != null && initialFamId.isNotEmpty) {
+        await _loadFromLocalDb(initialFamId);
+      }
+
+      // 2. Buscar y sincronizar las familias del usuario desde MongoDB Atlas
       await fetchUserFamilies();
 
       final famId = _currentUser?.idFamilia;
@@ -374,7 +438,7 @@ class DatabaseService extends ChangeNotifier {
         return;
       }
 
-      // 2. Cargar estado de SQLite de inmediato
+      // 3. Volver a recargar de SQLite si la familia cambió tras consultar el servidor
       await _loadFromLocalDb(famId);
 
       // Sincronizar perfiles de integrantes de la familia activa
@@ -438,7 +502,7 @@ class DatabaseService extends ChangeNotifier {
       debugPrint("[DB_SERVICE LOG] Error en fetchFamilyData: $e");
     } finally {
       _isFetchingFamilyData = false;
-      notifyListeners();
+      _stopBackgroundSync();
     }
   }
 
@@ -1331,7 +1395,8 @@ class DatabaseService extends ChangeNotifier {
         dsDetalle: dsDetalle ?? existingItem.dsDetalle,
       );
 
-      _listDetailItems[completedExistingIdx] = reactivatedItem;
+      _listDetailItems.removeAt(completedExistingIdx);
+      _listDetailItems.add(reactivatedItem);
       await _localDb.saveListDetailItem(reactivatedItem, syncStatus: 'pending');
       notifyListeners();
 

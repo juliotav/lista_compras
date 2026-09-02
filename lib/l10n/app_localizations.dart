@@ -973,6 +973,12 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Cerrar app'**
   String get btnCloseApp;
+
+  /// No description provided for @syncingStatus.
+  ///
+  /// In es, this message translates to:
+  /// **'Sincronizando...'**
+  String get syncingStatus;
 }
 
 class _AppLocalizationsDelegate

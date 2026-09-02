@@ -20,11 +20,11 @@ class MongoConfig {
   static const String appName = "listalista";
 
   /// Versión visible para el usuario en la aplicación (sin número de compilación)
-  static const String appVersion = "1.0.14";
+  static const String appVersion = "1.0.17";
 
   /// Retorna la URL de la tienda según el entorno (QA vs PR)
   static String get storeUrl {
-    const env = String.fromEnvironment('ENV', defaultValue: 'dev');
+    const env = String.fromEnvironment('ENV', defaultValue: 'qa');
     if (env.trim().toLowerCase() == 'pr') {
       // Placeholder para producción
       return 'https://play.google.com/store/apps/details?id=com.sonorodevs.lista_compras.prod'; // TODO: Reemplazar con la URL real de Producción cuando esté disponible

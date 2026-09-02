@@ -13,6 +13,7 @@ import 'list_detail_screen.dart';
 import 'login_screen.dart';
 import '../widgets/ad_banner_widget.dart';
 import '../services/ad_interstitial_service.dart';
+import '../widgets/sync_indicator_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,9 +31,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _refreshData() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (mounted) {
-        context.read<DatabaseService>().fetchFamilyData();
+        final db = context.read<DatabaseService>();
+        await db.loadLocalDataOnly();
+        db.fetchFamilyData();
       }
     });
   }
@@ -156,6 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Text(l10n.homeTitle),
         centerTitle: true,
         actions: [
+          const SyncIndicatorWidget(),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: l10n.syncTooltip,

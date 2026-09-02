@@ -200,5 +200,6 @@
   "updateRequiredTitle": "¡Actualización requerida!",
   "updateRequiredDesc": "Existe una nueva versión de Lista lista. Es necesario actualizar la aplicación para continuar utilizándola.",
   "btnGoToStore": "Ir a la tienda",
-  "btnCloseApp": "Cerrar app"
+  "btnCloseApp": "Cerrar app",
+  "syncingStatus": "Sincronizando..."
 }
