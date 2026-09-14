@@ -37,6 +37,18 @@
             ]
         },
         {
+            "name": "lista_compras (iOS Simulator)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "iPhone 17",
+            "toolArgs": [
+                "--dart-define-from-file=.env"
+            ],
+            "args": [
+                "--dart-define-from-file=.env"
+            ]
+        },
+        {
             "name": "lista_compras (Chrome Web)",
             "request": "launch",
             "type": "dart",

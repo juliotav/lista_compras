@@ -65,12 +65,37 @@ class DatabaseService extends ChangeNotifier {
   UserModel? get currentUser => _currentUser;
 
   FamilyModel? get currentFamily {
-    if (_currentUser?.idFamilia == null) return null;
+    final famId = _currentUser?.idFamilia;
+    if (famId == null) return null;
     try {
-      return _families.firstWhere((f) => f.idFamilia == _currentUser!.idFamilia);
+      return _userFamilies.firstWhere((f) => f.idFamilia == famId);
     } catch (_) {
-      return null;
+      try {
+        return _families.firstWhere((f) => f.idFamilia == famId);
+      } catch (_) {
+        return null;
+      }
     }
+  }
+
+  /// Retorna el nombre legible de una familia según su ID
+  String getFamilyName(String idFamilia) {
+    if (idFamilia.isEmpty) return '';
+    try {
+      final match = _userFamilies.firstWhere((f) => f.idFamilia == idFamilia);
+      if (match.nbFamilia.isNotEmpty) return match.nbFamilia;
+    } catch (_) {}
+
+    try {
+      final match = _families.firstWhere((f) => f.idFamilia == idFamilia);
+      if (match.nbFamilia.isNotEmpty) return match.nbFamilia;
+    } catch (_) {}
+
+    if (currentFamily?.idFamilia == idFamilia && currentFamily?.nbFamilia != null) {
+      return currentFamily!.nbFamilia;
+    }
+
+    return '';
   }
 
   DatabaseService() {
@@ -245,6 +270,7 @@ class DatabaseService extends ChangeNotifier {
       _families.addAll(localFamilies);
       _userFamilies.clear();
       _userFamilies.addAll(localFamilies);
+      PushNotificationService.syncFamilySubscriptions(_userFamilies.map((f) => f.idFamilia).toList());
 
       final localUsers = await _localDb.getAllUsers();
       for (var u in localUsers) {
@@ -359,6 +385,7 @@ class DatabaseService extends ChangeNotifier {
       _userFamilies.clear();
       _userFamilies.addAll(loadedFamilies);
       await _localDb.saveFamilies(loadedFamilies);
+      PushNotificationService.syncFamilySubscriptions(_userFamilies.map((f) => f.idFamilia).toList());
 
       if ((_currentUser?.idFamilia == null ||
               !_userFamilies.any((f) => f.idFamilia == _currentUser!.idFamilia)) &&
@@ -621,6 +648,7 @@ class DatabaseService extends ChangeNotifier {
     _shoppingLists.clear();
     _listDetailItems.clear();
     _catalogItems.clear();
+    await PushNotificationService.unsubscribeAllFamilies();
     notifyListeners();
   }
 
@@ -752,8 +780,29 @@ class DatabaseService extends ChangeNotifier {
       },
     );
 
+    // Asegurar que la familia esté registrada en _userFamilies si no existía localmente
+    if (!_userFamilies.any((f) => f.idFamilia == idFamilia)) {
+      try {
+        final famDocs = await MongoService.find(
+          collectionName: MongoConfig.colFamilia,
+          filter: {'id_familia': idFamilia},
+        );
+        if (famDocs.isNotEmpty) {
+          final loadedFam = FamilyModel.fromMap(famDocs.first);
+          _userFamilies.add(loadedFam);
+          if (!_families.any((f) => f.idFamilia == idFamilia)) {
+            _families.add(loadedFam);
+          }
+          await _localDb.saveFamilies(_userFamilies);
+        }
+      } catch (e) {
+        debugPrint("[DB_SERVICE] Error asegurando familia al cambiar: $e");
+      }
+    }
+
     await fetchFamilyData();
     PushNotificationService.subscribeToFamily(idFamilia);
+    notifyListeners();
   }
 
   Future<void> leaveFamily(String idFamilia) async {
@@ -769,6 +818,7 @@ class DatabaseService extends ChangeNotifier {
     );
 
     _userFamilies.removeWhere((f) => f.idFamilia == idFamilia);
+    PushNotificationService.unsubscribeFromFamily(idFamilia);
 
     if (_currentUser?.idFamilia == idFamilia) {
       if (_userFamilies.isNotEmpty) {
@@ -909,6 +959,9 @@ class DatabaseService extends ChangeNotifier {
     );
 
     _families.add(family);
+    _userFamilies.add(family);
+    await _localDb.saveFamilies(_userFamilies);
+    PushNotificationService.subscribeToFamily(family.idFamilia);
 
     final userFamilyLink = UserFamilyModel(
       idUsuario: _currentUser!.idUsuario,
@@ -985,7 +1038,8 @@ class DatabaseService extends ChangeNotifier {
       }
     }
 
-    if (family.idCreador == _currentUser!.idUsuario) {
+    final joinedFamily = family;
+    if (joinedFamily.idCreador == _currentUser!.idUsuario) {
       return 'already_creator';
     }
 
@@ -993,11 +1047,11 @@ class DatabaseService extends ChangeNotifier {
       collectionName: MongoConfig.colUsuarioFamilia,
       filter: {
         'id_usuario': _currentUser!.idUsuario,
-        'id_familia': family.idFamilia,
+        'id_familia': joinedFamily.idFamilia,
       },
     );
 
-    final isAlreadyMemberInMemory = _userFamilies.any((f) => f.idFamilia == family!.idFamilia);
+    final isAlreadyMemberInMemory = _userFamilies.any((f) => f.idFamilia == joinedFamily.idFamilia);
 
     if (existingLink != null || isAlreadyMemberInMemory) {
       return 'already_member';
@@ -1005,7 +1059,7 @@ class DatabaseService extends ChangeNotifier {
 
     final link = UserFamilyModel(
       idUsuario: _currentUser!.idUsuario,
-      idFamilia: family.idFamilia,
+      idFamilia: joinedFamily.idFamilia,
       fechaUnion: DateTime.now(),
     );
     await MongoService.insertOne(
@@ -1013,14 +1067,14 @@ class DatabaseService extends ChangeNotifier {
       document: link.toMap(),
     );
 
-    _currentUser = _currentUser!.copyWith(idFamilia: family.idFamilia);
+    _currentUser = _currentUser!.copyWith(idFamilia: joinedFamily.idFamilia);
     await _localDb.saveUser(_currentUser!);
 
     await MongoService.updateOne(
       collectionName: MongoConfig.colUsuario,
       filter: {'id_usuario': _currentUser!.idUsuario},
       update: {
-        '\$set': {'id_familia': family.idFamilia}
+        '\$set': {'id_familia': joinedFamily.idFamilia}
       },
     );
 
@@ -1028,6 +1082,12 @@ class DatabaseService extends ChangeNotifier {
     if (userIdx != -1) {
       _users[userIdx] = _currentUser!;
     }
+
+    if (!_userFamilies.any((f) => f.idFamilia == joinedFamily.idFamilia)) {
+      _userFamilies.add(joinedFamily);
+      await _localDb.saveFamilies(_userFamilies);
+    }
+    PushNotificationService.subscribeToFamily(joinedFamily.idFamilia);
 
     await fetchFamilyData();
 
@@ -1473,9 +1533,13 @@ class DatabaseService extends ChangeNotifier {
       },
     );
 
+    final listFamId = targetList.idFamilia.isNotEmpty ? targetList.idFamilia : famId;
+    final familyName = getFamilyName(listFamId);
+
     final senderName = getUserDisplayName(userId);
     PushNotificationService.sendListProductsAddedNotification(
-      idFamilia: famId,
+      idFamilia: listFamId,
+      nbFamilia: familyName,
       idListaCompra: idListaCompra,
       nbLista: targetList.nbLista,
       senderUserId: userId,
@@ -1521,9 +1585,13 @@ class DatabaseService extends ChangeNotifier {
       },
     );
 
+    final listFamId = targetList.idFamilia.isNotEmpty ? targetList.idFamilia : famId;
+    final familyName = getFamilyName(listFamId);
+
     final senderName = getUserDisplayName(userId);
     PushNotificationService.sendListProductsPurchasedNotification(
-      idFamilia: famId,
+      idFamilia: listFamId,
+      nbFamilia: familyName,
       idListaCompra: idListaCompra,
       nbLista: targetList.nbLista,
       senderUserId: userId,

@@ -95,7 +95,9 @@ class PushNotificationService {
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   static bool _isFirebaseInitialized = false;
-  static String? _currentSubscribedFamilyId;
+  static final Set<String> _subscribedFamilyIds = {};
+  static String? _lastHandledNotificationKey;
+  static DateTime? _lastHandledNotificationTime;
 
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'high_importance_channel', // id
@@ -275,11 +277,23 @@ class PushNotificationService {
       return;
     }
 
+    // Prevención de doble ejecución inmediata (ej. cold-start disparando FCM y localNotif simultáneamente)
+    final notifKey = '$idFamilia:$idLista';
+    final now = DateTime.now();
+    if (_lastHandledNotificationKey == notifKey &&
+        _lastHandledNotificationTime != null &&
+        now.difference(_lastHandledNotificationTime!) < const Duration(seconds: 2)) {
+      debugPrint('[PUSH_NOTIF LOG] Ignorando clic duplicado en notificación ($notifKey).');
+      return;
+    }
+    _lastHandledNotificationKey = notifKey;
+    _lastHandledNotificationTime = now;
+
     debugPrint('[PUSH_NOTIF LOG] Procesando navegación a lista: $idLista en familia: $idFamilia');
 
-    // Esperar a que el contexto del Navigator esté disponible
+    // Esperar a que el contexto del Navigator y su estado estén disponibles
     int retries = 0;
-    while (navigatorKey.currentContext == null && retries < 20) {
+    while ((navigatorKey.currentState == null || navigatorKey.currentContext == null) && retries < 50) {
       await Future.delayed(const Duration(milliseconds: 150));
       retries++;
     }
@@ -293,8 +307,10 @@ class PushNotificationService {
     final db = Provider.of<DatabaseService>(currentCtx, listen: false);
 
     // Esperar a que el servicio de base de datos y la sesión inicial estén listos
-    while (!db.isInitialized) {
+    int dbRetries = 0;
+    while (!db.isInitialized && dbRetries < 50) {
       await Future.delayed(const Duration(milliseconds: 100));
+      dbRetries++;
     }
 
     if (db.currentUser == null) {
@@ -302,7 +318,7 @@ class PushNotificationService {
       return;
     }
 
-    // 1. Si el usuario tiene seleccionada otra familia, cambiamos a la familia de la lista
+    // 1. Si el usuario está posicionado en otra familia, cambiamos a la familia indicada en la notificación
     if (db.currentUser?.idFamilia != idFamilia) {
       debugPrint('[PUSH_NOTIF LOG] Cambiando familia activa de ${db.currentUser?.idFamilia} a $idFamilia...');
       await db.switchFamily(idFamilia);
@@ -317,18 +333,25 @@ class PushNotificationService {
         (l) => l.idListaCompra == idLista && l.isActive,
       );
     } catch (_) {
-      // Fallback: Si aún no termina de indexar remotamente, construir un modelo de respaldo con los datos del payload
-      targetList = ShoppingListModel(
-        idListaCompra: idLista,
-        idFamilia: idFamilia,
-        nbLista: nbLista?.isNotEmpty == true ? nbLista! : 'Lista de Compras',
-        isActive: true,
-      );
+      try {
+        targetList = db.shoppingLists.firstWhere(
+          (l) => l.idListaCompra == idLista,
+        );
+      } catch (_) {
+        // Fallback: Si aún no termina de indexar remotamente, construir un modelo de respaldo con los datos del payload
+        targetList = ShoppingListModel(
+          idListaCompra: idLista,
+          idFamilia: idFamilia,
+          nbLista: (nbLista != null && nbLista.isNotEmpty) ? nbLista : 'Lista de Compras',
+          isActive: true,
+        );
+      }
     }
 
-    // 3. Abrir la pantalla de detalle de la lista
+    // 3. Limpiar pantallas previas acumuladas y abrir la pantalla de detalle de la lista
     final nav = navigatorKey.currentState;
     if (nav != null) {
+      nav.popUntil((route) => route.isFirst);
       nav.push(
         MaterialPageRoute(
           builder: (_) => ListDetailScreen(shoppingList: targetList!),
@@ -337,44 +360,89 @@ class PushNotificationService {
     }
   }
 
-  /// Suscribe el dispositivo al topic de la familia activa para recibir avisos grupales
+  /// Sincroniza las suscripciones de Firebase FCM para todas las familias a las que pertenece el usuario
+  static Future<void> syncFamilySubscriptions(List<String> familyIds) async {
+    if (kIsWeb || !_isFirebaseInitialized) return;
+
+    try {
+      final messaging = FirebaseMessaging.instance;
+      final targetSet = familyIds.where((id) => id.isNotEmpty).toSet();
+
+      // Desuscribir de topics que ya no corresponden
+      for (final oldId in _subscribedFamilyIds.toList()) {
+        if (!targetSet.contains(oldId)) {
+          await messaging.unsubscribeFromTopic('family_$oldId');
+          _subscribedFamilyIds.remove(oldId);
+          debugPrint('[PUSH_NOTIF LOG] Desuscrito de topic familiar: family_$oldId');
+        }
+      }
+
+      // Suscribir a cada una de las familias activas del usuario
+      for (final famId in targetSet) {
+        if (!_subscribedFamilyIds.contains(famId)) {
+          await messaging.subscribeToTopic('family_$famId');
+          _subscribedFamilyIds.add(famId);
+          debugPrint('[PUSH_NOTIF LOG] Suscrito exitosamente al topic: family_$famId');
+        }
+      }
+    } catch (e) {
+      debugPrint('[PUSH_NOTIF LOG] Error al sincronizar suscripciones familiares: $e');
+    }
+  }
+
+  /// Suscribe el dispositivo al topic de una familia específica
   static Future<void> subscribeToFamily(String? idFamilia) async {
     if (kIsWeb || !_isFirebaseInitialized || idFamilia == null || idFamilia.isEmpty) return;
 
     try {
       final messaging = FirebaseMessaging.instance;
-
-      // Desuscribir de la familia anterior si cambió
-      if (_currentSubscribedFamilyId != null && _currentSubscribedFamilyId != idFamilia) {
-        await messaging.unsubscribeFromTopic('family_$_currentSubscribedFamilyId');
-        debugPrint('[PUSH_NOTIF LOG] Desuscrito del topic: family_$_currentSubscribedFamilyId');
-      }
-
-      // Suscribir al nuevo topic de la familia
       await messaging.subscribeToTopic('family_$idFamilia');
-      _currentSubscribedFamilyId = idFamilia;
+      _subscribedFamilyIds.add(idFamilia);
       debugPrint('[PUSH_NOTIF LOG] Suscrito exitosamente al topic: family_$idFamilia');
     } catch (e) {
       debugPrint('[PUSH_NOTIF LOG] Error al suscribirse al topic familiar: $e');
     }
   }
 
-  /// Desuscribe el dispositivo de cualquier topic familiar activo (ej. al cerrar sesión)
-  static Future<void> unsubscribeCurrentFamily() async {
-    if (kIsWeb || !_isFirebaseInitialized || _currentSubscribedFamilyId == null) return;
+  /// Desuscribe el dispositivo de un topic familiar específico
+  static Future<void> unsubscribeFromFamily(String? idFamilia) async {
+    if (kIsWeb || !_isFirebaseInitialized || idFamilia == null || idFamilia.isEmpty) return;
 
     try {
-      await FirebaseMessaging.instance.unsubscribeFromTopic('family_$_currentSubscribedFamilyId');
-      debugPrint('[PUSH_NOTIF LOG] Desuscrito de topic familiar: family_$_currentSubscribedFamilyId');
-      _currentSubscribedFamilyId = null;
+      final messaging = FirebaseMessaging.instance;
+      await messaging.unsubscribeFromTopic('family_$idFamilia');
+      _subscribedFamilyIds.remove(idFamilia);
+      debugPrint('[PUSH_NOTIF LOG] Desuscrito de topic familiar: family_$idFamilia');
     } catch (e) {
-      debugPrint('[PUSH_NOTIF LOG] Error al desuscribir de topic: $e');
+      debugPrint('[PUSH_NOTIF LOG] Error al desuscribirse de topic: $e');
     }
+  }
+
+  /// Desuscribe el dispositivo de todos los topics familiares activos (ej. al cerrar sesión)
+  static Future<void> unsubscribeAllFamilies() async {
+    if (kIsWeb || !_isFirebaseInitialized) return;
+
+    try {
+      final messaging = FirebaseMessaging.instance;
+      for (final famId in _subscribedFamilyIds.toList()) {
+        await messaging.unsubscribeFromTopic('family_$famId');
+      }
+      _subscribedFamilyIds.clear();
+      debugPrint('[PUSH_NOTIF LOG] Desuscrito de todas las familias.');
+    } catch (e) {
+      debugPrint('[PUSH_NOTIF LOG] Error al desuscribir de todas las familias: $e');
+    }
+  }
+
+  /// Alias de compatibilidad hacia atrás
+  static Future<void> unsubscribeCurrentFamily() async {
+    await unsubscribeAllFamilies();
   }
 
   /// Envía la petición HTTPS al script PHP en Hostinger para disparar el mensaje push a la familia
   static Future<bool> sendListProductsAddedNotification({
     required String idFamilia,
+    String? nbFamilia,
     required String idListaCompra,
     required String nbLista,
     required String senderUserId,
@@ -385,14 +453,19 @@ class PushNotificationService {
       return false;
     }
 
+    final String familySuffix = (nbFamilia != null && nbFamilia.trim().isNotEmpty)
+        ? ' (Familia: ${nbFamilia.trim()})'
+        : '';
+
     final payload = {
       'id_familia': idFamilia,
+      'nb_familia': nbFamilia?.trim() ?? '',
       'id_lista': idListaCompra,
       'nb_lista': nbLista,
       'sender_user_id': senderUserId,
       'sender_name': senderName,
       'title': 'Lista de Compras',
-      'body': '$senderName ha agregado productos a la lista "$nbLista"',
+      'body': '$senderName ha agregado productos a la lista "$nbLista"$familySuffix',
     };
 
     try {
@@ -424,6 +497,7 @@ class PushNotificationService {
   /// Envía notificación push a los integrantes de la familia cuando un usuario marca productos como comprados
   static Future<bool> sendListProductsPurchasedNotification({
     required String idFamilia,
+    String? nbFamilia,
     required String idListaCompra,
     required String nbLista,
     required String senderUserId,
@@ -435,12 +509,17 @@ class PushNotificationService {
       return false;
     }
 
+    final String familySuffix = (nbFamilia != null && nbFamilia.trim().isNotEmpty)
+        ? ' (Familia: ${nbFamilia.trim()})'
+        : '';
+
     final String bodyText = (productName != null && productName.trim().isNotEmpty)
-        ? '$senderName ha marcado "$productName" como comprado en "$nbLista"'
-        : '$senderName ha marcado productos como comprados en "$nbLista"';
+        ? '$senderName ha marcado "$productName" como comprado en "$nbLista"$familySuffix'
+        : '$senderName ha marcado productos como comprados en "$nbLista"$familySuffix';
 
     final payload = {
       'id_familia': idFamilia,
+      'nb_familia': nbFamilia?.trim() ?? '',
       'id_lista': idListaCompra,
       'nb_lista': nbLista,
       'sender_user_id': senderUserId,

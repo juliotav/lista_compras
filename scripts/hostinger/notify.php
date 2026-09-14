@@ -49,6 +49,7 @@ $title        = isset($data['title']) ? trim($data['title']) : 'Lista de Compras
 $body         = trim($data['body']);
 $idLista      = isset($data['id_lista']) ? trim($data['id_lista']) : '';
 $nbLista      = isset($data['nb_lista']) ? trim($data['nb_lista']) : '';
+$nbFamilia    = isset($data['nb_familia']) ? trim($data['nb_familia']) : '';
 $senderUserId = isset($data['sender_user_id']) ? trim($data['sender_user_id']) : '';
 
 // 4. Verificar existencia de credenciales de Firebase
@@ -135,6 +136,7 @@ $messagePayload = [
         ],
         'data' => [
             'id_familia' => (string)$idFamilia,
+            'nb_familia' => (string)$nbFamilia,
             'id_lista' => (string)$idLista,
             'nb_lista' => (string)$nbLista,
             'sender_user_id' => (string)$senderUserId,
