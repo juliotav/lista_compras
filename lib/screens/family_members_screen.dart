@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
@@ -11,13 +12,51 @@ class FamilyMembersScreen extends StatefulWidget {
   State<FamilyMembersScreen> createState() => _FamilyMembersScreenState();
 }
 
-class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
+class _FamilyMembersScreenState extends State<FamilyMembersScreen> with WidgetsBindingObserver {
+  Timer? _syncTimer;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DatabaseService>().fetchFamilyData();
+      if (mounted) {
+        context.read<DatabaseService>().fetchFamilyData();
+      }
     });
+
+    _startSyncTimer();
+  }
+
+  void _startSyncTimer() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(seconds: 6), (_) {
+      if (mounted) {
+        context.read<DatabaseService>().fetchFamilyData(isSilentPeriodic: true);
+      }
+    });
+  }
+
+  void _stopSyncTimer() {
+    _syncTimer?.cancel();
+    _syncTimer = null;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<DatabaseService>().fetchFamilyData();
+      _startSyncTimer();
+    } else if ((state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) && mounted) {
+      _stopSyncTimer();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopSyncTimer();
+    super.dispose();
   }
 
   @override
@@ -28,9 +67,10 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
     final currentUser = db.currentUser;
     final members = db.getFamilyMembers();
 
-    if (family == null || currentUser?.idFamilia == null || currentUser?.idFamilia != family.idFamilia) {
+    // Redirección automática si la familia fue eliminada o si el usuario fue removido
+    if (family == null || !db.userFamilies.any((f) => f.idFamilia == family.idFamilia)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
+        if (mounted && Navigator.of(context).canPop()) {
           Navigator.of(context).popUntil((route) => route.isFirst);
         }
       });
@@ -166,9 +206,23 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                                                             ? null
                                                             : () async {
                                                                 setDialogState(() => isRemoving = true);
-                                                                await db.removeFamilyMember(member.idUsuario);
-                                                                if (context.mounted) {
-                                                                  Navigator.pop(dialogContext);
+                                                                final dialogNav = Navigator.of(dialogContext);
+                                                                final messenger = ScaffoldMessenger.of(context);
+                                                                try {
+                                                                  await db.removeFamilyMember(member.idUsuario);
+                                                                  if (dialogNav.mounted && dialogNav.canPop()) {
+                                                                    dialogNav.pop();
+                                                                  }
+                                                                } catch (e) {
+                                                                  if (dialogNav.mounted && dialogNav.canPop()) {
+                                                                    dialogNav.pop();
+                                                                  }
+                                                                  messenger.showSnackBar(
+                                                                    SnackBar(
+                                                                      content: Text(e.toString()),
+                                                                      backgroundColor: Colors.red,
+                                                                    ),
+                                                                  );
                                                                 }
                                                               },
                                                         child: isRemoving
@@ -214,7 +268,16 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                                 return AlertDialog(
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                   title: Text(l10n.confirmLeaveFamilyTitle),
-                                  content: Text(l10n.confirmLeaveFamilyMsg),
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(l10n.confirmLeaveFamilyMsg),
+                                      if (isLeaving) ...[
+                                        const SizedBox(height: 16),
+                                        const CircularProgressIndicator(),
+                                      ],
+                                    ],
+                                  ),
                                   actions: [
                                     TextButton(
                                       onPressed: isLeaving ? null : () => Navigator.pop(dialogContext),
@@ -229,18 +292,26 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                                               final dialogNav = Navigator.of(dialogContext);
                                               final screenNav = Navigator.of(context);
                                               final messenger = ScaffoldMessenger.of(context);
+                                              final targetFamId = family.idFamilia;
 
                                               try {
-                                                await db.leaveFamily(family.idFamilia);
-                                                if (dialogNav.mounted) dialogNav.pop();
+                                                await db.leaveFamily(targetFamId);
+
+                                                if (dialogNav.mounted && dialogNav.canPop()) {
+                                                  dialogNav.pop();
+                                                }
 
                                                 messenger.showSnackBar(
                                                   SnackBar(content: Text(l10n.leftFamilySuccess)),
                                                 );
 
-                                                if (screenNav.mounted) screenNav.pop();
+                                                if (screenNav.mounted) {
+                                                  screenNav.popUntil((route) => route.isFirst);
+                                                }
                                               } catch (e) {
-                                                if (dialogNav.mounted) dialogNav.pop();
+                                                if (dialogNav.mounted && dialogNav.canPop()) {
+                                                  dialogNav.pop();
+                                                }
                                                 messenger.showSnackBar(
                                                   SnackBar(
                                                     content: Text(e.toString()),
