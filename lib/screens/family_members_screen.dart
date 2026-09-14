@@ -192,10 +192,20 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> with WidgetsB
                                             builder: (dialogContext) {
                                               return StatefulBuilder(
                                                 builder: (context, setDialogState) {
-                                                  return AlertDialog(
-                                                    title: Text(l10n.removeMember),
-                                                    content: Text(l10n.confirmRemoveMember),
-                                                    actions: [
+                                                   return AlertDialog(
+                                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                                     title: Text(l10n.removeMember),
+                                                     content: Column(
+                                                       mainAxisSize: MainAxisSize.min,
+                                                       children: [
+                                                         Text(l10n.confirmRemoveMember),
+                                                         if (isRemoving) ...[
+                                                           const SizedBox(height: 16),
+                                                           const CircularProgressIndicator(),
+                                                         ],
+                                                       ],
+                                                     ),
+                                                     actions: [
                                                       TextButton(
                                                         onPressed: isRemoving ? null : () => Navigator.pop(dialogContext),
                                                         child: Text(l10n.btnCancel),

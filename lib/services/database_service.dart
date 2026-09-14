@@ -523,6 +523,8 @@ class DatabaseService extends ChangeNotifier {
           if (mId != null && mId.isNotEmpty) memberIds.add(mId);
         }
 
+        final Set<String> validMemberIds = Set.from(memberIds);
+
         for (var mId in memberIds) {
           final userDoc = await MongoService.findOne(
             collectionName: MongoConfig.colUsuario,
@@ -537,6 +539,16 @@ class DatabaseService extends ChangeNotifier {
             } else {
               _users[idx] = user;
             }
+          }
+        }
+
+        // Limpiar de _users y _localDb cualquier usuario que ya no pertenezca a la familia
+        for (int i = _users.length - 1; i >= 0; i--) {
+          final u = _users[i];
+          if (u.idFamilia == famId && !validMemberIds.contains(u.idUsuario) && u.idUsuario != fam?.idCreador) {
+            final updated = u.copyWith(clearFamilia: true);
+            await _localDb.saveUser(updated);
+            _users.removeAt(i);
           }
         }
       } catch (e) {
@@ -1253,6 +1265,8 @@ class DatabaseService extends ChangeNotifier {
 
     final userIdx = _users.indexWhere((u) => u.idUsuario == idUsuario);
     if (userIdx != -1) {
+      final updatedUser = _users[userIdx].copyWith(clearFamilia: true);
+      await _localDb.saveUser(updatedUser);
       _users.removeAt(userIdx);
     }
 
