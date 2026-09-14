@@ -266,13 +266,27 @@ class LocalDbService {
   }
 
   Future<void> saveFamilies(List<FamilyModel> families) async {
-    if (families.isEmpty) return;
     final database = await db;
     final batch = database.batch();
+    batch.delete('families');
     for (var f in families) {
       batch.insert('families', f.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
+  }
+
+  Future<void> deleteFamilyLocally(String famId) async {
+    final database = await db;
+    await database.delete('families', where: 'id_familia = ?', whereArgs: [famId]);
+    await database.delete('shopping_lists', where: 'id_familia = ?', whereArgs: [famId]);
+    await database.delete('item_catalog', where: 'id_familia = ?', whereArgs: [famId]);
+    final listRes = await database.query('shopping_lists', columns: ['id_lista_compra'], where: 'id_familia = ?', whereArgs: [famId]);
+    for (var row in listRes) {
+      final listId = row['id_lista_compra'] as String?;
+      if (listId != null && listId.isNotEmpty) {
+        await database.delete('list_detail_items', where: 'id_lista_compra = ?', whereArgs: [listId]);
+      }
+    }
   }
 
   Future<List<FamilyModel>> getFamilies() async {

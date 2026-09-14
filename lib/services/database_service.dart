@@ -28,7 +28,8 @@ class DatabaseService extends ChangeNotifier {
   List<FamilyModel> get userFamilies => List.unmodifiable(_userFamilies);
 
   final List<ShoppingListModel> _shoppingLists = [];
-  List<ShoppingListModel> get shoppingLists => List.unmodifiable(_shoppingLists);
+  List<ShoppingListModel> get shoppingLists =>
+      List.unmodifiable(_shoppingLists);
   final List<ItemCatalogModel> _catalogItems = [];
   final List<ListDetailItemModel> _listDetailItems = [];
 
@@ -91,7 +92,8 @@ class DatabaseService extends ChangeNotifier {
       if (match.nbFamilia.isNotEmpty) return match.nbFamilia;
     } catch (_) {}
 
-    if (currentFamily?.idFamilia == idFamilia && currentFamily?.nbFamilia != null) {
+    if (currentFamily?.idFamilia == idFamilia &&
+        currentFamily?.nbFamilia != null) {
       return currentFamily!.nbFamilia;
     }
 
@@ -149,7 +151,9 @@ class DatabaseService extends ChangeNotifier {
             if (remoteUser != null) {
               _currentUser = UserModel.fromMap(remoteUser);
               await _localDb.saveUser(_currentUser!);
-              final uIdx = _users.indexWhere((u) => u.idUsuario == _currentUser!.idUsuario);
+              final uIdx = _users.indexWhere(
+                (u) => u.idUsuario == _currentUser!.idUsuario,
+              );
               if (uIdx != -1) {
                 _users[uIdx] = _currentUser!;
               } else {
@@ -160,11 +164,15 @@ class DatabaseService extends ChangeNotifier {
               }
             }
             if (_currentUser != null) {
-              PushNotificationService.subscribeToFamily(_currentUser!.idFamilia);
+              PushNotificationService.subscribeToFamily(
+                _currentUser!.idFamilia,
+              );
               await fetchFamilyData();
             }
           } catch (e) {
-            debugPrint("[DB_SERVICE LOG] Error en consulta background de initSession: $e");
+            debugPrint(
+              "[DB_SERVICE LOG] Error en consulta background de initSession: $e",
+            );
           }
         }());
       }
@@ -211,7 +219,9 @@ class DatabaseService extends ChangeNotifier {
         if (remoteVer != null && remoteVer.isNotEmpty) {
           final localVer = MongoConfig.appVersion.trim();
           if (_compareVersions(localVer, remoteVer) < 0) {
-            debugPrint("[VERSION CHECK] ¡Versión de la app ($localVer) es menor a la versión requerida de la BD ($remoteVer)!");
+            debugPrint(
+              "[VERSION CHECK] ¡Versión de la app ($localVer) es menor a la versión requerida de la BD ($remoteVer)!",
+            );
             _isUpdateRequired = true;
             notifyListeners();
             return;
@@ -221,7 +231,9 @@ class DatabaseService extends ChangeNotifier {
       _isUpdateRequired = false;
       notifyListeners();
     } catch (e) {
-      debugPrint("[VERSION CHECK LOG] Error al consultar app_version en MongoDB: $e");
+      debugPrint(
+        "[VERSION CHECK LOG] Error al consultar app_version en MongoDB: $e",
+      );
     }
   }
 
@@ -230,7 +242,9 @@ class DatabaseService extends ChangeNotifier {
   Future<void> _checkAndUpdateUserAppVersion(UserModel user) async {
     final currentAppVer = MongoConfig.appVersion;
     if (user.dsVersionApp != currentAppVer) {
-      debugPrint("[VERSION CHECK] Actualizando versión registrada del usuario '${user.idUsuario}' de '${user.dsVersionApp}' a '$currentAppVer'...");
+      debugPrint(
+        "[VERSION CHECK] Actualizando versión registrada del usuario '${user.idUsuario}' de '${user.dsVersionApp}' a '$currentAppVer'...",
+      );
       final updatedUser = user.copyWith(dsVersionApp: currentAppVer);
       _currentUser = updatedUser;
       final idx = _users.indexWhere((u) => u.idUsuario == user.idUsuario);
@@ -243,7 +257,7 @@ class DatabaseService extends ChangeNotifier {
         collectionName: MongoConfig.colUsuario,
         filter: {'id_usuario': user.idUsuario},
         update: {
-          '\$set': {'ds_version_app': currentAppVer}
+          '\$set': {'ds_version_app': currentAppVer},
         },
       );
     }
@@ -261,7 +275,9 @@ class DatabaseService extends ChangeNotifier {
       _catalogItems.addAll(localCatalog);
 
       final activeListIds = _shoppingLists.map((l) => l.idListaCompra).toList();
-      final localDetails = await _localDb.getAllListDetailsForFamily(activeListIds);
+      final localDetails = await _localDb.getAllListDetailsForFamily(
+        activeListIds,
+      );
       _listDetailItems.clear();
       _listDetailItems.addAll(localDetails);
 
@@ -270,11 +286,15 @@ class DatabaseService extends ChangeNotifier {
       _families.addAll(localFamilies);
       _userFamilies.clear();
       _userFamilies.addAll(localFamilies);
-      PushNotificationService.syncFamilySubscriptions(_userFamilies.map((f) => f.idFamilia).toList());
+      PushNotificationService.syncFamilySubscriptions(
+        _userFamilies.map((f) => f.idFamilia).toList(),
+      );
 
       final localUsers = await _localDb.getAllUsers();
       for (var u in localUsers) {
-        final idx = _users.indexWhere((existing) => existing.idUsuario == u.idUsuario);
+        final idx = _users.indexWhere(
+          (existing) => existing.idUsuario == u.idUsuario,
+        );
         if (idx == -1) {
           _users.add(u);
         } else {
@@ -301,7 +321,9 @@ class DatabaseService extends ChangeNotifier {
     unawaited(checkAppVersion());
     final famId = _currentUser?.idFamilia;
     if (famId != null && famId.isNotEmpty) {
-      debugPrint("[DB_SERVICE LOG] App reanudada. Cargando SQLite de inmediato...");
+      debugPrint(
+        "[DB_SERVICE LOG] App reanudada. Cargando SQLite de inmediato...",
+      );
       await _loadFromLocalDb(famId);
       _startBackgroundSync();
       try {
@@ -325,7 +347,10 @@ class DatabaseService extends ChangeNotifier {
     try {
       var userFamDocs = await MongoService.find(
         collectionName: MongoConfig.colUsuarioFamilia,
-        filter: {'id_usuario': userId},
+        filter: {
+          'id_usuario': userId,
+          'status': {'\$ne': 'inactive'},
+        },
       );
 
       final Set<String> knownFamIds = userFamDocs
@@ -333,43 +358,6 @@ class DatabaseService extends ChangeNotifier {
           .where((id) => id != null && id.isNotEmpty)
           .cast<String>()
           .toSet();
-
-      final createdFamDocs = await MongoService.find(
-        collectionName: MongoConfig.colFamilia,
-        filter: {'id_creador': userId},
-      );
-
-      for (var famDoc in createdFamDocs) {
-        final famId = famDoc['id_familia'] as String?;
-        if (famId != null && famId.isNotEmpty && !knownFamIds.contains(famId)) {
-          final newLink = UserFamilyModel(
-            idUsuario: userId,
-            idFamilia: famId,
-            fechaUnion: DateTime.now(),
-          );
-          await MongoService.insertOne(
-            collectionName: MongoConfig.colUsuarioFamilia,
-            document: newLink.toMap(),
-          );
-          knownFamIds.add(famId);
-        }
-      }
-
-      if (_currentUser?.idFamilia != null &&
-          _currentUser!.idFamilia!.isNotEmpty &&
-          !knownFamIds.contains(_currentUser!.idFamilia!)) {
-        final activeFamId = _currentUser!.idFamilia!;
-        final newLink = UserFamilyModel(
-          idUsuario: userId,
-          idFamilia: activeFamId,
-          fechaUnion: DateTime.now(),
-        );
-        await MongoService.insertOne(
-          collectionName: MongoConfig.colUsuarioFamilia,
-          document: newLink.toMap(),
-        );
-        knownFamIds.add(activeFamId);
-      }
 
       final List<FamilyModel> loadedFamilies = [];
       for (var famId in knownFamIds) {
@@ -385,11 +373,38 @@ class DatabaseService extends ChangeNotifier {
       _userFamilies.clear();
       _userFamilies.addAll(loadedFamilies);
       await _localDb.saveFamilies(loadedFamilies);
-      PushNotificationService.syncFamilySubscriptions(_userFamilies.map((f) => f.idFamilia).toList());
+      PushNotificationService.syncFamilySubscriptions(
+        _userFamilies.map((f) => f.idFamilia).toList(),
+      );
 
-      if ((_currentUser?.idFamilia == null ||
-              !_userFamilies.any((f) => f.idFamilia == _currentUser!.idFamilia)) &&
-          _userFamilies.isNotEmpty) {
+      final oldFamId = _currentUser?.idFamilia;
+      final isOldFamActive =
+          oldFamId != null && _userFamilies.any((f) => f.idFamilia == oldFamId);
+
+      if (oldFamId != null && !isOldFamActive) {
+        debugPrint(
+          "[DB_SERVICE LOG] El usuario '$userId' ya no pertenece a la familia '$oldFamId'. Purgando datos locales...",
+        );
+        await _localDb.deleteFamilyLocally(oldFamId);
+      }
+
+      if (_userFamilies.isEmpty) {
+        if (_currentUser?.idFamilia != null) {
+          _currentUser = _currentUser!.copyWith(clearFamilia: true);
+          await _localDb.saveUser(_currentUser!);
+          await MongoService.updateOne(
+            collectionName: MongoConfig.colUsuario,
+            filter: {'id_usuario': userId},
+            update: {
+              '\$unset': {'id_familia': ""},
+            },
+          );
+          _shoppingLists.clear();
+          _listDetailItems.clear();
+          _catalogItems.clear();
+          notifyListeners();
+        }
+      } else if (!isOldFamActive) {
         final activeFamId = _userFamilies.first.idFamilia;
         _currentUser = _currentUser!.copyWith(idFamilia: activeFamId);
         if (_currentUser != null) {
@@ -399,9 +414,12 @@ class DatabaseService extends ChangeNotifier {
           collectionName: MongoConfig.colUsuario,
           filter: {'id_usuario': userId},
           update: {
-            '\$set': {'id_familia': activeFamId}
+            '\$set': {'id_familia': activeFamId},
           },
         );
+        await _loadFromLocalDb(activeFamId);
+        PushNotificationService.subscribeToFamily(activeFamId);
+        notifyListeners();
       }
       await cleanOrphanCatalogItems();
     } catch (e) {
@@ -415,7 +433,9 @@ class DatabaseService extends ChangeNotifier {
         collectionName: MongoConfig.colFamilia,
         filter: {},
       );
-      final validFamIds = allFamilies.map((f) => f['id_familia'] as String).toSet();
+      final validFamIds = allFamilies
+          .map((f) => f['id_familia'] as String)
+          .toSet();
 
       final allCatalogDocs = await MongoService.find(
         collectionName: MongoConfig.colCArticulo,
@@ -424,7 +444,9 @@ class DatabaseService extends ChangeNotifier {
       for (var doc in allCatalogDocs) {
         final famId = doc['id_familia'] as String?;
         if (famId != null && famId.isNotEmpty && !validFamIds.contains(famId)) {
-          debugPrint("[DB_SERVICE LOG] Limpiando automáticamente artículos huérfanos en c_articulo de la familia eliminada '$famId'...");
+          debugPrint(
+            "[DB_SERVICE LOG] Limpiando automáticamente artículos huérfanos en c_articulo de la familia eliminada '$famId'...",
+          );
           await MongoService.deleteMany(
             collectionName: MongoConfig.colCArticulo,
             filter: {'id_familia': famId},
@@ -481,7 +503,10 @@ class DatabaseService extends ChangeNotifier {
         // Miembros vinculados en usuario_familia
         final links = await MongoService.find(
           collectionName: MongoConfig.colUsuarioFamilia,
-          filter: {'id_familia': famId},
+          filter: {
+            'id_familia': famId,
+            'status': {'\$ne': 'inactive'},
+          },
         );
         for (var l in links) {
           final mId = l['id_usuario'] as String?;
@@ -515,7 +540,9 @@ class DatabaseService extends ChangeNotifier {
           }
         }
       } catch (e) {
-        debugPrint("[DB_SERVICE LOG] Error sincronizando integrantes de familia: $e");
+        debugPrint(
+          "[DB_SERVICE LOG] Error sincronizando integrantes de familia: $e",
+        );
       }
 
       // 3. Disparar sincronización delta en segundo plano
@@ -549,7 +576,8 @@ class DatabaseService extends ChangeNotifier {
       filter: {'nb_email': cleanEmail},
     );
 
-    if (remoteUser != null || _users.any((u) => u.nbEmail.toLowerCase() == cleanEmail)) {
+    if (remoteUser != null ||
+        _users.any((u) => u.nbEmail.toLowerCase() == cleanEmail)) {
       throw Exception("El correo electrónico ya está registrado.");
     }
 
@@ -591,14 +619,14 @@ class DatabaseService extends ChangeNotifier {
     Map<String, dynamic>? remoteUserMap = await MongoService.findOne(
       collectionName: MongoConfig.colUsuario,
       filter: {
-        'nb_email': {r'$regex': '^$escapedInput\$', r'$options': 'i'}
+        'nb_email': {r'$regex': '^$escapedInput\$', r'$options': 'i'},
       },
     );
 
     remoteUserMap ??= await MongoService.findOne(
       collectionName: MongoConfig.colUsuario,
       filter: {
-        'nb_usuario': {r'$regex': '^$escapedInput\$', r'$options': 'i'}
+        'nb_usuario': {r'$regex': '^$escapedInput\$', r'$options': 'i'},
       },
     );
 
@@ -624,7 +652,8 @@ class DatabaseService extends ChangeNotifier {
       final user = _users.firstWhere(
         (u) =>
             (u.nbEmail.toLowerCase() == cleanInput ||
-                (u.nbUsuario != null && u.nbUsuario!.toLowerCase() == cleanInput)) &&
+                (u.nbUsuario != null &&
+                    u.nbUsuario!.toLowerCase() == cleanInput)) &&
             u.clPass == passHash,
       );
       _currentUser = user;
@@ -653,7 +682,9 @@ class DatabaseService extends ChangeNotifier {
   }
 
   // --- RECUPERACIÓN DE CONTRASEÑA ---
-  Future<Map<String, dynamic>> requestPasswordReset(String emailOrUsername) async {
+  Future<Map<String, dynamic>> requestPasswordReset(
+    String emailOrUsername,
+  ) async {
     final cleanInput = emailOrUsername.trim().toLowerCase();
     if (cleanInput.isEmpty) {
       return {'success': false, 'message': 'invalidEmail'};
@@ -664,14 +695,14 @@ class DatabaseService extends ChangeNotifier {
     Map<String, dynamic>? userMap = await MongoService.findOne(
       collectionName: MongoConfig.colUsuario,
       filter: {
-        'nb_email': {r'$regex': '^$escapedInput\$', r'$options': 'i'}
+        'nb_email': {r'$regex': '^$escapedInput\$', r'$options': 'i'},
       },
     );
 
     userMap ??= await MongoService.findOne(
       collectionName: MongoConfig.colUsuario,
       filter: {
-        'nb_usuario': {r'$regex': '^$escapedInput\$', r'$options': 'i'}
+        'nb_usuario': {r'$regex': '^$escapedInput\$', r'$options': 'i'},
       },
     );
 
@@ -683,16 +714,16 @@ class DatabaseService extends ChangeNotifier {
     final rnd = Random();
     final pinCode = (100000 + rnd.nextInt(900000)).toString();
     final pinHash = SecurityService.hashPassword(pinCode);
-    final expiresAt = DateTime.now().toUtc().add(const Duration(minutes: 10)).toIso8601String();
+    final expiresAt = DateTime.now()
+        .toUtc()
+        .add(const Duration(minutes: 10))
+        .toIso8601String();
 
     await MongoService.updateOne(
       collectionName: MongoConfig.colUsuario,
       filter: {'id_usuario': userMap['id_usuario']},
       update: {
-        '\$set': {
-          'cd_reset_pin': pinHash,
-          'fh_reset_expires': expiresAt,
-        }
+        '\$set': {'cd_reset_pin': pinHash, 'fh_reset_expires': expiresAt},
       },
     );
 
@@ -719,7 +750,7 @@ class DatabaseService extends ChangeNotifier {
     final userMap = await MongoService.findOne(
       collectionName: MongoConfig.colUsuario,
       filter: {
-        'nb_email': {r'$regex': '^$escapedEmail\$', r'$options': 'i'}
+        'nb_email': {r'$regex': '^$escapedEmail\$', r'$options': 'i'},
       },
     );
 
@@ -742,7 +773,11 @@ class DatabaseService extends ChangeNotifier {
     return true;
   }
 
-  Future<bool> resetPasswordWithPin(String email, String pinCode, String newPassword) async {
+  Future<bool> resetPasswordWithPin(
+    String email,
+    String pinCode,
+    String newPassword,
+  ) async {
     final isValid = await verifyResetPin(email, pinCode);
     if (!isValid) return false;
 
@@ -753,11 +788,11 @@ class DatabaseService extends ChangeNotifier {
     final success = await MongoService.updateOne(
       collectionName: MongoConfig.colUsuario,
       filter: {
-        'nb_email': {r'$regex': '^$escapedEmail\$', r'$options': 'i'}
+        'nb_email': {r'$regex': '^$escapedEmail\$', r'$options': 'i'},
       },
       update: {
         '\$set': {'cl_pass': newPassHash},
-        '\$unset': {'cd_reset_pin': '', 'fh_reset_expires': ''}
+        '\$unset': {'cd_reset_pin': '', 'fh_reset_expires': ''},
       },
     );
 
@@ -776,7 +811,7 @@ class DatabaseService extends ChangeNotifier {
       collectionName: MongoConfig.colUsuario,
       filter: {'id_usuario': _currentUser!.idUsuario},
       update: {
-        '\$set': {'id_familia': idFamilia}
+        '\$set': {'id_familia': idFamilia},
       },
     );
 
@@ -809,15 +844,18 @@ class DatabaseService extends ChangeNotifier {
     final userId = _currentUser?.idUsuario;
     if (userId == null) return;
 
-    await MongoService.deleteOne(
+    await MongoService.updateOne(
       collectionName: MongoConfig.colUsuarioFamilia,
-      filter: {
-        'id_usuario': userId,
-        'id_familia': idFamilia,
+      filter: {'id_usuario': userId, 'id_familia': idFamilia},
+      update: {
+        '\$set': {'status': 'inactive'},
       },
     );
 
+    await _localDb.deleteFamilyLocally(idFamilia);
+
     _userFamilies.removeWhere((f) => f.idFamilia == idFamilia);
+    _families.removeWhere((f) => f.idFamilia == idFamilia);
     PushNotificationService.unsubscribeFromFamily(idFamilia);
 
     if (_currentUser?.idFamilia == idFamilia) {
@@ -829,22 +867,29 @@ class DatabaseService extends ChangeNotifier {
           collectionName: MongoConfig.colUsuario,
           filter: {'id_usuario': userId},
           update: {
-            '\$set': {'id_familia': newActiveFamId}
+            '\$set': {'id_familia': newActiveFamId},
           },
         );
+        await _loadFromLocalDb(newActiveFamId);
+        PushNotificationService.subscribeToFamily(newActiveFamId);
       } else {
         _currentUser = _currentUser!.copyWith(clearFamilia: true);
+        await _localDb.saveUser(_currentUser!);
         await MongoService.updateOne(
           collectionName: MongoConfig.colUsuario,
           filter: {'id_usuario': userId},
           update: {
-            '\$unset': {'id_familia': ""}
+            '\$unset': {'id_familia': ""},
           },
         );
+        _shoppingLists.clear();
+        _listDetailItems.clear();
+        _catalogItems.clear();
       }
     }
 
     await fetchFamilyData();
+    notifyListeners();
   }
 
   Future<bool> deleteFamily(String idFamilia) async {
@@ -862,7 +907,9 @@ class DatabaseService extends ChangeNotifier {
         collectionName: MongoConfig.colListasCompra,
         filter: {'id_familia': idFamilia},
       );
-      final familyListIds = familyListDocs.map((l) => l['id_lista_compra'] as String).toList();
+      final familyListIds = familyListDocs
+          .map((l) => l['id_lista_compra'] as String)
+          .toList();
 
       for (var listId in familyListIds) {
         await MongoService.deleteMany(
@@ -889,6 +936,8 @@ class DatabaseService extends ChangeNotifier {
         filter: {'id_familia': idFamilia},
       );
 
+      await _localDb.deleteFamilyLocally(idFamilia);
+
       _userFamilies.removeWhere((f) => f.idFamilia == idFamilia);
       _families.removeWhere((f) => f.idFamilia == idFamilia);
 
@@ -901,22 +950,29 @@ class DatabaseService extends ChangeNotifier {
             collectionName: MongoConfig.colUsuario,
             filter: {'id_usuario': userId},
             update: {
-              '\$set': {'id_familia': newActiveId}
+              '\$set': {'id_familia': newActiveId},
             },
           );
+          await _loadFromLocalDb(newActiveId);
+          PushNotificationService.subscribeToFamily(newActiveId);
         } else {
           _currentUser = _currentUser!.copyWith(clearFamilia: true);
+          await _localDb.saveUser(_currentUser!);
           await MongoService.updateOne(
             collectionName: MongoConfig.colUsuario,
             filter: {'id_usuario': userId},
             update: {
-              '\$unset': {'id_familia': ""}
+              '\$unset': {'id_familia': ""},
             },
           );
+          _shoppingLists.clear();
+          _listDetailItems.clear();
+          _catalogItems.clear();
         }
       }
 
       await fetchFamilyData();
+      notifyListeners();
       return true;
     } catch (e) {
       debugPrint("[DB_SERVICE LOG] Error en deleteFamily: $e");
@@ -928,14 +984,19 @@ class DatabaseService extends ChangeNotifier {
   String _generateFamilyCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final rnd = Random();
-    final code = List.generate(5, (_) => chars[rnd.nextInt(chars.length)]).join();
+    final code = List.generate(
+      5,
+      (_) => chars[rnd.nextInt(chars.length)],
+    ).join();
     return 'FAM-$code';
   }
 
   Future<FamilyModel> createFamily(String nbFamilia, String? dsFamilia) async {
     if (_currentUser == null) throw Exception("Usuario no autenticado");
 
-    final createdCount = _userFamilies.where((f) => f.idCreador == _currentUser!.idUsuario).length;
+    final createdCount = _userFamilies
+        .where((f) => f.idCreador == _currentUser!.idUsuario)
+        .length;
     if (createdCount >= 5) {
       throw Exception("maxFamiliesReachedErr");
     }
@@ -967,6 +1028,7 @@ class DatabaseService extends ChangeNotifier {
       idUsuario: _currentUser!.idUsuario,
       idFamilia: idFam,
       fechaUnion: DateTime.now(),
+      status: 'active',
     );
     await MongoService.insertOne(
       collectionName: MongoConfig.colUsuarioFamilia,
@@ -979,11 +1041,13 @@ class DatabaseService extends ChangeNotifier {
       collectionName: MongoConfig.colUsuario,
       filter: {'id_usuario': _currentUser!.idUsuario},
       update: {
-        '\$set': {'id_familia': idFam}
+        '\$set': {'id_familia': idFam},
       },
     );
 
-    final userIdx = _users.indexWhere((u) => u.idUsuario == _currentUser!.idUsuario);
+    final userIdx = _users.indexWhere(
+      (u) => u.idUsuario == _currentUser!.idUsuario,
+    );
     if (userIdx != -1) {
       _users[userIdx] = _currentUser!;
     }
@@ -1024,7 +1088,9 @@ class DatabaseService extends ChangeNotifier {
     if (remoteFamMap != null) {
       family = FamilyModel.fromMap(remoteFamMap);
       await _localDb.saveFamily(family);
-      final famIdx = _families.indexWhere((f) => f.idFamilia == family!.idFamilia);
+      final famIdx = _families.indexWhere(
+        (f) => f.idFamilia == family!.idFamilia,
+      );
       if (famIdx != -1) {
         _families[famIdx] = family;
       } else {
@@ -1032,7 +1098,9 @@ class DatabaseService extends ChangeNotifier {
       }
     } else {
       try {
-        family = _families.firstWhere((f) => f.clFamilia.toUpperCase() == cleanCode);
+        family = _families.firstWhere(
+          (f) => f.clFamilia.toUpperCase() == cleanCode,
+        );
       } catch (_) {
         return 'invalid_code';
       }
@@ -1051,21 +1119,41 @@ class DatabaseService extends ChangeNotifier {
       },
     );
 
-    final isAlreadyMemberInMemory = _userFamilies.any((f) => f.idFamilia == joinedFamily.idFamilia);
+    final isAlreadyMemberInMemory = _userFamilies.any(
+      (f) => f.idFamilia == joinedFamily.idFamilia,
+    );
 
-    if (existingLink != null || isAlreadyMemberInMemory) {
+    if ((existingLink != null && existingLink['status'] != 'inactive') ||
+        isAlreadyMemberInMemory) {
       return 'already_member';
     }
 
-    final link = UserFamilyModel(
-      idUsuario: _currentUser!.idUsuario,
-      idFamilia: joinedFamily.idFamilia,
-      fechaUnion: DateTime.now(),
-    );
-    await MongoService.insertOne(
-      collectionName: MongoConfig.colUsuarioFamilia,
-      document: link.toMap(),
-    );
+    if (existingLink != null && existingLink['status'] == 'inactive') {
+      await MongoService.updateOne(
+        collectionName: MongoConfig.colUsuarioFamilia,
+        filter: {
+          'id_usuario': _currentUser!.idUsuario,
+          'id_familia': family.idFamilia,
+        },
+        update: {
+          '\$set': {
+            'status': 'active',
+            'fecha_union': DateTime.now().toIso8601String(),
+          },
+        },
+      );
+    } else {
+      final link = UserFamilyModel(
+        idUsuario: _currentUser!.idUsuario,
+        idFamilia: joinedFamily.idFamilia,
+        fechaUnion: DateTime.now(),
+        status: 'active',
+      );
+      await MongoService.insertOne(
+        collectionName: MongoConfig.colUsuarioFamilia,
+        document: link.toMap(),
+      );
+    }
 
     _currentUser = _currentUser!.copyWith(idFamilia: joinedFamily.idFamilia);
     await _localDb.saveUser(_currentUser!);
@@ -1074,11 +1162,13 @@ class DatabaseService extends ChangeNotifier {
       collectionName: MongoConfig.colUsuario,
       filter: {'id_usuario': _currentUser!.idUsuario},
       update: {
-        '\$set': {'id_familia': joinedFamily.idFamilia}
+        '\$set': {'id_familia': joinedFamily.idFamilia},
       },
     );
 
-    final userIdx = _users.indexWhere((u) => u.idUsuario == _currentUser!.idUsuario);
+    final userIdx = _users.indexWhere(
+      (u) => u.idUsuario == _currentUser!.idUsuario,
+    );
     if (userIdx != -1) {
       _users[userIdx] = _currentUser!;
     }
@@ -1131,7 +1221,9 @@ class DatabaseService extends ChangeNotifier {
     final Map<String, UserModel> uniqueMembers = {};
     for (var u in _users) {
       if (u.idUsuario.isNotEmpty && u.idUsuario != 'usr_demo') {
-        if (u.idFamilia == famId || u.idUsuario == _currentUser?.idUsuario || u.idUsuario == currentFamily?.idCreador) {
+        if (u.idFamilia == famId ||
+            u.idUsuario == _currentUser?.idUsuario ||
+            u.idUsuario == currentFamily?.idCreador) {
           uniqueMembers[u.idUsuario] = u;
         }
       }
@@ -1143,11 +1235,11 @@ class DatabaseService extends ChangeNotifier {
     final famId = _currentUser?.idFamilia;
     if (famId == null) return;
 
-    await MongoService.deleteOne(
+    await MongoService.updateOne(
       collectionName: MongoConfig.colUsuarioFamilia,
-      filter: {
-        'id_usuario': idUsuario,
-        'id_familia': famId,
+      filter: {'id_usuario': idUsuario, 'id_familia': famId},
+      update: {
+        '\$set': {'status': 'inactive'},
       },
     );
 
@@ -1155,15 +1247,17 @@ class DatabaseService extends ChangeNotifier {
       collectionName: MongoConfig.colUsuario,
       filter: {'id_usuario': idUsuario, 'id_familia': famId},
       update: {
-        '\$unset': {'id_familia': ""}
+        '\$unset': {'id_familia': ""},
       },
     );
 
     final userIdx = _users.indexWhere((u) => u.idUsuario == idUsuario);
     if (userIdx != -1) {
       _users.removeAt(userIdx);
-      notifyListeners();
     }
+
+    await fetchFamilyData();
+    notifyListeners();
   }
 
   // --- LISTAS DE COMPRAS ---
@@ -1197,10 +1291,11 @@ class DatabaseService extends ChangeNotifier {
     if (trimmedName.isEmpty) return;
 
     final hasActiveList = _shoppingLists.any(
-      (l) => l.idFamilia == famId &&
-             l.isActive &&
-             !l.isCompleted &&
-             l.nbLista.toLowerCase() == trimmedName.toLowerCase(),
+      (l) =>
+          l.idFamilia == famId &&
+          l.isActive &&
+          !l.isCompleted &&
+          l.nbLista.toLowerCase() == trimmedName.toLowerCase(),
     );
 
     if (hasActiveList) {
@@ -1238,7 +1333,9 @@ class DatabaseService extends ChangeNotifier {
   }
 
   Future<void> softDeleteShoppingList(String idListaCompra) async {
-    final idx = _shoppingLists.indexWhere((l) => l.idListaCompra == idListaCompra);
+    final idx = _shoppingLists.indexWhere(
+      (l) => l.idListaCompra == idListaCompra,
+    );
     if (idx != -1) {
       final target = _shoppingLists[idx];
       if (target.isDefault) return;
@@ -1264,8 +1361,12 @@ class DatabaseService extends ChangeNotifier {
     final userId = _currentUser?.idUsuario;
 
     for (int i = 0; i < _listDetailItems.length; i++) {
-      if (_listDetailItems[i].idListaCompra == idListaCompra && _listDetailItems[i].isPending) {
-        _incrementCatalogUsage(_listDetailItems[i].idArticulo, _listDetailItems[i].nbArticulo);
+      if (_listDetailItems[i].idListaCompra == idListaCompra &&
+          _listDetailItems[i].isPending) {
+        _incrementCatalogUsage(
+          _listDetailItems[i].idArticulo,
+          _listDetailItems[i].nbArticulo,
+        );
         final updatedItem = _listDetailItems[i].copyWith(
           status: 'completed',
           fechaCompra: DateTime.now(),
@@ -1287,7 +1388,9 @@ class DatabaseService extends ChangeNotifier {
       }
     }
 
-    final idx = _shoppingLists.indexWhere((l) => l.idListaCompra == idListaCompra);
+    final idx = _shoppingLists.indexWhere(
+      (l) => l.idListaCompra == idListaCompra,
+    );
     if (idx != -1) {
       final updatedList = _shoppingLists[idx].copyWith(isCompleted: true);
       _shoppingLists[idx] = updatedList;
@@ -1310,7 +1413,9 @@ class DatabaseService extends ChangeNotifier {
     if (hasPendingItems(idListaCompra)) {
       return false;
     }
-    final idx = _shoppingLists.indexWhere((l) => l.idListaCompra == idListaCompra);
+    final idx = _shoppingLists.indexWhere(
+      (l) => l.idListaCompra == idListaCompra,
+    );
     if (idx != -1) {
       final updatedList = _shoppingLists[idx].copyWith(isCompleted: true);
       _shoppingLists[idx] = updatedList;
@@ -1350,7 +1455,9 @@ class DatabaseService extends ChangeNotifier {
     items.sort((a, b) {
       final cmp = b.nuUso.compareTo(a.nuUso);
       if (cmp != 0) return cmp;
-      return a.nbArticuloEs.toLowerCase().compareTo(b.nbArticuloEs.toLowerCase());
+      return a.nbArticuloEs.toLowerCase().compareTo(
+        b.nbArticuloEs.toLowerCase(),
+      );
     });
     return items;
   }
@@ -1430,7 +1537,9 @@ class DatabaseService extends ChangeNotifier {
           i.idListaCompra == idListaCompra &&
           i.isPending &&
           (i.nbArticulo.trim().toLowerCase() == cleanNameLower ||
-              (idArticulo.isNotEmpty && i.idArticulo.isNotEmpty && i.idArticulo == idArticulo)),
+              (idArticulo.isNotEmpty &&
+                  i.idArticulo.isNotEmpty &&
+                  i.idArticulo == idArticulo)),
     );
 
     if (activeExistingIdx != -1) {
@@ -1443,7 +1552,9 @@ class DatabaseService extends ChangeNotifier {
           i.idListaCompra == idListaCompra &&
           i.isCompleted &&
           (i.nbArticulo.trim().toLowerCase() == cleanNameLower ||
-              (idArticulo.isNotEmpty && i.idArticulo.isNotEmpty && i.idArticulo == idArticulo)),
+              (idArticulo.isNotEmpty &&
+                  i.idArticulo.isNotEmpty &&
+                  i.idArticulo == idArticulo)),
     );
 
     if (completedExistingIdx != -1) {
@@ -1510,15 +1621,19 @@ class DatabaseService extends ChangeNotifier {
     final userId = _currentUser?.idUsuario;
     if (famId == null || userId == null) return;
 
-    final listIdx = _shoppingLists.indexWhere((l) => l.idListaCompra == idListaCompra);
+    final listIdx = _shoppingLists.indexWhere(
+      (l) => l.idListaCompra == idListaCompra,
+    );
     if (listIdx == -1) return;
 
     final targetList = _shoppingLists[listIdx];
     final lastNotif = targetList.feUltimaNotificacion;
     final now = DateTime.now();
 
-    final canSendNotification = lastNotif == null ||
-        now.difference(lastNotif) >= NotificationConfig.listNotificationCooldown;
+    final canSendNotification =
+        lastNotif == null ||
+        now.difference(lastNotif) >=
+            NotificationConfig.listNotificationCooldown;
 
     if (!canSendNotification) return;
 
@@ -1529,11 +1644,13 @@ class DatabaseService extends ChangeNotifier {
       collectionName: MongoConfig.colListasCompra,
       filter: {'id_lista_compra': idListaCompra},
       update: {
-        '\$set': {'fe_ultima_notificacion': now.toIso8601String()}
+        '\$set': {'fe_ultima_notificacion': now.toIso8601String()},
       },
     );
 
-    final listFamId = targetList.idFamilia.isNotEmpty ? targetList.idFamilia : famId;
+    final listFamId = targetList.idFamilia.isNotEmpty
+        ? targetList.idFamilia
+        : famId;
     final familyName = getFamilyName(listFamId);
 
     final senderName = getUserDisplayName(userId);
@@ -1548,20 +1665,27 @@ class DatabaseService extends ChangeNotifier {
   }
 
   /// Verifica el cooldown de 10 minutos para notificación de marcación como comprado
-  Future<void> _checkAndTriggerPurchaseNotification(String idListaCompra, {String? productName}) async {
+  Future<void> _checkAndTriggerPurchaseNotification(
+    String idListaCompra, {
+    String? productName,
+  }) async {
     final famId = _currentUser?.idFamilia;
     final userId = _currentUser?.idUsuario;
     if (famId == null || userId == null) return;
 
-    final listIdx = _shoppingLists.indexWhere((l) => l.idListaCompra == idListaCompra);
+    final listIdx = _shoppingLists.indexWhere(
+      (l) => l.idListaCompra == idListaCompra,
+    );
     if (listIdx == -1) return;
 
     final targetList = _shoppingLists[listIdx];
     final lastNotif = targetList.feUltimaNotificacionCompra;
     final now = DateTime.now();
 
-    final canSendNotification = lastNotif == null ||
-        now.difference(lastNotif) >= NotificationConfig.listNotificationCooldown;
+    final canSendNotification =
+        lastNotif == null ||
+        now.difference(lastNotif) >=
+            NotificationConfig.listNotificationCooldown;
 
     if (!canSendNotification) {
       final elapsedMin = now.difference(lastNotif).inMinutes;
@@ -1572,20 +1696,26 @@ class DatabaseService extends ChangeNotifier {
       return;
     }
 
-    debugPrint("[PUSH_NOTIF LOG] Cooldown CUMPLIDO en lista '${targetList.nbLista}' para compra. Disparando notificación push...");
+    debugPrint(
+      "[PUSH_NOTIF LOG] Cooldown CUMPLIDO en lista '${targetList.nbLista}' para compra. Disparando notificación push...",
+    );
 
-    _shoppingLists[listIdx] = targetList.copyWith(feUltimaNotificacionCompra: now);
+    _shoppingLists[listIdx] = targetList.copyWith(
+      feUltimaNotificacionCompra: now,
+    );
     await _localDb.saveShoppingList(_shoppingLists[listIdx]);
 
     MongoService.updateOne(
       collectionName: MongoConfig.colListasCompra,
       filter: {'id_lista_compra': idListaCompra},
       update: {
-        '\$set': {'fe_ultima_notificacion_compra': now.toIso8601String()}
+        '\$set': {'fe_ultima_notificacion_compra': now.toIso8601String()},
       },
     );
 
-    final listFamId = targetList.idFamilia.isNotEmpty ? targetList.idFamilia : famId;
+    final listFamId = targetList.idFamilia.isNotEmpty
+        ? targetList.idFamilia
+        : famId;
     final familyName = getFamilyName(listFamId);
 
     final senderName = getUserDisplayName(userId);
@@ -1724,7 +1854,10 @@ class DatabaseService extends ChangeNotifier {
           'id_usuario_finalizo': updated.idUsuarioFinalizo,
         },
       );
-      _checkAndTriggerPurchaseNotification(updated.idListaCompra, productName: updated.nbArticulo);
+      _checkAndTriggerPurchaseNotification(
+        updated.idListaCompra,
+        productName: updated.nbArticulo,
+      );
       _syncService.triggerSync();
     }
   }

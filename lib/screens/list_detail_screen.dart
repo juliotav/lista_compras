@@ -200,6 +200,16 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final db = context.watch<DatabaseService>();
+    final currentUserFam = db.currentUser?.idFamilia;
+
+    if (currentUserFam == null || currentUserFam != widget.shoppingList.idFamilia) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+      });
+    }
+
     final localeProvider = context.watch<LocaleProvider>();
     final currentLang = localeProvider.locale?.languageCode ?? 'es';
 

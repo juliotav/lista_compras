@@ -28,6 +28,14 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
     final currentUser = db.currentUser;
     final members = db.getFamilyMembers();
 
+    if (family == null || currentUser?.idFamilia == null || currentUser?.idFamilia != family.idFamilia) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+      });
+    }
+
     final isCreator = family != null && currentUser != null && family.idCreador == currentUser.idUsuario;
 
     return Scaffold(
@@ -222,14 +230,24 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                                               final screenNav = Navigator.of(context);
                                               final messenger = ScaffoldMessenger.of(context);
 
-                                              await db.leaveFamily(family.idFamilia);
-                                              dialogNav.pop();
+                                              try {
+                                                await db.leaveFamily(family.idFamilia);
+                                                if (dialogNav.mounted) dialogNav.pop();
 
-                                              messenger.showSnackBar(
-                                                SnackBar(content: Text(l10n.leftFamilySuccess)),
-                                              );
+                                                messenger.showSnackBar(
+                                                  SnackBar(content: Text(l10n.leftFamilySuccess)),
+                                                );
 
-                                              screenNav.pop();
+                                                if (screenNav.mounted) screenNav.pop();
+                                              } catch (e) {
+                                                if (dialogNav.mounted) dialogNav.pop();
+                                                messenger.showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(e.toString()),
+                                                    backgroundColor: Colors.red,
+                                                  ),
+                                                );
+                                              }
                                             },
                                       child: isLeaving
                                           ? const SizedBox(

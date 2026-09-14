@@ -2,11 +2,13 @@ class UserFamilyModel {
   final String idUsuario;
   final String idFamilia;
   final DateTime fechaUnion;
+  final String status;
 
   UserFamilyModel({
     required this.idUsuario,
     required this.idFamilia,
     required this.fechaUnion,
+    this.status = 'active',
   });
 
   Map<String, dynamic> toMap() {
@@ -14,6 +16,7 @@ class UserFamilyModel {
       'id_usuario': idUsuario,
       'id_familia': idFamilia,
       'fecha_union': fechaUnion.toIso8601String(),
+      'status': status,
     };
   }
 
@@ -24,6 +27,7 @@ class UserFamilyModel {
       fechaUnion: map['fecha_union'] != null
           ? DateTime.parse(map['fecha_union'])
           : DateTime.now(),
+      status: map['status'] as String? ?? 'active',
     );
   }
 }
