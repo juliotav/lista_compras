@@ -197,45 +197,54 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.family_restroom_rounded),
-              title: Text(l10n.addOrJoinFamily),
-              onTap: () {
-                Navigator.pop(context);
-                AdInterstitialService.showAdIfAllowedThenNavigate(
-                  context: context,
-                  onNavigate: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
-                    );
-                    _refreshData();
-                  },
-                );
-              },
+            Material(
+              color: Colors.transparent,
+              child: ListTile(
+                leading: const Icon(Icons.family_restroom_rounded),
+                title: Text(l10n.addOrJoinFamily),
+                onTap: () {
+                  Navigator.pop(context);
+                  AdInterstitialService.showAdIfAllowedThenNavigate(
+                    context: context,
+                    onNavigate: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+                      );
+                      _refreshData();
+                    },
+                  );
+                },
+              ),
             ),
-            ListTile(
-              leading: const Icon(Icons.people_rounded),
-              title: Text(l10n.menuFamilyMembers),
-              onTap: () async {
-                Navigator.pop(context);
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const FamilyMembersScreen()),
-                );
-                _refreshData();
-              },
+            Material(
+              color: Colors.transparent,
+              child: ListTile(
+                leading: const Icon(Icons.people_rounded),
+                title: Text(l10n.menuFamilyMembers),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const FamilyMembersScreen()),
+                  );
+                  _refreshData();
+                },
+              ),
             ),
-            ListTile(
-              leading: const Icon(Icons.info_outline_rounded),
-              title: Text(l10n.menuAbout),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AboutPrivacyScreen()),
-                );
-              },
+            Material(
+              color: Colors.transparent,
+              child: ListTile(
+                leading: const Icon(Icons.info_outline_rounded),
+                title: Text(l10n.menuAbout),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AboutPrivacyScreen()),
+                  );
+                },
+              ),
             ),
             const Divider(),
             Consumer<LocaleProvider>(
@@ -325,17 +334,20 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout_rounded, color: Colors.red),
-              title: Text(l10n.menuLogout, style: const TextStyle(color: Colors.red)),
-              onTap: () {
-                db.logout();
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
-              },
+            Material(
+              color: Colors.transparent,
+              child: ListTile(
+                leading: const Icon(Icons.logout_rounded, color: Colors.red),
+                title: Text(l10n.menuLogout, style: const TextStyle(color: Colors.red)),
+                onTap: () {
+                  db.logout();
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -557,42 +569,45 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ? BorderSide(color: theme.colorScheme.primary, width: 2)
                                   : BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
                             ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                              leading: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: list.isDefault
-                                      ? theme.colorScheme.primary.withValues(alpha: 0.15)
-                                      : theme.colorScheme.onSurface.withValues(alpha: 0.08),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  list.isDefault ? Icons.star_rounded : Icons.shopping_bag_rounded,
-                                  color: list.isDefault ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                ),
-                              ),
-                              title: Text(
-                                list.nbLista,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                  color: list.isDefault ? theme.colorScheme.primary : theme.colorScheme.onSurface,
-                                ),
-                              ),
-                              subtitle: list.isDefault
-                                  ? Text(l10n.primaryFixedListTag, style: const TextStyle(fontSize: 12, color: Colors.grey))
-                                  : Text(l10n.swipeToDeleteHint, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                              trailing: const Icon(Icons.chevron_right_rounded, size: 28),
-                              onTap: () async {
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ListDetailScreen(shoppingList: list),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                leading: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: list.isDefault
+                                        ? theme.colorScheme.primary.withValues(alpha: 0.15)
+                                        : theme.colorScheme.onSurface.withValues(alpha: 0.08),
+                                    shape: BoxShape.circle,
                                   ),
-                                );
-                                _refreshData();
-                              },
+                                  child: Icon(
+                                    list.isDefault ? Icons.star_rounded : Icons.shopping_bag_rounded,
+                                    color: list.isDefault ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                  ),
+                                ),
+                                title: Text(
+                                  list.nbLista,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    color: list.isDefault ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                                subtitle: list.isDefault
+                                    ? Text(l10n.primaryFixedListTag, style: const TextStyle(fontSize: 12, color: Colors.grey))
+                                    : Text(l10n.swipeToDeleteHint, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                trailing: const Icon(Icons.chevron_right_rounded, size: 28),
+                                onTap: () async {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ListDetailScreen(shoppingList: list),
+                                    ),
+                                  );
+                                  _refreshData();
+                                },
+                              ),
                             ),
                           );
 

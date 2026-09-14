@@ -12,7 +12,8 @@ class FamilyMembersScreen extends StatefulWidget {
   State<FamilyMembersScreen> createState() => _FamilyMembersScreenState();
 }
 
-class _FamilyMembersScreenState extends State<FamilyMembersScreen> with WidgetsBindingObserver {
+class _FamilyMembersScreenState extends State<FamilyMembersScreen>
+    with WidgetsBindingObserver {
   Timer? _syncTimer;
 
   @override
@@ -47,7 +48,10 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> with WidgetsB
     if (state == AppLifecycleState.resumed && mounted) {
       context.read<DatabaseService>().fetchFamilyData();
       _startSyncTimer();
-    } else if ((state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) && mounted) {
+    } else if ((state == AppLifecycleState.paused ||
+            state == AppLifecycleState.inactive ||
+            state == AppLifecycleState.hidden) &&
+        mounted) {
       _stopSyncTimer();
     }
   }
@@ -68,7 +72,8 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> with WidgetsB
     final members = db.getFamilyMembers();
 
     // Redirección automática si la familia fue eliminada o si el usuario fue removido
-    if (family == null || !db.userFamilies.any((f) => f.idFamilia == family.idFamilia)) {
+    if (family == null ||
+        !db.userFamilies.any((f) => f.idFamilia == family.idFamilia)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && Navigator.of(context).canPop()) {
           Navigator.of(context).popUntil((route) => route.isFirst);
@@ -76,7 +81,10 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> with WidgetsB
       });
     }
 
-    final isCreator = family != null && currentUser != null && family.idCreador == currentUser.idUsuario;
+    final isCreator =
+        family != null &&
+        currentUser != null &&
+        family.idCreador == currentUser.idUsuario;
 
     return Scaffold(
       appBar: AppBar(
@@ -98,14 +106,15 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> with WidgetsB
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
-                    color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.4),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer.withValues(alpha: 0.4),
                     child: Column(
                       children: [
                         Text(
                           family.nbFamilia,
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
                         Row(
@@ -113,7 +122,10 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> with WidgetsB
                           children: [
                             Text(
                               "${l10n.familyCodeBadge} ${family.clFamilia}",
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
                           ],
                         ),
@@ -126,122 +138,200 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> with WidgetsB
                         : ListView.separated(
                             padding: const EdgeInsets.all(16),
                             itemCount: members.length,
-                            separatorBuilder: (context, index) => const Divider(),
+                            separatorBuilder: (context, index) =>
+                                const Divider(),
                             itemBuilder: (context, index) {
                               final member = members[index];
-                              final isThisMemberCreator = member.idUsuario == family.idCreador;
-                              final isMe = member.idUsuario == currentUser?.idUsuario;
+                              final isThisMemberCreator =
+                                  member.idUsuario == family.idCreador;
+                              final isMe =
+                                  member.idUsuario == currentUser?.idUsuario;
 
-                              return ListTile(
-                                leading: Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 20,
-                                      backgroundColor: isThisMemberCreator ? Colors.amber[700] : Colors.deepPurple[400],
-                                      child: Text(
-                                        member.nbCompleto.isNotEmpty ? member.nbCompleto[0].toUpperCase() : 'U',
-                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                                      ),
-                                    ),
-                                    if (isThisMemberCreator)
-                                      Positioned(
-                                        right: -2,
-                                        bottom: -2,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.amber[800],
-                                            shape: BoxShape.circle,
-                                            border: Border.all(color: Colors.white, width: 1.5),
-                                          ),
-                                          child: const Icon(
-                                            Icons.star_rounded,
+                              return Material(
+                                color: Colors.transparent,
+                                child: ListTile(
+                                  leading: Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 20,
+                                        backgroundColor: isThisMemberCreator
+                                            ? Colors.amber[700]
+                                            : Colors.deepPurple[400],
+                                        child: Text(
+                                          member.nbCompleto.isNotEmpty
+                                              ? member.nbCompleto[0]
+                                                    .toUpperCase()
+                                              : 'U',
+                                          style: const TextStyle(
                                             color: Colors.white,
-                                            size: 10,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
                                           ),
                                         ),
                                       ),
-                                  ],
-                                ),
-                                title: Text(
-                                  "${member.nbCompleto}${isMe ? ' (Tú)' : ''}",
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                                subtitle: Text(
-                                  "${member.nbEmail}${isThisMemberCreator ? ' • ${l10n.creatorTag}' : ''}",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isThisMemberCreator ? Colors.amber[900] : Colors.grey[600],
-                                    fontWeight: isThisMemberCreator ? FontWeight.bold : FontWeight.normal,
+                                      if (isThisMemberCreator)
+                                        Positioned(
+                                          right: -2,
+                                          bottom: -2,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.amber[800],
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: Colors.white,
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                            child: const Icon(
+                                              Icons.star_rounded,
+                                              color: Colors.white,
+                                              size: 10,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                                trailing: isCreator && !isThisMemberCreator
-                                    ? IconButton(
-                                        icon: const Icon(Icons.person_remove_rounded, color: Colors.red),
-                                        tooltip: l10n.removeMember,
-                                        onPressed: () {
-                                          bool isRemoving = false;
-                                          showDialog(
-                                            context: context,
-                                            barrierDismissible: false,
-                                            builder: (dialogContext) {
-                                              return StatefulBuilder(
-                                                builder: (context, setDialogState) {
-                                                  return AlertDialog(
-                                                    title: Text(l10n.removeMember),
-                                                    content: Text(l10n.confirmRemoveMember),
-                                                    actions: [
-                                                      TextButton(
-                                                        onPressed: isRemoving ? null : () => Navigator.pop(dialogContext),
-                                                        child: Text(l10n.btnCancel),
+                                  title: Text(
+                                    "${member.nbCompleto}${isMe ? ' (Tú)' : ''}",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                  subtitle: Text(
+                                    "${member.nbEmail}${isThisMemberCreator ? ' • ${l10n.creatorTag}' : ''}",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isThisMemberCreator
+                                          ? Colors.amber[900]
+                                          : Colors.grey[600],
+                                      fontWeight: isThisMemberCreator
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                  trailing: isCreator && !isThisMemberCreator
+                                      ? IconButton(
+                                          icon: const Icon(
+                                            Icons.person_remove_rounded,
+                                            color: Colors.red,
+                                          ),
+                                          tooltip: l10n.removeMember,
+                                          onPressed: () {
+                                            bool isRemoving = false;
+                                            showDialog(
+                                              context: context,
+                                              barrierDismissible: false,
+                                              builder: (dialogContext) {
+                                                return StatefulBuilder(
+                                                  builder: (context, setDialogState) {
+                                                    return AlertDialog(
+                                                      title: Text(
+                                                        l10n.removeMember,
                                                       ),
-                                                      ElevatedButton(
-                                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                                        onPressed: isRemoving
-                                                            ? null
-                                                            : () async {
-                                                                setDialogState(() => isRemoving = true);
-                                                                final dialogNav = Navigator.of(dialogContext);
-                                                                final messenger = ScaffoldMessenger.of(context);
-                                                                try {
-                                                                  await db.removeFamilyMember(member.idUsuario);
-                                                                  if (dialogNav.mounted && dialogNav.canPop()) {
-                                                                    dialogNav.pop();
-                                                                  }
-                                                                } catch (e) {
-                                                                  if (dialogNav.mounted && dialogNav.canPop()) {
-                                                                    dialogNav.pop();
-                                                                  }
-                                                                  messenger.showSnackBar(
-                                                                    SnackBar(
-                                                                      content: Text(e.toString()),
-                                                                      backgroundColor: Colors.red,
-                                                                    ),
+                                                      content: Text(
+                                                        l10n.confirmRemoveMember,
+                                                      ),
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: isRemoving
+                                                              ? null
+                                                              : () => Navigator.pop(
+                                                                  dialogContext,
+                                                                ),
+                                                          child: Text(
+                                                            l10n.btnCancel,
+                                                          ),
+                                                        ),
+                                                        ElevatedButton(
+                                                          style:
+                                                              ElevatedButton.styleFrom(
+                                                                backgroundColor:
+                                                                    Colors.red,
+                                                              ),
+                                                          onPressed: isRemoving
+                                                              ? null
+                                                              : () async {
+                                                                  setDialogState(
+                                                                    () =>
+                                                                        isRemoving =
+                                                                            true,
                                                                   );
-                                                                }
-                                                              },
-                                                        child: isRemoving
-                                                            ? const SizedBox(
-                                                                width: 18,
-                                                                height: 18,
-                                                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                                              )
-                                                            : Text(l10n.btnDelete, style: const TextStyle(color: Colors.white)),
-                                                      ),
-                                                    ],
-                                                  );
-                                                },
-                                              );
-                                            },
-                                          );
-                                        },
-                                      )
-                                    : null,
+                                                                  final dialogNav =
+                                                                      Navigator.of(
+                                                                        dialogContext,
+                                                                      );
+                                                                  final messenger =
+                                                                      ScaffoldMessenger.of(
+                                                                        context,
+                                                                      );
+                                                                  try {
+                                                                    await db.removeFamilyMember(
+                                                                      member
+                                                                          .idUsuario,
+                                                                    );
+                                                                    if (dialogNav
+                                                                            .mounted &&
+                                                                        dialogNav
+                                                                            .canPop()) {
+                                                                      dialogNav
+                                                                          .pop();
+                                                                    }
+                                                                  } catch (e) {
+                                                                    if (dialogNav
+                                                                            .mounted &&
+                                                                        dialogNav
+                                                                            .canPop()) {
+                                                                      dialogNav
+                                                                          .pop();
+                                                                    }
+                                                                    messenger.showSnackBar(
+                                                                      SnackBar(
+                                                                        content:
+                                                                            Text(
+                                                                              e.toString(),
+                                                                            ),
+                                                                        backgroundColor:
+                                                                            Colors.red,
+                                                                      ),
+                                                                    );
+                                                                  }
+                                                                },
+                                                          child: isRemoving
+                                                              ? const SizedBox(
+                                                                  width: 18,
+                                                                  height: 18,
+                                                                  child: CircularProgressIndicator(
+                                                                    color: Colors
+                                                                        .white,
+                                                                    strokeWidth:
+                                                                        2,
+                                                                  ),
+                                                                )
+                                                              : Text(
+                                                                  l10n.btnDelete,
+                                                                  style: const TextStyle(
+                                                                    color: Colors
+                                                                        .white,
+                                                                  ),
+                                                                ),
+                                                        ),
+                                                      ],
+                                                    );
+                                                  },
+                                                );
+                                              },
+                                            );
+                                          },
+                                        )
+                                      : null,
+                                ),
                               );
                             },
                           ),
@@ -252,11 +342,19 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> with WidgetsB
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,
                         side: const BorderSide(color: Colors.red),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                       icon: const Icon(Icons.exit_to_app_rounded),
-                      label: Text(l10n.leaveFamily, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      label: Text(
+                        l10n.leaveFamily,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       onPressed: () {
                         bool isLeaving = false;
                         showDialog(
@@ -266,7 +364,9 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> with WidgetsB
                             return StatefulBuilder(
                               builder: (context, setDialogState) {
                                 return AlertDialog(
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
                                   title: Text(l10n.confirmLeaveFamilyTitle),
                                   content: Column(
                                     mainAxisSize: MainAxisSize.min,
@@ -280,36 +380,58 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> with WidgetsB
                                   ),
                                   actions: [
                                     TextButton(
-                                      onPressed: isLeaving ? null : () => Navigator.pop(dialogContext),
+                                      onPressed: isLeaving
+                                          ? null
+                                          : () => Navigator.pop(dialogContext),
                                       child: Text(l10n.btnCancel),
                                     ),
                                     ElevatedButton(
-                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                      ),
                                       onPressed: isLeaving
                                           ? null
                                           : () async {
-                                              setDialogState(() => isLeaving = true);
-                                              final dialogNav = Navigator.of(dialogContext);
-                                              final screenNav = Navigator.of(context);
-                                              final messenger = ScaffoldMessenger.of(context);
-                                              final targetFamId = family.idFamilia;
+                                              setDialogState(
+                                                () => isLeaving = true,
+                                              );
+                                              final dialogNav = Navigator.of(
+                                                dialogContext,
+                                              );
+                                              final screenNav = Navigator.of(
+                                                context,
+                                              );
+                                              final messenger =
+                                                  ScaffoldMessenger.of(context);
+                                              final targetFamId =
+                                                  family.idFamilia;
 
                                               try {
-                                                await db.leaveFamily(targetFamId);
+                                                await db.leaveFamily(
+                                                  targetFamId,
+                                                );
 
-                                                if (dialogNav.mounted && dialogNav.canPop()) {
+                                                if (dialogNav.mounted &&
+                                                    dialogNav.canPop()) {
                                                   dialogNav.pop();
                                                 }
 
                                                 messenger.showSnackBar(
-                                                  SnackBar(content: Text(l10n.leftFamilySuccess)),
+                                                  SnackBar(
+                                                    content: Text(
+                                                      l10n.leftFamilySuccess,
+                                                    ),
+                                                  ),
                                                 );
 
                                                 if (screenNav.mounted) {
-                                                  screenNav.popUntil((route) => route.isFirst);
+                                                  screenNav.popUntil(
+                                                    (route) => route.isFirst,
+                                                  );
                                                 }
                                               } catch (e) {
-                                                if (dialogNav.mounted && dialogNav.canPop()) {
+                                                if (dialogNav.mounted &&
+                                                    dialogNav.canPop()) {
                                                   dialogNav.pop();
                                                 }
                                                 messenger.showSnackBar(
@@ -324,9 +446,17 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> with WidgetsB
                                           ? const SizedBox(
                                               width: 18,
                                               height: 18,
-                                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                              child: CircularProgressIndicator(
+                                                color: Colors.white,
+                                                strokeWidth: 2,
+                                              ),
                                             )
-                                          : Text(l10n.leaveFamily, style: const TextStyle(color: Colors.white)),
+                                          : Text(
+                                              l10n.leaveFamily,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                              ),
+                                            ),
                                     ),
                                   ],
                                 );
@@ -340,9 +470,7 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> with WidgetsB
                 ],
               ),
             ),
-      bottomNavigationBar: const SafeArea(
-        child: AdBannerWidget(),
-      ),
+      bottomNavigationBar: const SafeArea(child: AdBannerWidget()),
     );
   }
 }
