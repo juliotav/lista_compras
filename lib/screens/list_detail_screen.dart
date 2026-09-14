@@ -284,38 +284,40 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
               ),
               const SizedBox(height: 8),
 
-              Container(
-                constraints: const BoxConstraints(minHeight: 120),
-                decoration: BoxDecoration(
-                  color: theme.cardColor,
+              Material(
+                color: theme.cardColor,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: theme.dividerColor),
+                  side: BorderSide(color: theme.dividerColor),
                 ),
-                child: pendingItems.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Text(
-                            l10n.noPendingItemsMsg,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey[600]),
+                clipBehavior: Clip.antiAlias,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 120),
+                  child: pendingItems.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Text(
+                              l10n.noPendingItemsMsg,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
                           ),
-                        ),
-                      )
-                    : ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: pendingItems.length,
-                        separatorBuilder: (context, index) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final item = pendingItems[index];
-                          return Dismissible(
-                            key: Key(item.idDetalle),
-                            direction: DismissDirection.horizontal,
-                            background: Container(
-                              alignment: Alignment.centerLeft,
-                              padding: const EdgeInsets.only(left: 20),
-                              color: Colors.green,
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: pendingItems.length,
+                          separatorBuilder: (context, index) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final item = pendingItems[index];
+                            return Dismissible(
+                              key: Key(item.idDetalle),
+                              direction: DismissDirection.horizontal,
+                              background: Container(
+                                alignment: Alignment.centerLeft,
+                                padding: const EdgeInsets.only(left: 20),
+                                color: Colors.green,
                               child: Row(
                                 children: [
                                   const Icon(Icons.check_rounded, color: Colors.white, size: 28),
@@ -359,6 +361,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                           );
                         },
                       ),
+                ),
               ),
 
               const SizedBox(height: 28),
@@ -425,103 +428,112 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
               ),
               const SizedBox(height: 12),
 
-              Container(
-                height: 220,
-                decoration: BoxDecoration(
-                  color: Colors.amber.withValues(alpha: 0.05),
+              Material(
+                color: Colors.amber.withValues(alpha: 0.05),
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                  side: BorderSide(color: Colors.amber.withValues(alpha: 0.3)),
                 ),
-                child: Column(
-                  children: [
-                    // Opción dinámica de agregar artículo personalizado cuando el usuario escribe algo no coincidente
-                    if (_searchQuery.isNotEmpty && !hasExactMatch)
-                      ListTile(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        tileColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                        leading: CircleAvatar(
-                          backgroundColor: theme.colorScheme.primary,
-                          radius: 14,
-                          child: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
-                        ),
-                        title: Text(
-                          l10n.addQueryToListOption(_searchQuery),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
+                clipBehavior: Clip.antiAlias,
+                child: SizedBox(
+                  height: 220,
+                  child: Column(
+                    children: [
+                      // Opción dinámica de agregar artículo personalizado cuando el usuario escribe algo no coincidente
+                      if (_searchQuery.isNotEmpty && !hasExactMatch)
+                        Material(
+                          color: Colors.transparent,
+                          child: ListTile(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            tileColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                            leading: CircleAvatar(
+                              backgroundColor: theme.colorScheme.primary,
+                              radius: 14,
+                              child: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                            ),
+                            title: Text(
+                              l10n.addQueryToListOption(_searchQuery),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                            subtitle: Text(
+                              l10n.addQueryToListSubtitle,
+                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
+                            onTap: () => _addCustomItem(_searchQuery),
                           ),
                         ),
-                        subtitle: Text(
-                          l10n.addQueryToListSubtitle,
-                          style: const TextStyle(fontSize: 11, color: Colors.grey),
-                        ),
-                        onTap: () => _addCustomItem(_searchQuery),
-                      ),
 
-                    if (filteredCatalog.isEmpty && (_searchQuery.isEmpty || hasExactMatch))
-                      Expanded(
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(l10n.noCatalogItemsFound),
+                      if (filteredCatalog.isEmpty && (_searchQuery.isEmpty || hasExactMatch))
+                        Expanded(
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text(l10n.noCatalogItemsFound),
+                            ),
                           ),
-                        ),
-                      )
-                    else
-                      Expanded(
-                        child: Scrollbar(
-                          child: ListView.separated(
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: filteredCatalog.length,
-                            separatorBuilder: (context, index) => const Divider(height: 1),
-                            itemBuilder: (context, index) {
-                              final catItem = filteredCatalog[index];
-                              final name = catItem.getLocalizedName(currentLang);
+                        )
+                      else
+                        Expanded(
+                          child: Scrollbar(
+                            child: ListView.separated(
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: filteredCatalog.length,
+                              separatorBuilder: (context, index) => const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final catItem = filteredCatalog[index];
+                                final name = catItem.getLocalizedName(currentLang);
 
-                              return ListTile(
-                                dense: true,
-                                title: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        name,
-                                        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
-                                        softWrap: true,
-                                      ),
+                                return Material(
+                                  color: Colors.transparent,
+                                  child: ListTile(
+                                    dense: true,
+                                    title: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            name,
+                                            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+                                            softWrap: true,
+                                          ),
+                                        ),
+                                        if (catItem.nuUso > 0) ...[
+                                          const SizedBox(width: 6),
+                                          const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 16),
+                                        ],
+                                      ],
                                     ),
-                                    if (catItem.nuUso > 0) ...[
-                                      const SizedBox(width: 6),
-                                      const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 16),
-                                    ],
-                                  ],
-                                ),
-                                trailing: const Icon(Icons.add_rounded, color: Colors.blue),
-                                onTap: () async {
-                                  final added = await db.addItemToList(
-                                    idListaCompra: widget.shoppingList.idListaCompra,
-                                    idArticulo: catItem.idArticulo,
-                                    nbArticulo: name,
-                                  );
+                                    trailing: const Icon(Icons.add_rounded, color: Colors.blue),
+                                    onTap: () async {
+                                      final added = await db.addItemToList(
+                                        idListaCompra: widget.shoppingList.idListaCompra,
+                                        idArticulo: catItem.idArticulo,
+                                        nbArticulo: name,
+                                      );
 
-                                  if (!added && context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(l10n.itemAlreadyInList(name)),
-                                        backgroundColor: Colors.orange[800],
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
-                                  }
+                                      if (!added && context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(l10n.itemAlreadyInList(name)),
+                                            backgroundColor: Colors.orange[800],
+                                            duration: const Duration(seconds: 2),
+                                          ),
+                                        );
+                                      }
 
-                                  _searchController.clear();
-                                  FocusManager.instance.primaryFocus?.unfocus();
-                                },
-                              );
-                            },
+                                      _searchController.clear();
+                                      FocusManager.instance.primaryFocus?.unfocus();
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
 
@@ -558,63 +570,69 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                   ],
                 ),
                 const SizedBox(height: 8),
-                Container(
-                  constraints: const BoxConstraints(maxHeight: 280),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.04),
+                Material(
+                  color: Colors.green.withValues(alpha: 0.04),
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
+                    side: BorderSide(color: Colors.green.withValues(alpha: 0.2)),
                   ),
-                  child: Scrollbar(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: completedItems.length,
-                      separatorBuilder: (context, index) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final item = completedItems[index];
-                        final addedByName = db.getUserDisplayName(item.idUsuarioAgrego);
-                        final hasNote = item.dsDetalle != null && item.dsDetalle!.trim().isNotEmpty;
-                        return ListTile(
-                          dense: true,
-                          leading: const Icon(Icons.check_box_rounded, color: Colors.green),
-                          title: Text(
-                            item.nbArticulo,
-                            style: TextStyle(
-                              decoration: TextDecoration.lineThrough,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                          subtitle: (hasNote || addedByName.isNotEmpty)
-                              ? Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (hasNote)
-                                      Text(
-                                        item.dsDetalle!,
-                                        style: TextStyle(
-                                          decoration: TextDecoration.lineThrough,
-                                          fontSize: 12,
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                    if (addedByName.isNotEmpty)
-                                      Align(
-                                        alignment: Alignment.bottomRight,
-                                        child: Text(
-                                          l10n.addedBy(addedByName),
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontStyle: FontStyle.italic,
-                                            color: Colors.grey[500],
+                  clipBehavior: Clip.antiAlias,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 280),
+                    child: Scrollbar(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: completedItems.length,
+                        separatorBuilder: (context, index) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final item = completedItems[index];
+                          final addedByName = db.getUserDisplayName(item.idUsuarioAgrego);
+                          final hasNote = item.dsDetalle != null && item.dsDetalle!.trim().isNotEmpty;
+                          return Material(
+                            color: Colors.transparent,
+                            child: ListTile(
+                              dense: true,
+                              leading: const Icon(Icons.check_box_rounded, color: Colors.green),
+                              title: Text(
+                                item.nbArticulo,
+                                style: TextStyle(
+                                  decoration: TextDecoration.lineThrough,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              subtitle: (hasNote || addedByName.isNotEmpty)
+                                  ? Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (hasNote)
+                                          Text(
+                                            item.dsDetalle!,
+                                            style: TextStyle(
+                                              decoration: TextDecoration.lineThrough,
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                  ],
-                                )
-                              : null,
-                        );
-                      },
+                                        if (addedByName.isNotEmpty)
+                                          Align(
+                                            alignment: Alignment.bottomRight,
+                                            child: Text(
+                                              l10n.addedBy(addedByName),
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontStyle: FontStyle.italic,
+                                                color: Colors.grey[500],
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    )
+                                  : null,
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),

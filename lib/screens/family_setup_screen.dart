@@ -509,62 +509,65 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
                           width: isActive ? 2 : 1,
                         ),
                       ),
-                      child: ListTile(
-                        onTap: () async {
-                          await db.switchFamily(fam.idFamilia);
-                          if (context.mounted) {
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(builder: (_) => const HomeScreen()),
-                              (route) => false,
-                            );
-                          }
-                        },
-                        leading: CircleAvatar(
-                          backgroundColor: isCreator
-                              ? Colors.deepPurple.withValues(alpha: 0.15)
-                              : Colors.teal.withValues(alpha: 0.15),
-                          child: Icon(
-                            isCreator ? Icons.star_rounded : Icons.group_rounded,
-                            color: isCreator ? Colors.deepPurple : Colors.teal,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: ListTile(
+                          onTap: () async {
+                            await db.switchFamily(fam.idFamilia);
+                            if (context.mounted) {
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(builder: (_) => const HomeScreen()),
+                                (route) => false,
+                              );
+                            }
+                          },
+                          leading: CircleAvatar(
+                            backgroundColor: isCreator
+                                ? Colors.deepPurple.withValues(alpha: 0.15)
+                                : Colors.teal.withValues(alpha: 0.15),
+                            child: Icon(
+                              isCreator ? Icons.star_rounded : Icons.group_rounded,
+                              color: isCreator ? Colors.deepPurple : Colors.teal,
+                            ),
                           ),
-                        ),
-                        title: Text(
-                          fam.nbFamilia,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                          "Código: ${fam.clFamilia}",
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: isCreator ? Colors.deepPurple.withValues(alpha: 0.1) : Colors.teal.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                isCreator ? l10n.creatorBadge : l10n.memberBadge,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: isCreator ? Colors.deepPurple : Colors.teal,
+                          title: Text(
+                            fam.nbFamilia,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            "Código: ${fam.clFamilia}",
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isCreator ? Colors.deepPurple.withValues(alpha: 0.1) : Colors.teal.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  isCreator ? l10n.creatorBadge : l10n.memberBadge,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: isCreator ? Colors.deepPurple : Colors.teal,
+                                  ),
                                 ),
                               ),
-                            ),
 
-                            if (isCreator) ...[
-                              const SizedBox(width: 4),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                                tooltip: l10n.deleteFamilyTitle,
-                                onPressed: () => _confirmDeleteFamily(context, fam),
-                              ),
+                              if (isCreator) ...[
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                                  tooltip: l10n.deleteFamilyTitle,
+                                  onPressed: () => _confirmDeleteFamily(context, fam),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     );
