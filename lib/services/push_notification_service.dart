@@ -35,8 +35,12 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       } catch (_) {}
     }
 
-    if (senderUserId != null && currentUserId != null && senderUserId == currentUserId) {
-      debugPrint('[PUSH_NOTIF LOG] Omitiendo push en segundo plano: enviada por el propio usuario ($currentUserId).');
+    if (senderUserId != null &&
+        currentUserId != null &&
+        senderUserId == currentUserId) {
+      debugPrint(
+        '[PUSH_NOTIF LOG] Omitiendo push en segundo plano: enviada por el propio usuario ($currentUserId).',
+      );
       return;
     }
 
@@ -44,26 +48,38 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     // ya muestra la notificación nativa en segundo plano automáticamente.
     // Omitimos la llamada manual a FlutterLocalNotificationsPlugin para evitar notificaciones duplicadas.
     if (message.notification != null) {
-      debugPrint('[PUSH_NOTIF LOG] Notificación nativa ya mostrada por el SO. Omitiendo duplicado local en segundo plano.');
+      debugPrint(
+        '[PUSH_NOTIF LOG] Notificación nativa ya mostrada por el SO. Omitiendo duplicado local en segundo plano.',
+      );
       return;
     }
 
-    final title = message.data['title']?.toString() ?? message.notification?.title ?? 'Lista de Compras';
-    final body = message.data['body']?.toString() ?? message.notification?.body ?? '';
+    final title =
+        message.data['title']?.toString() ??
+        message.notification?.title ??
+        'Lista de Compras';
+    final body =
+        message.data['body']?.toString() ?? message.notification?.body ?? '';
 
     if (body.isEmpty) return;
 
     // 2. Mostrar la notificación local con sonido
     final localNotifications = FlutterLocalNotificationsPlugin();
-    const androidInit = AndroidInitializationSettings('@drawable/ic_notification');
+    const androidInit = AndroidInitializationSettings(
+      '@drawable/ic_notification',
+    );
     const iosInit = DarwinInitializationSettings();
-    const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
+    const initSettings = InitializationSettings(
+      android: androidInit,
+      iOS: iosInit,
+    );
     await localNotifications.initialize(settings: initSettings);
 
     const androidDetails = AndroidNotificationDetails(
       'high_importance_channel',
       'Notificaciones de Listas',
-      channelDescription: 'Canal para alertas con sonido de productos agregados a listas de compras.',
+      channelDescription:
+          'Canal para alertas con sonido de productos agregados a listas de compras.',
       importance: Importance.high,
       priority: Priority.high,
       playSound: true,
@@ -79,30 +95,41 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     );
 
     await localNotifications.show(
-      id: (message.messageId ?? message.hashCode.toString()).hashCode & 0x7FFFFFFF,
+      id:
+          (message.messageId ?? message.hashCode.toString()).hashCode &
+          0x7FFFFFFF,
       title: title,
       body: body,
-      notificationDetails: const NotificationDetails(android: androidDetails, iOS: iosDetails),
+      notificationDetails: const NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      ),
       payload: jsonEncode(message.data),
     );
   } catch (e) {
-    debugPrint('[PUSH_NOTIF LOG] Error en firebaseMessagingBackgroundHandler: $e');
+    debugPrint(
+      '[PUSH_NOTIF LOG] Error en firebaseMessagingBackgroundHandler: $e',
+    );
   }
 }
 
 /// Servicio singleton para la gestión de Notificaciones Push (FCM + Backend Hostinger PHP)
 class PushNotificationService {
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-  static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+  static final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
   static bool _isFirebaseInitialized = false;
   static final Set<String> _subscribedFamilyIds = {};
+  static final Set<String> _pendingFamilyIdsToSync = {};
   static String? _lastHandledNotificationKey;
   static DateTime? _lastHandledNotificationTime;
 
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'high_importance_channel', // id
     'Notificaciones de Listas', // title
-    description: 'Canal para alertas con sonido de productos agregados a listas de compras.',
+    description:
+        'Canal para alertas con sonido de productos agregados a listas de compras.',
     importance: Importance.high,
     playSound: true,
     enableVibration: true,
@@ -131,46 +158,77 @@ class PushNotificationService {
         provisional: false,
       );
 
-      debugPrint('[PUSH_NOTIF LOG] Plataforma actual: ${defaultTargetPlatform.name.toUpperCase()} | Estado de permisos de notificación: ${settings.authorizationStatus}');
-
-      // Configurar presentación visual y sonora en primer plano para iOS
-      await messaging.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
+      debugPrint(
+        '[PUSH_NOTIF LOG] Plataforma actual: ${defaultTargetPlatform.name.toUpperCase()} | Estado de permisos de notificación: ${settings.authorizationStatus}',
       );
 
+      // Configurar presentación visual y sonora en primer plano para iOS (con timeout defensivo)
+      try {
+        await messaging
+            .setForegroundNotificationPresentationOptions(
+              alert: true,
+              badge: true,
+              sound: true,
+            )
+            .timeout(const Duration(seconds: 3));
+      } catch (e) {
+        debugPrint(
+          '[PUSH_NOTIF LOG] Advertencia en setForegroundNotificationPresentationOptions: $e',
+        );
+      }
+
       // Inicializar plugin de notificaciones locales para Android / iOS
-      const androidInit = AndroidInitializationSettings('@drawable/ic_notification');
+      const androidInit = AndroidInitializationSettings(
+        '@drawable/ic_notification',
+      );
       const iosInit = DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
         requestSoundPermission: false,
       );
-      const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
-
-      await _localNotifications.initialize(
-        settings: initSettings,
-        onDidReceiveNotificationResponse: (NotificationResponse response) {
-          if (response.payload != null && response.payload!.isNotEmpty) {
-            try {
-              final data = jsonDecode(response.payload!);
-              if (data is Map<String, dynamic>) {
-                handleNotificationClick(data);
-              }
-            } catch (_) {}
-          }
-        },
+      const initSettings = InitializationSettings(
+        android: androidInit,
+        iOS: iosInit,
       );
 
+      try {
+        await _localNotifications
+            .initialize(
+              settings: initSettings,
+              onDidReceiveNotificationResponse:
+                  (NotificationResponse response) {
+                    if (response.payload != null &&
+                        response.payload!.isNotEmpty) {
+                      try {
+                        final data = jsonDecode(response.payload!);
+                        if (data is Map<String, dynamic>) {
+                          handleNotificationClick(data);
+                        }
+                      } catch (_) {}
+                    }
+                  },
+            )
+            .timeout(const Duration(seconds: 3));
+      } catch (e) {
+        debugPrint(
+          '[PUSH_NOTIF LOG] Advertencia en _localNotifications.initialize: $e',
+        );
+      }
+
       // Crear canal de alta prioridad con sonido en Android
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(_channel);
+      try {
+        await _localNotifications
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >()
+            ?.createNotificationChannel(_channel);
+      } catch (_) {}
 
       // 1. Escuchar notificaciones recibidas en primer plano y reproducir sonido / mostrar banner
       FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-        debugPrint('[PUSH_NOTIF LOG] Notificación recibida en primer plano: ${message.notification?.title ?? message.data['title']} - ${message.notification?.body ?? message.data['body']}');
+        debugPrint(
+          '[PUSH_NOTIF LOG] Notificación recibida en primer plano: ${message.notification?.title ?? message.data['title']} - ${message.notification?.body ?? message.data['body']}',
+        );
 
         // Filtrar para NO notificar al propio usuario que agregó los productos
         final senderUserId = message.data['sender_user_id']?.toString();
@@ -185,17 +243,29 @@ class PushNotificationService {
           } catch (_) {}
         }
 
-        if (senderUserId != null && currentUserId != null && senderUserId == currentUserId) {
-          debugPrint('[PUSH_NOTIF LOG] Omitiendo notificación en primer plano: enviada por el propio usuario actual ($currentUserId).');
+        if (senderUserId != null &&
+            currentUserId != null &&
+            senderUserId == currentUserId) {
+          debugPrint(
+            '[PUSH_NOTIF LOG] Omitiendo notificación en primer plano: enviada por el propio usuario actual ($currentUserId).',
+          );
           return;
         }
 
-        final title = message.data['title']?.toString() ?? message.notification?.title ?? 'Lista de Compras';
-        final body = message.data['body']?.toString() ?? message.notification?.body ?? '';
+        final title =
+            message.data['title']?.toString() ??
+            message.notification?.title ??
+            'Lista de Compras';
+        final body =
+            message.data['body']?.toString() ??
+            message.notification?.body ??
+            '';
 
         if (body.isNotEmpty && !kIsWeb) {
           try {
-            final notifId = (message.messageId ?? message.hashCode.toString()).hashCode & 0x7FFFFFFF;
+            final notifId =
+                (message.messageId ?? message.hashCode.toString()).hashCode &
+                0x7FFFFFFF;
             await _localNotifications.show(
               id: notifId,
               title: title,
@@ -204,7 +274,8 @@ class PushNotificationService {
                 android: AndroidNotificationDetails(
                   'high_importance_channel',
                   'Notificaciones de Listas',
-                  channelDescription: 'Canal para alertas con sonido de productos agregados a listas de compras.',
+                  channelDescription:
+                      'Canal para alertas con sonido de productos agregados a listas de compras.',
                   importance: Importance.high,
                   priority: Priority.high,
                   playSound: true,
@@ -221,50 +292,140 @@ class PushNotificationService {
               payload: jsonEncode(message.data),
             );
           } catch (e) {
-            debugPrint('[PUSH_NOTIF LOG] Error al mostrar banner local en primer plano: $e');
+            debugPrint(
+              '[PUSH_NOTIF LOG] Error al mostrar banner local en primer plano: $e',
+            );
           }
         }
       });
 
       // 2. Escuchar clics en la notificación cuando la app está en segundo plano
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        debugPrint('[PUSH_NOTIF LOG] Notificación abierta desde segundo plano: ${message.data}');
+        debugPrint(
+          '[PUSH_NOTIF LOG] Notificación abierta desde segundo plano: ${message.data}',
+        );
         handleNotificationClick(message.data);
       });
 
       // 3. Manejar apertura cuando la app estaba completamente cerrada (Cold Start vía FCM)
-      final initialMessage = await messaging.getInitialMessage();
-      if (initialMessage != null) {
-        debugPrint('[PUSH_NOTIF LOG] Notificación abrió la app desde estado cerrado (FCM): ${initialMessage.data}');
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          handleNotificationClick(initialMessage.data);
-        });
+      try {
+        final initialMessage = await messaging.getInitialMessage().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => null,
+        );
+        if (initialMessage != null) {
+          debugPrint(
+            '[PUSH_NOTIF LOG] Notificación abrió la app desde estado cerrado (FCM): ${initialMessage.data}',
+          );
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            handleNotificationClick(initialMessage.data);
+          });
+        }
+      } catch (e) {
+        debugPrint('[PUSH_NOTIF LOG] Nota al obtener initialMessage: $e');
       }
 
       // 4. Manejar apertura cuando la app estaba cerrada y se tocó una notificación local
-      final localLaunchDetails = await _localNotifications.getNotificationAppLaunchDetails();
-      if (localLaunchDetails?.didNotificationLaunchApp ?? false) {
-        final payload = localLaunchDetails?.notificationResponse?.payload;
-        if (payload != null && payload.isNotEmpty) {
-          try {
-            final data = jsonDecode(payload);
-            if (data is Map<String, dynamic>) {
-              debugPrint('[PUSH_NOTIF LOG] Notificación local abrió la app desde estado cerrado: $data');
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                handleNotificationClick(data);
-              });
-            }
-          } catch (_) {}
+      try {
+        final localLaunchDetails = await _localNotifications
+            .getNotificationAppLaunchDetails()
+            .timeout(const Duration(seconds: 3), onTimeout: () => null);
+        if (localLaunchDetails?.didNotificationLaunchApp ?? false) {
+          final payload = localLaunchDetails?.notificationResponse?.payload;
+          if (payload != null && payload.isNotEmpty) {
+            try {
+              final data = jsonDecode(payload);
+              if (data is Map<String, dynamic>) {
+                debugPrint(
+                  '[PUSH_NOTIF LOG] Notificación local abrió la app desde estado cerrado: $data',
+                );
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  handleNotificationClick(data);
+                });
+              }
+            } catch (_) {}
+          }
         }
+      } catch (e) {
+        debugPrint('[PUSH_NOTIF LOG] Nota al obtener localLaunchDetails: $e');
       }
 
-      // Obtener token FCM para depuración
-      final token = await messaging.getToken();
-      debugPrint('[PUSH_NOTIF LOG] Token FCM del dispositivo: $token');
-    } catch (e, stack) {
-      debugPrint('[PUSH_NOTIF ERROR] Error al inicializar Firebase/Notificaciones: $e');
-      debugPrint('[PUSH_NOTIF ERROR STACK] $stack');
+      // 5. Iniciar monitoreo reactivo de APNs y FCM en segundo plano sin bloquear la UI
+      _startApnsAndFcmSync(messaging);
+    } catch (e) {
+      debugPrint(
+        '[PUSH_NOTIF LOG] Firebase no inicializado o sin archivo de configuración: $e',
+      );
     }
+  }
+
+  /// Monitorea en segundo plano la entrega del token APNs y la sincronización con FCM
+  static void _startApnsAndFcmSync(FirebaseMessaging messaging) {
+    // Escuchar actualizaciones de token emitidas por Firebase
+    messaging.onTokenRefresh.listen((newToken) {
+      debugPrint('[PUSH_NOTIF LOG] Token FCM emitido/actualizado: $newToken');
+      _flushPendingFamilySubscriptions(messaging);
+    });
+
+    Future.microtask(() async {
+      try {
+        if (defaultTargetPlatform == TargetPlatform.iOS) {
+          debugPrint(
+            '[PUSH_NOTIF LOG] Iniciando verificación de token APNs de Apple...',
+          );
+          String? apnsToken;
+          // Reintentar hasta 15 veces (15 * 1.5s = ~22 segundos)
+          for (int i = 0; i < 15; i++) {
+            apnsToken = await messaging.getAPNSToken();
+            if (apnsToken != null) {
+              debugPrint(
+                '[PUSH_NOTIF LOG] ¡Token APNs asignado con éxito por Apple!: $apnsToken',
+              );
+              break;
+            }
+            await Future.delayed(const Duration(milliseconds: 1500));
+          }
+
+          if (apnsToken == null) {
+            debugPrint(
+              '[PUSH_NOTIF LOG] APNs token no estuvo disponible tras 22s. Si estás en un dispositivo físico, asegúrate de haber cerrado la app y recompilado completamente con "flutter run".',
+            );
+            return;
+          }
+        }
+
+        // Obtener el token FCM una vez que APNs está garantizado
+        final token = await messaging.getToken().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => null,
+        );
+        if (token != null) {
+          debugPrint(
+            '[PUSH_NOTIF LOG] Token FCM del dispositivo listo: $token',
+          );
+        }
+
+        // Sincronizar familias que hayan quedado pendientes
+        await _flushPendingFamilySubscriptions(messaging);
+      } catch (e) {
+        debugPrint(
+          '[PUSH_NOTIF LOG] Error durante la sincronización de tokens: $e',
+        );
+      }
+    });
+  }
+
+  /// Ejecuta la suscripción de cualquier familia pendiente una vez que APNs esté disponible
+  static Future<void> _flushPendingFamilySubscriptions(
+    FirebaseMessaging messaging,
+  ) async {
+    if (_pendingFamilyIdsToSync.isEmpty) return;
+    debugPrint(
+      '[PUSH_NOTIF LOG] Sincronizando ${_pendingFamilyIdsToSync.length} familias pendientes tras disponibilidad de APNs...',
+    );
+    final toSync = _pendingFamilyIdsToSync.toList();
+    _pendingFamilyIdsToSync.clear();
+    await syncFamilySubscriptions(toSync);
   }
 
   /// Procesa el clic en la notificación: cambia de familia si es necesario y navega al detalle de la lista
@@ -273,8 +434,13 @@ class PushNotificationService {
     final idLista = data['id_lista']?.toString();
     final nbLista = data['nb_lista']?.toString();
 
-    if (idFamilia == null || idFamilia.isEmpty || idLista == null || idLista.isEmpty) {
-      debugPrint('[PUSH_NOTIF LOG] Datos incompletos en la notificación para navegación.');
+    if (idFamilia == null ||
+        idFamilia.isEmpty ||
+        idLista == null ||
+        idLista.isEmpty) {
+      debugPrint(
+        '[PUSH_NOTIF LOG] Datos incompletos en la notificación para navegación.',
+      );
       return;
     }
 
@@ -283,25 +449,34 @@ class PushNotificationService {
     final now = DateTime.now();
     if (_lastHandledNotificationKey == notifKey &&
         _lastHandledNotificationTime != null &&
-        now.difference(_lastHandledNotificationTime!) < const Duration(seconds: 2)) {
-      debugPrint('[PUSH_NOTIF LOG] Ignorando clic duplicado en notificación ($notifKey).');
+        now.difference(_lastHandledNotificationTime!) <
+            const Duration(seconds: 2)) {
+      debugPrint(
+        '[PUSH_NOTIF LOG] Ignorando clic duplicado en notificación ($notifKey).',
+      );
       return;
     }
     _lastHandledNotificationKey = notifKey;
     _lastHandledNotificationTime = now;
 
-    debugPrint('[PUSH_NOTIF LOG] Procesando navegación a lista: $idLista en familia: $idFamilia');
+    debugPrint(
+      '[PUSH_NOTIF LOG] Procesando navegación a lista: $idLista en familia: $idFamilia',
+    );
 
     // Esperar a que el contexto del Navigator y su estado estén disponibles
     int retries = 0;
-    while ((navigatorKey.currentState == null || navigatorKey.currentContext == null) && retries < 50) {
+    while ((navigatorKey.currentState == null ||
+            navigatorKey.currentContext == null) &&
+        retries < 50) {
       await Future.delayed(const Duration(milliseconds: 150));
       retries++;
     }
 
     final currentCtx = navigatorKey.currentContext;
     if (currentCtx == null || !currentCtx.mounted) {
-      debugPrint('[PUSH_NOTIF LOG] No se pudo obtener el contexto de navegación.');
+      debugPrint(
+        '[PUSH_NOTIF LOG] No se pudo obtener el contexto de navegación.',
+      );
       return;
     }
 
@@ -315,13 +490,17 @@ class PushNotificationService {
     }
 
     if (db.currentUser == null) {
-      debugPrint('[PUSH_NOTIF LOG] Usuario no autenticado. Omitiendo apertura directa.');
+      debugPrint(
+        '[PUSH_NOTIF LOG] Usuario no autenticado. Omitiendo apertura directa.',
+      );
       return;
     }
 
     // 1. Si el usuario está posicionado en otra familia, cambiamos a la familia indicada en la notificación
     if (db.currentUser?.idFamilia != idFamilia) {
-      debugPrint('[PUSH_NOTIF LOG] Cambiando familia activa de ${db.currentUser?.idFamilia} a $idFamilia...');
+      debugPrint(
+        '[PUSH_NOTIF LOG] Cambiando familia activa de ${db.currentUser?.idFamilia} a $idFamilia...',
+      );
       await db.switchFamily(idFamilia);
     } else {
       await db.fetchFamilyData();
@@ -343,7 +522,9 @@ class PushNotificationService {
         targetList = ShoppingListModel(
           idListaCompra: idLista,
           idFamilia: idFamilia,
-          nbLista: (nbLista != null && nbLista.isNotEmpty) ? nbLista : 'Lista de Compras',
+          nbLista: (nbLista != null && nbLista.isNotEmpty)
+              ? nbLista
+              : 'Lista de Compras',
           isActive: true,
         );
       }
@@ -361,6 +542,31 @@ class PushNotificationService {
     }
   }
 
+  /// En iOS, espera de forma no bloqueante a que el APNs token esté listo antes de operar sobre topics
+  static Future<bool> _ensureApnsTokenReady(FirebaseMessaging messaging) async {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return true;
+
+    try {
+      final currentToken = await messaging.getAPNSToken();
+      if (currentToken != null) return true;
+
+      debugPrint(
+        '[PUSH_NOTIF LOG] Verificando disponibilidad inmediata de token APNs...',
+      );
+      for (int i = 0; i < 4; i++) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        final token = await messaging.getAPNSToken();
+        if (token != null) {
+          debugPrint('[PUSH_NOTIF LOG] Token APNs disponible para topics.');
+          return true;
+        }
+      }
+    } catch (e) {
+      debugPrint('[PUSH_NOTIF LOG] Error verificando APNs token: $e');
+    }
+    return false;
+  }
+
   /// Sincroniza las suscripciones de Firebase FCM para todas las familias a las que pertenece el usuario
   static Future<void> syncFamilySubscriptions(List<String> familyIds) async {
     if (kIsWeb || !_isFirebaseInitialized) return;
@@ -369,37 +575,77 @@ class PushNotificationService {
       final messaging = FirebaseMessaging.instance;
       final targetSet = familyIds.where((id) => id.isNotEmpty).toSet();
 
+      // En iOS, garantizar que APNs esté disponible antes de llamar a subscribeToTopic
+      final isReady = await _ensureApnsTokenReady(messaging);
+      if (defaultTargetPlatform == TargetPlatform.iOS && !isReady) {
+        debugPrint(
+          '[PUSH_NOTIF LOG] APNs token no disponible de inmediato. Guardando ${targetSet.length} familias para sincronizar en onTokenRefresh.',
+        );
+        _pendingFamilyIdsToSync.addAll(targetSet);
+        return;
+      }
+
       // Desuscribir de topics que ya no corresponden
       for (final oldId in _subscribedFamilyIds.toList()) {
         if (!targetSet.contains(oldId)) {
-          await messaging.unsubscribeFromTopic('family_$oldId');
-          _subscribedFamilyIds.remove(oldId);
-          debugPrint('[PUSH_NOTIF LOG] Desuscrito de topic familiar: family_$oldId');
+          try {
+            await messaging.unsubscribeFromTopic('family_$oldId');
+            _subscribedFamilyIds.remove(oldId);
+            debugPrint(
+              '[PUSH_NOTIF LOG] Desuscrito de topic familiar: family_$oldId',
+            );
+          } catch (e) {
+            debugPrint(
+              '[PUSH_NOTIF LOG] Error al desuscribir de family_$oldId: $e',
+            );
+          }
         }
       }
 
       // Suscribir a cada una de las familias activas del usuario
       for (final famId in targetSet) {
         if (!_subscribedFamilyIds.contains(famId)) {
-          await messaging.subscribeToTopic('family_$famId');
-          _subscribedFamilyIds.add(famId);
-          debugPrint('[PUSH_NOTIF LOG] Suscrito exitosamente al topic: family_$famId');
+          try {
+            await messaging.subscribeToTopic('family_$famId');
+            _subscribedFamilyIds.add(famId);
+            debugPrint(
+              '[PUSH_NOTIF LOG] Suscrito exitosamente al topic: family_$famId',
+            );
+          } catch (e) {
+            debugPrint(
+              '[PUSH_NOTIF LOG] Error al suscribir a family_$famId: $e',
+            );
+            _pendingFamilyIdsToSync.add(famId);
+          }
         }
       }
     } catch (e) {
-      debugPrint('[PUSH_NOTIF LOG] Error al sincronizar suscripciones familiares: $e');
+      debugPrint(
+        '[PUSH_NOTIF LOG] Error al sincronizar suscripciones familiares: $e',
+      );
     }
   }
 
   /// Suscribe el dispositivo al topic de una familia específica
   static Future<void> subscribeToFamily(String? idFamilia) async {
-    if (kIsWeb || !_isFirebaseInitialized || idFamilia == null || idFamilia.isEmpty) return;
+    if (kIsWeb ||
+        !_isFirebaseInitialized ||
+        idFamilia == null ||
+        idFamilia.isEmpty)
+      return;
 
     try {
       final messaging = FirebaseMessaging.instance;
+      final isReady = await _ensureApnsTokenReady(messaging);
+      if (defaultTargetPlatform == TargetPlatform.iOS && !isReady) {
+        _pendingFamilyIdsToSync.add(idFamilia);
+        return;
+      }
       await messaging.subscribeToTopic('family_$idFamilia');
       _subscribedFamilyIds.add(idFamilia);
-      debugPrint('[PUSH_NOTIF LOG] Suscrito exitosamente al topic: family_$idFamilia');
+      debugPrint(
+        '[PUSH_NOTIF LOG] Suscrito exitosamente al topic: family_$idFamilia',
+      );
     } catch (e) {
       debugPrint('[PUSH_NOTIF LOG] Error al suscribirse al topic familiar: $e');
     }
@@ -407,13 +653,19 @@ class PushNotificationService {
 
   /// Desuscribe el dispositivo de un topic familiar específico
   static Future<void> unsubscribeFromFamily(String? idFamilia) async {
-    if (kIsWeb || !_isFirebaseInitialized || idFamilia == null || idFamilia.isEmpty) return;
+    if (kIsWeb ||
+        !_isFirebaseInitialized ||
+        idFamilia == null ||
+        idFamilia.isEmpty)
+      return;
 
     try {
       final messaging = FirebaseMessaging.instance;
       await messaging.unsubscribeFromTopic('family_$idFamilia');
       _subscribedFamilyIds.remove(idFamilia);
-      debugPrint('[PUSH_NOTIF LOG] Desuscrito de topic familiar: family_$idFamilia');
+      debugPrint(
+        '[PUSH_NOTIF LOG] Desuscrito de topic familiar: family_$idFamilia',
+      );
     } catch (e) {
       debugPrint('[PUSH_NOTIF LOG] Error al desuscribirse de topic: $e');
     }
@@ -431,7 +683,9 @@ class PushNotificationService {
       _subscribedFamilyIds.clear();
       debugPrint('[PUSH_NOTIF LOG] Desuscrito de todas las familias.');
     } catch (e) {
-      debugPrint('[PUSH_NOTIF LOG] Error al desuscribir de todas las familias: $e');
+      debugPrint(
+        '[PUSH_NOTIF LOG] Error al desuscribir de todas las familias: $e',
+      );
     }
   }
 
@@ -454,7 +708,8 @@ class PushNotificationService {
       return false;
     }
 
-    final String familySuffix = (nbFamilia != null && nbFamilia.trim().isNotEmpty)
+    final String familySuffix =
+        (nbFamilia != null && nbFamilia.trim().isNotEmpty)
         ? ' (Familia: ${nbFamilia.trim()})'
         : '';
 
@@ -466,11 +721,14 @@ class PushNotificationService {
       'sender_user_id': senderUserId,
       'sender_name': senderName,
       'title': 'Lista de Compras',
-      'body': '$senderName ha agregado productos a la lista "$nbLista"$familySuffix',
+      'body':
+          '$senderName ha agregado productos a la lista "$nbLista"$familySuffix',
     };
 
     try {
-      debugPrint('[PUSH_NOTIF LOG] Enviando petición push a ${NotificationConfig.endpointUrl}...');
+      debugPrint(
+        '[PUSH_NOTIF LOG] Enviando petición push a ${NotificationConfig.endpointUrl}...',
+      );
       final response = await http
           .post(
             Uri.parse(NotificationConfig.endpointUrl),
@@ -483,10 +741,14 @@ class PushNotificationService {
           .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
-        debugPrint('[PUSH_NOTIF LOG] Push enviado con éxito a la familia (FCM distribuirá a Android y Apple iOS): ${response.body}');
+        debugPrint(
+          '[PUSH_NOTIF LOG] Push enviado con éxito a la familia (FCM distribuirá a Android y Apple iOS): ${response.body}',
+        );
         return true;
       } else {
-        debugPrint('[PUSH_NOTIF LOG] Error del servidor PHP (${response.statusCode}): ${response.body}');
+        debugPrint(
+          '[PUSH_NOTIF LOG] Error del servidor PHP (${response.statusCode}): ${response.body}',
+        );
         return false;
       }
     } catch (e) {
@@ -510,11 +772,13 @@ class PushNotificationService {
       return false;
     }
 
-    final String familySuffix = (nbFamilia != null && nbFamilia.trim().isNotEmpty)
+    final String familySuffix =
+        (nbFamilia != null && nbFamilia.trim().isNotEmpty)
         ? ' (Familia: ${nbFamilia.trim()})'
         : '';
 
-    final String bodyText = (productName != null && productName.trim().isNotEmpty)
+    final String bodyText =
+        (productName != null && productName.trim().isNotEmpty)
         ? '$senderName ha marcado "$productName" como comprado en "$nbLista"$familySuffix'
         : '$senderName ha marcado productos como comprados en "$nbLista"$familySuffix';
 
@@ -530,7 +794,9 @@ class PushNotificationService {
     };
 
     try {
-      debugPrint('[PUSH_NOTIF LOG] Enviando petición push de compra a ${NotificationConfig.endpointUrl}...');
+      debugPrint(
+        '[PUSH_NOTIF LOG] Enviando petición push de compra a ${NotificationConfig.endpointUrl}...',
+      );
       final response = await http
           .post(
             Uri.parse(NotificationConfig.endpointUrl),
@@ -543,14 +809,20 @@ class PushNotificationService {
           .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
-        debugPrint('[PUSH_NOTIF LOG] Push de compra enviado con éxito a la familia (FCM distribuirá a Android y Apple iOS): ${response.body}');
+        debugPrint(
+          '[PUSH_NOTIF LOG] Push de compra enviado con éxito a la familia (FCM distribuirá a Android y Apple iOS): ${response.body}',
+        );
         return true;
       } else {
-        debugPrint('[PUSH_NOTIF LOG] Error del servidor PHP (${response.statusCode}): ${response.body}');
+        debugPrint(
+          '[PUSH_NOTIF LOG] Error del servidor PHP (${response.statusCode}): ${response.body}',
+        );
         return false;
       }
     } catch (e) {
-      debugPrint('[PUSH_NOTIF LOG] Excepción al enviar notificación push de compra: $e');
+      debugPrint(
+        '[PUSH_NOTIF LOG] Excepción al enviar notificación push de compra: $e',
+      );
       return false;
     }
   }

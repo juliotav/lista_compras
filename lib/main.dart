@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -22,10 +23,7 @@ void main() async {
     return true; // Retorna true para evitar pausas en el depurador o cierres inesperados
   };
 
-  if (!kIsWeb) {
-    await MobileAds.instance.initialize();
-    await PushNotificationService.initialize();
-  }
+  // 1. Iniciar la UI inmediatamente para que el usuario nunca vea una pantalla en blanco
   runApp(
     MultiProvider(
       providers: [
@@ -36,6 +34,17 @@ void main() async {
       child: const ShoppingListApp(),
     ),
   );
+
+  // 2. Inicializar servicios pesados y permisos en segundo plano sin congelar el renderizado
+  if (!kIsWeb) {
+    unawaited(MobileAds.instance.initialize().catchError((e) {
+      debugPrint("[ADS LOG] Error al inicializar MobileAds: $e");
+      return InitializationStatus({});
+    }));
+    unawaited(PushNotificationService.initialize().catchError((e) {
+      debugPrint("[PUSH_NOTIF LOG] Error al inicializar PushNotificationService: $e");
+    }));
+  }
 }
 
 class ShoppingListApp extends StatefulWidget {
