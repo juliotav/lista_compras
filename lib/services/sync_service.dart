@@ -13,6 +13,9 @@ class SyncService {
   Timer? _debounceTimer;
   bool _isProcessing = false;
   bool _isSyncingDelta = false;
+  Completer<void>? _syncCompleter;
+
+  bool get isSyncing => _isProcessing || _isSyncingDelta;
 
   SyncService._internal();
 
@@ -31,13 +34,18 @@ class SyncService {
 
   /// Procesa secuencialmente todos los elementos pendientes en sync_queue enviándolos a MongoDB Atlas
   Future<void> processSyncQueue() async {
-    if (_isProcessing) return;
+    if (_isProcessing) {
+      if (_syncCompleter != null) {
+        await _syncCompleter!.future;
+      }
+      return;
+    }
     _isProcessing = true;
+    _syncCompleter = Completer<void>();
 
     try {
       final queue = await _localDb.getPendingSyncQueue();
       if (queue.isEmpty) {
-        _isProcessing = false;
         return;
       }
 
@@ -92,6 +100,10 @@ class SyncService {
       debugPrint("[SYNC_SERVICE] Error general en processSyncQueue: $e");
     } finally {
       _isProcessing = false;
+      if (_syncCompleter != null && !_syncCompleter!.isCompleted) {
+        _syncCompleter!.complete();
+      }
+      _syncCompleter = null;
     }
   }
 
@@ -181,16 +193,25 @@ class SyncService {
 
       final localDetails = await _localDb.getAllListDetailsForFamily(activeListIds);
       final Map<String, ListDetailItemModel> mergedDetails = {};
+      final Map<String, ListDetailItemModel> localMap = {};
+      for (var d in localDetails) {
+        localMap[d.idDetalle] = d;
+      }
 
       for (var d in remoteDetails) {
-        if (!pendingDetailIds.contains(d.idDetalle)) {
+        if (pendingDetailIds.contains(d.idDetalle)) {
+          final localItem = localMap[d.idDetalle];
+          if (localItem != null) {
+            mergedDetails[d.idDetalle] = localItem;
+          }
+        } else {
           mergedDetails[d.idDetalle] = d;
         }
       }
-      // FUSIÓN ATÓMICA: Preservar los productos que el usuario agregó o modificó localmente colocándolos al final
+
+      // Preservar ítems totalmente NUEVOS creados localmente que aún no existen en el servidor
       for (var d in localDetails) {
-        if (pendingDetailIds.contains(d.idDetalle)) {
-          mergedDetails.remove(d.idDetalle);
+        if (pendingDetailIds.contains(d.idDetalle) && !mergedDetails.containsKey(d.idDetalle)) {
           mergedDetails[d.idDetalle] = d;
         }
       }

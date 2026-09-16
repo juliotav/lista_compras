@@ -421,22 +421,33 @@ class LocalDbService {
 
   Future<void> saveListDetailItem(ListDetailItemModel item, {String syncStatus = 'synced'}) async {
     final database = await db;
-    await database.insert(
+    final data = {
+      'id_detalle': item.idDetalle,
+      'id_lista_compra': item.idListaCompra,
+      'id_articulo': item.idArticulo,
+      'nb_articulo': item.nbArticulo,
+      'ds_detalle': item.dsDetalle,
+      'status': item.status,
+      'fecha_compra': item.fechaCompra?.toIso8601String(),
+      'id_usuario_finalizo': item.idUsuarioFinalizo,
+      'id_usuario_agrego': item.idUsuarioAgrego,
+      'sync_status': syncStatus,
+    };
+
+    final count = await database.update(
       'list_detail_items',
-      {
-        'id_detalle': item.idDetalle,
-        'id_lista_compra': item.idListaCompra,
-        'id_articulo': item.idArticulo,
-        'nb_articulo': item.nbArticulo,
-        'ds_detalle': item.dsDetalle,
-        'status': item.status,
-        'fecha_compra': item.fechaCompra?.toIso8601String(),
-        'id_usuario_finalizo': item.idUsuarioFinalizo,
-        'id_usuario_agrego': item.idUsuarioAgrego,
-        'sync_status': syncStatus,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
+      data,
+      where: 'id_detalle = ?',
+      whereArgs: [item.idDetalle],
     );
+
+    if (count == 0) {
+      await database.insert(
+        'list_detail_items',
+        data,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
   }
 
   Future<void> saveListDetailItemsBatch(List<ListDetailItemModel> items, {List<String>? activeListIds}) async {

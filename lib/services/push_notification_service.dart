@@ -131,7 +131,7 @@ class PushNotificationService {
         provisional: false,
       );
 
-      debugPrint('[PUSH_NOTIF LOG] Estado de permisos de notificación: ${settings.authorizationStatus}');
+      debugPrint('[PUSH_NOTIF LOG] Plataforma actual: ${defaultTargetPlatform.name.toUpperCase()} | Estado de permisos de notificación: ${settings.authorizationStatus}');
 
       // Configurar presentación visual y sonora en primer plano para iOS
       await messaging.setForegroundNotificationPresentationOptions(
@@ -261,8 +261,9 @@ class PushNotificationService {
       // Obtener token FCM para depuración
       final token = await messaging.getToken();
       debugPrint('[PUSH_NOTIF LOG] Token FCM del dispositivo: $token');
-    } catch (e) {
-      debugPrint('[PUSH_NOTIF LOG] Firebase no inicializado o sin archivo de configuración: $e');
+    } catch (e, stack) {
+      debugPrint('[PUSH_NOTIF ERROR] Error al inicializar Firebase/Notificaciones: $e');
+      debugPrint('[PUSH_NOTIF ERROR STACK] $stack');
     }
   }
 
@@ -482,7 +483,7 @@ class PushNotificationService {
           .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
-        debugPrint('[PUSH_NOTIF LOG] Push enviado con éxito: ${response.body}');
+        debugPrint('[PUSH_NOTIF LOG] Push enviado con éxito a la familia (FCM distribuirá a Android y Apple iOS): ${response.body}');
         return true;
       } else {
         debugPrint('[PUSH_NOTIF LOG] Error del servidor PHP (${response.statusCode}): ${response.body}');
@@ -542,7 +543,7 @@ class PushNotificationService {
           .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
-        debugPrint('[PUSH_NOTIF LOG] Push de compra enviado con éxito: ${response.body}');
+        debugPrint('[PUSH_NOTIF LOG] Push de compra enviado con éxito a la familia (FCM distribuirá a Android y Apple iOS): ${response.body}');
         return true;
       } else {
         debugPrint('[PUSH_NOTIF LOG] Error del servidor PHP (${response.statusCode}): ${response.body}');

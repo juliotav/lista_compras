@@ -459,6 +459,7 @@ class DatabaseService extends ChangeNotifier {
   }
 
   bool _isFetchingFamilyData = false;
+  bool get isFetchingFamilyData => _isFetchingFamilyData;
 
   /// Sincroniza en segundo plano todos los datos de la familia sin bloquear la UI ni borrar datos locales
   Future<void> fetchFamilyData({bool isSilentPeriodic = false}) async {
@@ -1597,7 +1598,7 @@ class DatabaseService extends ChangeNotifier {
       );
 
       _checkAndTriggerListNotification(idListaCompra);
-      _syncService.triggerSync();
+      await _syncService.processSyncQueue();
       return true;
     }
 
@@ -1626,7 +1627,7 @@ class DatabaseService extends ChangeNotifier {
     );
 
     _checkAndTriggerListNotification(idListaCompra);
-    _syncService.triggerSync();
+    await _syncService.processSyncQueue();
     return true;
   }
 
@@ -1827,7 +1828,7 @@ class DatabaseService extends ChangeNotifier {
         entityId: idDetalle,
         payload: {'ds_detalle': cleanNote},
       );
-      _syncService.triggerSync();
+      await _syncService.processSyncQueue();
     }
   }
 
@@ -1842,7 +1843,7 @@ class DatabaseService extends ChangeNotifier {
       entityId: idDetalle,
       payload: {'id_detalle': idDetalle},
     );
-    _syncService.triggerSync();
+    await _syncService.processSyncQueue();
   }
 
   Future<void> markItemAsCompleted(String idDetalle) async {
@@ -1872,7 +1873,7 @@ class DatabaseService extends ChangeNotifier {
         updated.idListaCompra,
         productName: updated.nbArticulo,
       );
-      _syncService.triggerSync();
+      await _syncService.processSyncQueue();
     }
   }
 }

@@ -44,11 +44,26 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
 
   void _startSyncTimer() {
     _syncTimer?.cancel();
-    _syncTimer = Timer.periodic(const Duration(seconds: 6), (_) {
+    _syncTimer = Timer.periodic(const Duration(seconds: 6), (_) async {
       if (mounted) {
-        context.read<DatabaseService>().fetchFamilyData(isSilentPeriodic: true);
+        final db = context.read<DatabaseService>();
+        if (db.isFetchingFamilyData) return;
+        await db.fetchFamilyData(isSilentPeriodic: true);
       }
     });
+  }
+
+  Future<void> _runWithPausedSyncTimer(Future<void> Function() action) async {
+    _stopSyncTimer();
+    try {
+      await action();
+    } catch (e) {
+      debugPrint("[LIST_DETAIL LOG] Error en acción manual con timer pausado: $e");
+    } finally {
+      if (mounted) {
+        _startSyncTimer();
+      }
+    }
   }
 
   void _stopSyncTimer() {
@@ -79,28 +94,30 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
   }
 
   Future<void> _addCustomItem(String itemName) async {
-    final cleanName = itemName.trim();
-    if (cleanName.isEmpty) return;
+    await _runWithPausedSyncTimer(() async {
+      final cleanName = itemName.trim();
+      if (cleanName.isEmpty) return;
 
-    final l10n = AppLocalizations.of(context)!;
-    final db = context.read<DatabaseService>();
-    final added = await db.addCustomItemToCatalogAndList(
-      idListaCompra: widget.shoppingList.idListaCompra,
-      nbArticulo: cleanName,
-    );
-
-    if (!added && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.itemAlreadyInList(cleanName)),
-          backgroundColor: Colors.orange[800],
-          duration: const Duration(seconds: 2),
-        ),
+      final l10n = AppLocalizations.of(context)!;
+      final db = context.read<DatabaseService>();
+      final added = await db.addCustomItemToCatalogAndList(
+        idListaCompra: widget.shoppingList.idListaCompra,
+        nbArticulo: cleanName,
       );
-    }
 
-    _searchController.clear();
-    FocusManager.instance.primaryFocus?.unfocus();
+      if (!added && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.itemAlreadyInList(cleanName)),
+            backgroundColor: Colors.orange[800],
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+
+      _searchController.clear();
+      FocusManager.instance.primaryFocus?.unfocus();
+    });
   }
 
   void _showAddCustomItemDialog() {
@@ -236,7 +253,11 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: l10n.syncTooltip,
-            onPressed: () => db.fetchFamilyData(),
+            onPressed: () {
+              _runWithPausedSyncTimer(() async {
+                await db.fetchFamilyData();
+              });
+            },
           ),
           IconButton(
             icon: const Icon(Icons.check_circle_outline_rounded, size: 28),
@@ -246,7 +267,11 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () => db.fetchFamilyData(),
+        onRefresh: () async {
+          await _runWithPausedSyncTimer(() async {
+            await db.fetchFamilyData();
+          });
+        },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16.0),
@@ -346,16 +371,20 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                               ),
                             ),
                             onDismissed: (direction) {
-                              if (direction == DismissDirection.startToEnd) {
-                                db.markItemAsCompleted(item.idDetalle);
-                              } else if (direction == DismissDirection.endToStart) {
-                                db.removeListDetailItem(item.idDetalle);
-                              }
+                              _runWithPausedSyncTimer(() async {
+                                if (direction == DismissDirection.startToEnd) {
+                                  await db.markItemAsCompleted(item.idDetalle);
+                                } else if (direction == DismissDirection.endToStart) {
+                                  await db.removeListDetailItem(item.idDetalle);
+                                }
+                              });
                             },
                             child: PendingItemTile(
                               item: item,
                               onSaveNote: (newNote) {
-                                db.updateItemDetailNote(item.idDetalle, newNote);
+                                _runWithPausedSyncTimer(() async {
+                                  await db.updateItemDetailNote(item.idDetalle, newNote);
+                                });
                               },
                             ),
                           );
@@ -506,25 +535,27 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                                       ],
                                     ),
                                     trailing: const Icon(Icons.add_rounded, color: Colors.blue),
-                                    onTap: () async {
-                                      final added = await db.addItemToList(
-                                        idListaCompra: widget.shoppingList.idListaCompra,
-                                        idArticulo: catItem.idArticulo,
-                                        nbArticulo: name,
-                                      );
-
-                                      if (!added && context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(l10n.itemAlreadyInList(name)),
-                                            backgroundColor: Colors.orange[800],
-                                            duration: const Duration(seconds: 2),
-                                          ),
+                                    onTap: () {
+                                      _runWithPausedSyncTimer(() async {
+                                        final added = await db.addItemToList(
+                                          idListaCompra: widget.shoppingList.idListaCompra,
+                                          idArticulo: catItem.idArticulo,
+                                          nbArticulo: name,
                                         );
-                                      }
 
-                                      _searchController.clear();
-                                      FocusManager.instance.primaryFocus?.unfocus();
+                                        if (!added && context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(l10n.itemAlreadyInList(name)),
+                                              backgroundColor: Colors.orange[800],
+                                              duration: const Duration(seconds: 2),
+                                            ),
+                                          );
+                                        }
+
+                                        _searchController.clear();
+                                        FocusManager.instance.primaryFocus?.unfocus();
+                                      });
                                     },
                                   ),
                                 );
@@ -667,19 +698,23 @@ class _PendingItemTileState extends State<PendingItemTile> {
   late TextEditingController _noteController;
   late FocusNode _focusNode;
 
+  void _saveCurrentNote() {
+    if (_isEditingNote) {
+      _isEditingNote = false;
+      widget.onSaveNote(_noteController.text);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _noteController = TextEditingController(text: widget.item.dsDetalle ?? "");
     _focusNode = FocusNode();
     _focusNode.addListener(() {
-      if (!_focusNode.hasFocus) {
-        if (_isEditingNote) {
-          setState(() {
-            _isEditingNote = false;
-          });
-          widget.onSaveNote(_noteController.text);
-        }
+      if (!_focusNode.hasFocus && _isEditingNote && mounted) {
+        setState(() {
+          _saveCurrentNote();
+        });
       }
     });
   }
@@ -760,10 +795,11 @@ class _PendingItemTileState extends State<PendingItemTile> {
                             ),
                           ),
                           onSubmitted: (val) {
-                            setState(() {
-                              _isEditingNote = false;
-                            });
-                            widget.onSaveNote(val);
+                            if (_isEditingNote && mounted) {
+                              setState(() {
+                                _saveCurrentNote();
+                              });
+                            }
                           },
                         ),
                       ] else ...[
