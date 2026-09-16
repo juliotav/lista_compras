@@ -96,6 +96,7 @@ class PushNotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   static bool _isFirebaseInitialized = false;
   static final Set<String> _subscribedFamilyIds = {};
+  static final Set<String> _pendingFamilyIdsToSync = {};
   static String? _lastHandledNotificationKey;
   static DateTime? _lastHandledNotificationTime;
 
@@ -133,12 +134,16 @@ class PushNotificationService {
 
       debugPrint('[PUSH_NOTIF LOG] Estado de permisos de notificación: ${settings.authorizationStatus}');
 
-      // Configurar presentación visual y sonora en primer plano para iOS
-      await messaging.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      // Configurar presentación visual y sonora en primer plano para iOS (con timeout defensivo)
+      try {
+        await messaging.setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        ).timeout(const Duration(seconds: 3));
+      } catch (e) {
+        debugPrint('[PUSH_NOTIF LOG] Advertencia en setForegroundNotificationPresentationOptions: $e');
+      }
 
       // Inicializar plugin de notificaciones locales para Android / iOS
       const androidInit = AndroidInitializationSettings('@drawable/ic_notification');
@@ -149,24 +154,30 @@ class PushNotificationService {
       );
       const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
 
-      await _localNotifications.initialize(
-        settings: initSettings,
-        onDidReceiveNotificationResponse: (NotificationResponse response) {
-          if (response.payload != null && response.payload!.isNotEmpty) {
-            try {
-              final data = jsonDecode(response.payload!);
-              if (data is Map<String, dynamic>) {
-                handleNotificationClick(data);
-              }
-            } catch (_) {}
-          }
-        },
-      );
+      try {
+        await _localNotifications.initialize(
+          settings: initSettings,
+          onDidReceiveNotificationResponse: (NotificationResponse response) {
+            if (response.payload != null && response.payload!.isNotEmpty) {
+              try {
+                final data = jsonDecode(response.payload!);
+                if (data is Map<String, dynamic>) {
+                  handleNotificationClick(data);
+                }
+              } catch (_) {}
+            }
+          },
+        ).timeout(const Duration(seconds: 3));
+      } catch (e) {
+        debugPrint('[PUSH_NOTIF LOG] Advertencia en _localNotifications.initialize: $e');
+      }
 
       // Crear canal de alta prioridad con sonido en Android
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(_channel);
+      try {
+        await _localNotifications
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            ?.createNotificationChannel(_channel);
+      } catch (_) {}
 
       // 1. Escuchar notificaciones recibidas en primer plano y reproducir sonido / mostrar banner
       FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
@@ -233,37 +244,105 @@ class PushNotificationService {
       });
 
       // 3. Manejar apertura cuando la app estaba completamente cerrada (Cold Start vía FCM)
-      final initialMessage = await messaging.getInitialMessage();
-      if (initialMessage != null) {
-        debugPrint('[PUSH_NOTIF LOG] Notificación abrió la app desde estado cerrado (FCM): ${initialMessage.data}');
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          handleNotificationClick(initialMessage.data);
-        });
+      try {
+        final initialMessage = await messaging.getInitialMessage().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => null,
+        );
+        if (initialMessage != null) {
+          debugPrint('[PUSH_NOTIF LOG] Notificación abrió la app desde estado cerrado (FCM): ${initialMessage.data}');
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            handleNotificationClick(initialMessage.data);
+          });
+        }
+      } catch (e) {
+        debugPrint('[PUSH_NOTIF LOG] Nota al obtener initialMessage: $e');
       }
 
       // 4. Manejar apertura cuando la app estaba cerrada y se tocó una notificación local
-      final localLaunchDetails = await _localNotifications.getNotificationAppLaunchDetails();
-      if (localLaunchDetails?.didNotificationLaunchApp ?? false) {
-        final payload = localLaunchDetails?.notificationResponse?.payload;
-        if (payload != null && payload.isNotEmpty) {
-          try {
-            final data = jsonDecode(payload);
-            if (data is Map<String, dynamic>) {
-              debugPrint('[PUSH_NOTIF LOG] Notificación local abrió la app desde estado cerrado: $data');
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                handleNotificationClick(data);
-              });
-            }
-          } catch (_) {}
+      try {
+        final localLaunchDetails = await _localNotifications.getNotificationAppLaunchDetails().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => null,
+        );
+        if (localLaunchDetails?.didNotificationLaunchApp ?? false) {
+          final payload = localLaunchDetails?.notificationResponse?.payload;
+          if (payload != null && payload.isNotEmpty) {
+            try {
+              final data = jsonDecode(payload);
+              if (data is Map<String, dynamic>) {
+                debugPrint('[PUSH_NOTIF LOG] Notificación local abrió la app desde estado cerrado: $data');
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  handleNotificationClick(data);
+                });
+              }
+            } catch (_) {}
+          }
         }
+      } catch (e) {
+        debugPrint('[PUSH_NOTIF LOG] Nota al obtener localLaunchDetails: $e');
       }
 
-      // Obtener token FCM para depuración
-      final token = await messaging.getToken();
-      debugPrint('[PUSH_NOTIF LOG] Token FCM del dispositivo: $token');
+      // 5. Iniciar monitoreo reactivo de APNs y FCM en segundo plano sin bloquear la UI
+      _startApnsAndFcmSync(messaging);
     } catch (e) {
       debugPrint('[PUSH_NOTIF LOG] Firebase no inicializado o sin archivo de configuración: $e');
     }
+  }
+
+  /// Monitorea en segundo plano la entrega del token APNs y la sincronización con FCM
+  static void _startApnsAndFcmSync(FirebaseMessaging messaging) {
+    // Escuchar actualizaciones de token emitidas por Firebase
+    messaging.onTokenRefresh.listen((newToken) {
+      debugPrint('[PUSH_NOTIF LOG] Token FCM emitido/actualizado: $newToken');
+      _flushPendingFamilySubscriptions(messaging);
+    });
+
+    Future.microtask(() async {
+      try {
+        if (defaultTargetPlatform == TargetPlatform.iOS) {
+          debugPrint('[PUSH_NOTIF LOG] Iniciando verificación de token APNs de Apple...');
+          String? apnsToken;
+          // Reintentar hasta 15 veces (15 * 1.5s = ~22 segundos)
+          for (int i = 0; i < 15; i++) {
+            apnsToken = await messaging.getAPNSToken();
+            if (apnsToken != null) {
+              debugPrint('[PUSH_NOTIF LOG] ¡Token APNs asignado con éxito por Apple!: $apnsToken');
+              break;
+            }
+            await Future.delayed(const Duration(milliseconds: 1500));
+          }
+
+          if (apnsToken == null) {
+            debugPrint('[PUSH_NOTIF LOG] APNs token no estuvo disponible tras 22s. Si estás en un dispositivo físico, asegúrate de haber cerrado la app y recompilado completamente con "flutter run".');
+            return;
+          }
+        }
+
+        // Obtener el token FCM una vez que APNs está garantizado
+        final token = await messaging.getToken().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => null,
+        );
+        if (token != null) {
+          debugPrint('[PUSH_NOTIF LOG] Token FCM del dispositivo listo: $token');
+        }
+
+        // Sincronizar familias que hayan quedado pendientes
+        await _flushPendingFamilySubscriptions(messaging);
+      } catch (e) {
+        debugPrint('[PUSH_NOTIF LOG] Error durante la sincronización de tokens: $e');
+      }
+    });
+  }
+
+  /// Ejecuta la suscripción de cualquier familia pendiente una vez que APNs esté disponible
+  static Future<void> _flushPendingFamilySubscriptions(FirebaseMessaging messaging) async {
+    if (_pendingFamilyIdsToSync.isEmpty) return;
+    debugPrint('[PUSH_NOTIF LOG] Sincronizando ${_pendingFamilyIdsToSync.length} familias pendientes tras disponibilidad de APNs...');
+    final toSync = _pendingFamilyIdsToSync.toList();
+    _pendingFamilyIdsToSync.clear();
+    await syncFamilySubscriptions(toSync);
   }
 
   /// Procesa el clic en la notificación: cambia de familia si es necesario y navega al detalle de la lista
@@ -360,6 +439,29 @@ class PushNotificationService {
     }
   }
 
+  /// En iOS, espera de forma no bloqueante a que el APNs token esté listo antes de operar sobre topics
+  static Future<bool> _ensureApnsTokenReady(FirebaseMessaging messaging) async {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return true;
+
+    try {
+      final currentToken = await messaging.getAPNSToken();
+      if (currentToken != null) return true;
+
+      debugPrint('[PUSH_NOTIF LOG] Verificando disponibilidad inmediata de token APNs...');
+      for (int i = 0; i < 4; i++) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        final token = await messaging.getAPNSToken();
+        if (token != null) {
+          debugPrint('[PUSH_NOTIF LOG] Token APNs disponible para topics.');
+          return true;
+        }
+      }
+    } catch (e) {
+      debugPrint('[PUSH_NOTIF LOG] Error verificando APNs token: $e');
+    }
+    return false;
+  }
+
   /// Sincroniza las suscripciones de Firebase FCM para todas las familias a las que pertenece el usuario
   static Future<void> syncFamilySubscriptions(List<String> familyIds) async {
     if (kIsWeb || !_isFirebaseInitialized) return;
@@ -368,21 +470,38 @@ class PushNotificationService {
       final messaging = FirebaseMessaging.instance;
       final targetSet = familyIds.where((id) => id.isNotEmpty).toSet();
 
+      // En iOS, garantizar que APNs esté disponible antes de llamar a subscribeToTopic
+      final isReady = await _ensureApnsTokenReady(messaging);
+      if (defaultTargetPlatform == TargetPlatform.iOS && !isReady) {
+        debugPrint('[PUSH_NOTIF LOG] APNs token no disponible de inmediato. Guardando ${targetSet.length} familias para sincronizar en onTokenRefresh.');
+        _pendingFamilyIdsToSync.addAll(targetSet);
+        return;
+      }
+
       // Desuscribir de topics que ya no corresponden
       for (final oldId in _subscribedFamilyIds.toList()) {
         if (!targetSet.contains(oldId)) {
-          await messaging.unsubscribeFromTopic('family_$oldId');
-          _subscribedFamilyIds.remove(oldId);
-          debugPrint('[PUSH_NOTIF LOG] Desuscrito de topic familiar: family_$oldId');
+          try {
+            await messaging.unsubscribeFromTopic('family_$oldId');
+            _subscribedFamilyIds.remove(oldId);
+            debugPrint('[PUSH_NOTIF LOG] Desuscrito de topic familiar: family_$oldId');
+          } catch (e) {
+            debugPrint('[PUSH_NOTIF LOG] Error al desuscribir de family_$oldId: $e');
+          }
         }
       }
 
       // Suscribir a cada una de las familias activas del usuario
       for (final famId in targetSet) {
         if (!_subscribedFamilyIds.contains(famId)) {
-          await messaging.subscribeToTopic('family_$famId');
-          _subscribedFamilyIds.add(famId);
-          debugPrint('[PUSH_NOTIF LOG] Suscrito exitosamente al topic: family_$famId');
+          try {
+            await messaging.subscribeToTopic('family_$famId');
+            _subscribedFamilyIds.add(famId);
+            debugPrint('[PUSH_NOTIF LOG] Suscrito exitosamente al topic: family_$famId');
+          } catch (e) {
+            debugPrint('[PUSH_NOTIF LOG] Error al suscribir a family_$famId: $e');
+            _pendingFamilyIdsToSync.add(famId);
+          }
         }
       }
     } catch (e) {
@@ -396,6 +515,11 @@ class PushNotificationService {
 
     try {
       final messaging = FirebaseMessaging.instance;
+      final isReady = await _ensureApnsTokenReady(messaging);
+      if (defaultTargetPlatform == TargetPlatform.iOS && !isReady) {
+        _pendingFamilyIdsToSync.add(idFamilia);
+        return;
+      }
       await messaging.subscribeToTopic('family_$idFamilia');
       _subscribedFamilyIds.add(idFamilia);
       debugPrint('[PUSH_NOTIF LOG] Suscrito exitosamente al topic: family_$idFamilia');
