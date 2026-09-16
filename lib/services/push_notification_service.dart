@@ -631,8 +631,9 @@ class PushNotificationService {
     if (kIsWeb ||
         !_isFirebaseInitialized ||
         idFamilia == null ||
-        idFamilia.isEmpty)
+        idFamilia.isEmpty) {
       return;
+    }
 
     try {
       final messaging = FirebaseMessaging.instance;
@@ -656,8 +657,9 @@ class PushNotificationService {
     if (kIsWeb ||
         !_isFirebaseInitialized ||
         idFamilia == null ||
-        idFamilia.isEmpty)
+        idFamilia.isEmpty) {
       return;
+    }
 
     try {
       final messaging = FirebaseMessaging.instance;

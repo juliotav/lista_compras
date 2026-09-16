@@ -474,9 +474,9 @@ class DatabaseService extends ChangeNotifier {
     _isFetchingFamilyData = true;
 
     try {
-      // 1. Cargar estado de SQLite de inmediato si ya se cuenta con idFamilia (0ms delay UI)
+      // 1. Cargar estado de SQLite de inmediato solo si la memoria RAM no está poblada aún (0ms delay UI)
       final initialFamId = _currentUser?.idFamilia;
-      if (initialFamId != null && initialFamId.isNotEmpty) {
+      if (initialFamId != null && initialFamId.isNotEmpty && _listDetailItems.isEmpty) {
         await _loadFromLocalDb(initialFamId);
       }
 
@@ -488,8 +488,10 @@ class DatabaseService extends ChangeNotifier {
         return;
       }
 
-      // 3. Volver a recargar de SQLite si la familia cambió tras consultar el servidor
-      await _loadFromLocalDb(famId);
+      // 3. Recargar de SQLite únicamente si la familia activa cambió tras consultar el servidor
+      if (famId != initialFamId || _listDetailItems.isEmpty) {
+        await _loadFromLocalDb(famId);
+      }
 
       // Sincronizar perfiles de integrantes de la familia activa
       try {
@@ -1452,9 +1454,11 @@ class DatabaseService extends ChangeNotifier {
 
   // --- DETALLE DE ARTÍCULOS ---
   List<ListDetailItemModel> getPendingItems(String idListaCompra) {
-    return _listDetailItems
+    final items = _listDetailItems
         .where((i) => i.idListaCompra == idListaCompra && i.isPending)
         .toList();
+    items.sort((a, b) => a.nuOrder.compareTo(b.nuOrder));
+    return items;
   }
 
   List<ListDetailItemModel> getCompletedItems(String idListaCompra) {
@@ -1574,11 +1578,18 @@ class DatabaseService extends ChangeNotifier {
 
     if (completedExistingIdx != -1) {
       final existingItem = _listDetailItems[completedExistingIdx];
+      final cleanDsDetalle = dsDetalle?.trim();
+      final currentPendingCount = _listDetailItems
+          .where((i) => i.idListaCompra == idListaCompra && i.isPending)
+          .length;
+
       final reactivatedItem = existingItem.copyWith(
         status: 'pending',
         fechaCompra: null,
         idUsuarioAgrego: _currentUser?.idUsuario,
-        dsDetalle: dsDetalle ?? existingItem.dsDetalle,
+        dsDetalle: cleanDsDetalle,
+        clearDsDetalle: cleanDsDetalle == null || cleanDsDetalle.isEmpty,
+        nuOrder: currentPendingCount,
       );
 
       _listDetailItems.removeAt(completedExistingIdx);
@@ -1593,7 +1604,8 @@ class DatabaseService extends ChangeNotifier {
         payload: {
           'status': 'pending',
           'id_usuario_agrego': reactivatedItem.idUsuarioAgrego,
-          'ds_detalle': dsDetalle,
+          'ds_detalle': reactivatedItem.dsDetalle,
+          'nu_order': reactivatedItem.nuOrder,
         },
       );
 
@@ -1603,6 +1615,10 @@ class DatabaseService extends ChangeNotifier {
     }
 
     // 3. Crear nuevo elemento
+    final currentPendingCount = _listDetailItems
+        .where((i) => i.idListaCompra == idListaCompra && i.isPending)
+        .length;
+
     final newItem = ListDetailItemModel(
       idDetalle: _uuid.v4(),
       idListaCompra: idListaCompra,
@@ -1611,6 +1627,7 @@ class DatabaseService extends ChangeNotifier {
       dsDetalle: dsDetalle,
       status: 'pending',
       idUsuarioAgrego: _currentUser?.idUsuario,
+      nuOrder: currentPendingCount,
     );
 
     // Agregar DE INMEDIATO en SQLite y en memoria local (0ms UI latency)
@@ -1875,5 +1892,50 @@ class DatabaseService extends ChangeNotifier {
       );
       await _syncService.processSyncQueue();
     }
+  }
+
+  Future<void> reorderPendingItems(
+    String idListaCompra,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    final pendingList = getPendingItems(idListaCompra);
+    if (oldIndex < 0 || oldIndex >= pendingList.length) return;
+    if (newIndex < 0 || newIndex > pendingList.length) return;
+
+    final itemToMove = pendingList.removeAt(oldIndex);
+    pendingList.insert(newIndex, itemToMove);
+
+    final List<ListDetailItemModel> updatedItems = [];
+
+    for (int i = 0; i < pendingList.length; i++) {
+      final originalItem = pendingList[i];
+      final updatedItem = originalItem.copyWith(nuOrder: i);
+      updatedItems.add(updatedItem);
+
+      final idxInMemory = _listDetailItems.indexWhere(
+        (x) => x.idDetalle == originalItem.idDetalle,
+      );
+      if (idxInMemory != -1) {
+        _listDetailItems[idxInMemory] = updatedItem;
+      }
+    }
+
+    // Notificar inmediatamente a la interfaz (0ms) de forma síncrona
+    // para evitar cualquier micro-salto o parpadeo en la reubicación visual
+    notifyListeners();
+
+    await _localDb.saveListDetailItemsBatch(updatedItems);
+
+    for (var updated in updatedItems) {
+      await _localDb.enqueueSyncItem(
+        collectionName: MongoConfig.colDetalleLista,
+        action: 'UPDATE',
+        entityId: updated.idDetalle,
+        payload: {'nu_order': updated.nuOrder},
+      );
+    }
+
+    await _syncService.processSyncQueue();
   }
 }

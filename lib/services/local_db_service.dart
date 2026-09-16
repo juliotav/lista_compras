@@ -86,6 +86,9 @@ class LocalDbService {
         try {
           await db.execute('ALTER TABLE shopping_lists ADD COLUMN fe_ultima_notificacion_compra TEXT;');
         } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE list_detail_items ADD COLUMN nu_order INTEGER NOT NULL DEFAULT 0;');
+        } catch (_) {}
       },
     );
   }
@@ -141,6 +144,7 @@ class LocalDbService {
         fecha_compra TEXT,
         id_usuario_finalizo TEXT,
         id_usuario_agrego TEXT,
+        nu_order INTEGER NOT NULL DEFAULT 0,
         sync_status TEXT NOT NULL DEFAULT 'synced'
       )
     ''');
@@ -415,6 +419,7 @@ class LocalDbService {
         fechaCompra: m['fecha_compra'] != null ? DateTime.tryParse(m['fecha_compra'].toString()) : null,
         idUsuarioFinalizo: m['id_usuario_finalizo'] as String?,
         idUsuarioAgrego: m['id_usuario_agrego'] as String?,
+        nuOrder: m['nu_order'] as int? ?? 0,
       );
     }).toList();
   }
@@ -431,6 +436,7 @@ class LocalDbService {
       'fecha_compra': item.fechaCompra?.toIso8601String(),
       'id_usuario_finalizo': item.idUsuarioFinalizo,
       'id_usuario_agrego': item.idUsuarioAgrego,
+      'nu_order': item.nuOrder,
       'sync_status': syncStatus,
     };
 
@@ -474,6 +480,7 @@ class LocalDbService {
           'fecha_compra': item.fechaCompra?.toIso8601String(),
           'id_usuario_finalizo': item.idUsuarioFinalizo,
           'id_usuario_agrego': item.idUsuarioAgrego,
+          'nu_order': item.nuOrder,
           'sync_status': 'synced',
         },
         conflictAlgorithm: ConflictAlgorithm.replace,

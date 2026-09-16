@@ -329,67 +329,84 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                             ),
                           ),
                         )
-                      : ListView.separated(
+                      : ReorderableListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: pendingItems.length,
-                          separatorBuilder: (context, index) => const Divider(height: 1),
+                          onReorder: (oldIndex, newIndex) {
+                            if (newIndex > oldIndex) {
+                              newIndex -= 1;
+                            }
+                            _runWithPausedSyncTimer(() async {
+                              await db.reorderPendingItems(
+                                widget.shoppingList.idListaCompra,
+                                oldIndex,
+                                newIndex,
+                              );
+                            });
+                          },
                           itemBuilder: (context, index) {
                             final item = pendingItems[index];
-                            return Dismissible(
+                            return Column(
                               key: Key(item.idDetalle),
-                              direction: DismissDirection.horizontal,
-                              background: Container(
-                                alignment: Alignment.centerLeft,
-                                padding: const EdgeInsets.only(left: 20),
-                                color: Colors.green,
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.check_rounded, color: Colors.white, size: 28),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    l10n.statusPurchased,
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              children: [
+                                if (index > 0) const Divider(height: 1),
+                                Dismissible(
+                                  key: Key("dismiss_${item.idDetalle}"),
+                                  direction: DismissDirection.horizontal,
+                                  background: Container(
+                                    alignment: Alignment.centerLeft,
+                                    padding: const EdgeInsets.only(left: 20),
+                                    color: Colors.green,
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.check_rounded, color: Colors.white, size: 28),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          l10n.statusPurchased,
+                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ],
-                              ),
-                            ),
-                            secondaryBackground: Container(
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 20),
-                              color: Colors.red,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    l10n.actionDelete,
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  secondaryBackground: Container(
+                                    alignment: Alignment.centerRight,
+                                    padding: const EdgeInsets.only(right: 20),
+                                    color: Colors.red,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          l10n.actionDelete,
+                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 28),
+                                      ],
+                                    ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 28),
-                                ],
-                              ),
-                            ),
-                            onDismissed: (direction) {
-                              _runWithPausedSyncTimer(() async {
-                                if (direction == DismissDirection.startToEnd) {
-                                  await db.markItemAsCompleted(item.idDetalle);
-                                } else if (direction == DismissDirection.endToStart) {
-                                  await db.removeListDetailItem(item.idDetalle);
-                                }
-                              });
-                            },
-                            child: PendingItemTile(
-                              item: item,
-                              onSaveNote: (newNote) {
-                                _runWithPausedSyncTimer(() async {
-                                  await db.updateItemDetailNote(item.idDetalle, newNote);
-                                });
-                              },
-                            ),
-                          );
-                        },
-                      ),
+                                  onDismissed: (direction) {
+                                    _runWithPausedSyncTimer(() async {
+                                      if (direction == DismissDirection.startToEnd) {
+                                        await db.markItemAsCompleted(item.idDetalle);
+                                      } else if (direction == DismissDirection.endToStart) {
+                                        await db.removeListDetailItem(item.idDetalle);
+                                      }
+                                    });
+                                  },
+                                  child: PendingItemTile(
+                                    item: item,
+                                    onSaveNote: (newNote) {
+                                      _runWithPausedSyncTimer(() async {
+                                        await db.updateItemDetailNote(item.idDetalle, newNote);
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
                 ),
               ),
 
@@ -825,6 +842,8 @@ class _PendingItemTileState extends State<PendingItemTile> {
                     Icon(Icons.swipe_right_rounded, color: Colors.green, size: 16),
                     SizedBox(width: 2),
                     Icon(Icons.swipe_left_rounded, color: Colors.red, size: 16),
+                    SizedBox(width: 6),
+                    Icon(Icons.drag_handle_rounded, color: Colors.grey, size: 20),
                   ],
                 ),
               ],

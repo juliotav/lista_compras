@@ -8,6 +8,7 @@ class ListDetailItemModel {
   final DateTime? fechaCompra;
   final String? idUsuarioFinalizo;
   final String? idUsuarioAgrego;
+  final int nuOrder;
 
   ListDetailItemModel({
     required this.idDetalle,
@@ -19,6 +20,7 @@ class ListDetailItemModel {
     this.fechaCompra,
     this.idUsuarioFinalizo,
     this.idUsuarioAgrego,
+    this.nuOrder = 0,
   });
 
   bool get isCompleted => status == 'completed';
@@ -35,6 +37,7 @@ class ListDetailItemModel {
     DateTime? fechaCompra,
     String? idUsuarioFinalizo,
     String? idUsuarioAgrego,
+    int? nuOrder,
   }) {
     return ListDetailItemModel(
       idDetalle: idDetalle ?? this.idDetalle,
@@ -46,6 +49,7 @@ class ListDetailItemModel {
       fechaCompra: fechaCompra ?? this.fechaCompra,
       idUsuarioFinalizo: idUsuarioFinalizo ?? this.idUsuarioFinalizo,
       idUsuarioAgrego: idUsuarioAgrego ?? this.idUsuarioAgrego,
+      nuOrder: nuOrder ?? this.nuOrder,
     );
   }
 
@@ -60,6 +64,7 @@ class ListDetailItemModel {
       'fecha_compra': fechaCompra?.toIso8601String(),
       'id_usuario_finalizo': idUsuarioFinalizo,
       'id_usuario_agrego': idUsuarioAgrego,
+      'nu_order': nuOrder,
     };
   }
 
@@ -74,6 +79,9 @@ class ListDetailItemModel {
       fechaCompra: map['fecha_compra'] != null ? DateTime.parse(map['fecha_compra']) : null,
       idUsuarioFinalizo: map['id_usuario_finalizo'],
       idUsuarioAgrego: map['id_usuario_agrego'],
+      nuOrder: map['nu_order'] is int
+          ? map['nu_order'] as int
+          : (int.tryParse(map['nu_order']?.toString() ?? '0') ?? 0),
     );
   }
 }
