@@ -10,6 +10,7 @@ class AboutPrivacyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -63,7 +64,7 @@ class AboutPrivacyScreen extends StatelessWidget {
                   l10n.privacyPolicyContent,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     height: 1.5,
-                    color: Colors.grey[800],
+                    color: isDark ? Colors.white : Colors.grey[800],
                   ),
                 ),
               ),

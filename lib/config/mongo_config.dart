@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+
 class MongoConfig {
   /// Cadena de conexión URI de tu base de datos en MongoDB Atlas
   static String mongoUri =
@@ -19,8 +22,33 @@ class MongoConfig {
   /// Nombre identificador de la aplicación en MongoDB
   static const String appName = "listalista";
 
-  /// Versión visible para el usuario en la aplicación (sin número de compilación)
-  static const String appVersion = "1.0.19";
+  static String _cachedAppVersion = "";
+
+  /// Carga la versión real directamente desde el archivo pubspec.yaml
+  static Future<String> loadAppVersionFromPubspec() async {
+    if (_cachedAppVersion.isNotEmpty) return _cachedAppVersion;
+    if (kIsWeb) {
+      _cachedAppVersion = "1.0.20";
+      return _cachedAppVersion;
+    }
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final ver = info.version.split('+').first.trim();
+      if (ver.isNotEmpty) {
+        _cachedAppVersion = ver;
+      }
+    } catch (e) {
+      debugPrint("[MONGO_CONFIG LOG] Error leyendo versión de pubspec.yaml: $e");
+    }
+    return appVersion;
+  }
+
+  /// Retorna la versión visible y de validación (sin número de compilación +x).
+  /// Se obtiene automáticamente de pubspec.yaml.
+  static String get appVersion {
+    if (_cachedAppVersion.isNotEmpty) return _cachedAppVersion;
+    return "1.0.20";
+  }
 
   /// Retorna la URL de la tienda según el entorno (QA vs PR)
   static String get storeUrl {

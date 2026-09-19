@@ -209,6 +209,7 @@ class DatabaseService extends ChangeNotifier {
   /// Si la versión almacenada es estrictamente mayor que `MongoConfig.appVersion`, requiere actualización obligatoria.
   Future<void> checkAppVersion() async {
     try {
+      await MongoConfig.loadAppVersionFromPubspec();
       final doc = await MongoService.findOne(
         collectionName: MongoConfig.colAppVersion,
         filter: {'app_name': MongoConfig.appName},
