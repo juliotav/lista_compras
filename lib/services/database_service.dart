@@ -264,14 +264,63 @@ class DatabaseService extends ChangeNotifier {
     }
   }
 
+  bool _areListsEqual(List<ShoppingListModel> a, List<ShoppingListModel> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i].idListaCompra != b[i].idListaCompra ||
+          a[i].nbLista != b[i].nbLista ||
+          a[i].isActive != b[i].isActive ||
+          a[i].isCompleted != b[i].isCompleted ||
+          a[i].isDefault != b[i].isDefault) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _areCatalogEqual(List<ItemCatalogModel> a, List<ItemCatalogModel> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i].idArticulo != b[i].idArticulo ||
+          a[i].nbArticuloEs != b[i].nbArticuloEs ||
+          a[i].nbArticuloEn != b[i].nbArticuloEn ||
+          a[i].nuUso != b[i].nuUso) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _areDetailsEqual(
+    List<ListDetailItemModel> a,
+    List<ListDetailItemModel> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i].idDetalle != b[i].idDetalle ||
+          a[i].status != b[i].status ||
+          a[i].dsDetalle != b[i].dsDetalle ||
+          a[i].nuOrder != b[i].nuOrder ||
+          a[i].nbArticulo != b[i].nbArticulo) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /// Carga instantáneamente desde SQLite las listas, catálogo y productos guardados localmente
   Future<void> _loadFromLocalDb(String famId) async {
     try {
       final localLists = await _localDb.getShoppingLists(famId);
+      final bool listsChanged = !_areListsEqual(_shoppingLists, localLists);
       _shoppingLists.clear();
       _shoppingLists.addAll(localLists);
 
       final localCatalog = await _localDb.getCatalogItems(famId);
+      final bool catalogChanged = !_areCatalogEqual(
+        _catalogItems.where((c) => c.idFamilia == famId).toList(),
+        localCatalog,
+      );
       _catalogItems.removeWhere((c) => c.idFamilia == famId);
       _catalogItems.addAll(localCatalog);
 
@@ -279,10 +328,15 @@ class DatabaseService extends ChangeNotifier {
       final localDetails = await _localDb.getAllListDetailsForFamily(
         activeListIds,
       );
-      _listDetailItems.clear();
-      _listDetailItems.addAll(localDetails);
+
+      final bool detailsChanged = !_areDetailsEqual(_listDetailItems, localDetails);
+      if (detailsChanged) {
+        _listDetailItems.clear();
+        _listDetailItems.addAll(localDetails);
+      }
 
       final localFamilies = await _localDb.getFamilies();
+      final bool familiesChanged = _userFamilies.length != localFamilies.length;
       _families.clear();
       _families.addAll(localFamilies);
       _userFamilies.clear();
@@ -303,7 +357,9 @@ class DatabaseService extends ChangeNotifier {
         }
       }
 
-      notifyListeners();
+      if (listsChanged || catalogChanged || detailsChanged || familiesChanged) {
+        notifyListeners();
+      }
     } catch (e) {
       debugPrint("[DB_SERVICE LOG] Error cargando de SQLite: $e");
     }
@@ -1482,6 +1538,56 @@ class DatabaseService extends ChangeNotifier {
     return items;
   }
 
+  /// Actualiza el nombre de un artículo del catálogo rápido en SQLite, memoria RAM y Mongo Atlas
+  Future<bool> updateCatalogItemName({
+    required String idArticulo,
+    required String newName,
+  }) async {
+    final cleanName = newName.trim();
+    if (cleanName.isEmpty) return false;
+
+    final idx = _catalogItems.indexWhere((c) => c.idArticulo == idArticulo);
+    if (idx == -1) return false;
+
+    final target = _catalogItems[idx];
+    final updatedCatalog = target.copyWith(
+      nbArticuloEs: cleanName,
+      nbArticuloEn: cleanName,
+    );
+
+    _catalogItems[idx] = updatedCatalog;
+    await _localDb.saveCatalogItem(updatedCatalog, syncStatus: 'pending');
+
+    for (int i = 0; i < _listDetailItems.length; i++) {
+      if (_listDetailItems[i].idArticulo == idArticulo) {
+        final updatedDetail = _listDetailItems[i].copyWith(nbArticulo: cleanName);
+        _listDetailItems[i] = updatedDetail;
+        await _localDb.saveListDetailItem(updatedDetail, syncStatus: 'pending');
+        await _localDb.enqueueSyncItem(
+          collectionName: MongoConfig.colDetalleLista,
+          action: 'UPDATE',
+          entityId: updatedDetail.idDetalle,
+          payload: {'nb_articulo': cleanName},
+        );
+      }
+    }
+
+    notifyListeners();
+
+    await _localDb.enqueueSyncItem(
+      collectionName: MongoConfig.colCArticulo,
+      action: 'UPDATE',
+      entityId: idArticulo,
+      payload: {
+        'nb_articulo_es': cleanName,
+        'nb_articulo_en': cleanName,
+      },
+    );
+
+    await _syncService.processSyncQueue();
+    return true;
+  }
+
   void _incrementCatalogUsage(String? idArticulo, String nbArticulo) {
     final famId = _currentUser?.idFamilia;
     if (famId == null) return;
@@ -1611,7 +1717,7 @@ class DatabaseService extends ChangeNotifier {
       );
 
       _checkAndTriggerListNotification(idListaCompra);
-      await _syncService.processSyncQueue();
+      _syncService.triggerSync();
       return true;
     }
 
@@ -1645,7 +1751,7 @@ class DatabaseService extends ChangeNotifier {
     );
 
     _checkAndTriggerListNotification(idListaCompra);
-    await _syncService.processSyncQueue();
+    _syncService.triggerSync();
     return true;
   }
 
@@ -1846,7 +1952,7 @@ class DatabaseService extends ChangeNotifier {
         entityId: idDetalle,
         payload: {'ds_detalle': cleanNote},
       );
-      await _syncService.processSyncQueue();
+      _syncService.triggerSync();
     }
   }
 
@@ -1861,7 +1967,7 @@ class DatabaseService extends ChangeNotifier {
       entityId: idDetalle,
       payload: {'id_detalle': idDetalle},
     );
-    await _syncService.processSyncQueue();
+    _syncService.triggerSync();
   }
 
   Future<void> markItemAsCompleted(String idDetalle) async {
@@ -1891,7 +1997,7 @@ class DatabaseService extends ChangeNotifier {
         updated.idListaCompra,
         productName: updated.nbArticulo,
       );
-      await _syncService.processSyncQueue();
+      _syncService.triggerSync();
     }
   }
 
@@ -1922,8 +2028,6 @@ class DatabaseService extends ChangeNotifier {
       }
     }
 
-    // Notificar inmediatamente a la interfaz (0ms) de forma síncrona
-    // para evitar cualquier micro-salto o parpadeo en la reubicación visual
     notifyListeners();
 
     await _localDb.saveListDetailItemsBatch(updatedItems);
@@ -1937,6 +2041,6 @@ class DatabaseService extends ChangeNotifier {
       );
     }
 
-    await _syncService.processSyncQueue();
+    _syncService.triggerSync();
   }
 }

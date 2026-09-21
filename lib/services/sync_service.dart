@@ -32,7 +32,7 @@ class SyncService {
     });
   }
 
-  /// Procesa secuencialmente todos los elementos pendientes en sync_queue enviándolos a MongoDB Atlas
+  /// Procesa en lotes (bulkWrite) todos los elementos pendientes en sync_queue enviándolos a MongoDB Atlas en 1 sola llamada de red por lote
   Future<void> processSyncQueue() async {
     if (_isProcessing) {
       if (_syncCompleter != null) {
@@ -49,51 +49,104 @@ class SyncService {
         return;
       }
 
-      debugPrint("[SYNC_SERVICE] Procesando cola de sincronización (${queue.length} elementos)...");
+      final validQueue = queue.where((i) => i.retryCount <= 10).toList();
+      if (validQueue.isEmpty) return;
 
-      for (var item in queue) {
-        if (item.retryCount > 10) {
-          debugPrint("[SYNC_SERVICE] Elemento #${item.id} superó el límite de reintentos (10). Omitiendo temporalmente.");
-          continue;
-        }
+      debugPrint("[SYNC_SERVICE] Procesando cola de sincronización (${validQueue.length} elementos pendientes)...");
 
-        bool success = false;
+      // Agrupar elementos por colección para enviarlos en lotes (bulkWrite)
+      final Map<String, List<SyncQueueItem>> groupedByCollection = {};
+      for (var item in validQueue) {
+        groupedByCollection.putIfAbsent(item.collectionName, () => []).add(item);
+      }
 
-        try {
-          if (item.action == 'INSERT' || item.action == 'UPDATE') {
-            final String primaryKeyField = _getPrimaryKeyField(item.collectionName);
-            final filter = {primaryKeyField: item.entityId};
-            success = await MongoService.updateOne(
-              collectionName: item.collectionName,
-              filter: filter,
-              update: {'\$set': item.payload},
-              upsert: true,
-            );
-          } else if (item.action == 'DELETE') {
-            final String primaryKeyField = _getPrimaryKeyField(item.collectionName);
-            final filter = {primaryKeyField: item.entityId};
-            success = await MongoService.deleteOne(
-              collectionName: item.collectionName,
-              filter: filter,
-            );
+      for (var entry in groupedByCollection.entries) {
+        final collectionName = entry.key;
+        final itemsBatch = entry.value;
+        final primaryKeyField = _getPrimaryKeyField(collectionName);
+
+        if (itemsBatch.length == 1) {
+          final item = itemsBatch.first;
+          bool success = false;
+          try {
+            if (item.action == 'INSERT' || item.action == 'UPDATE') {
+              success = await MongoService.updateOne(
+                collectionName: collectionName,
+                filter: {primaryKeyField: item.entityId},
+                update: {'\$set': item.payload},
+                upsert: true,
+              );
+            } else if (item.action == 'DELETE') {
+              success = await MongoService.deleteOne(
+                collectionName: collectionName,
+                filter: {primaryKeyField: item.entityId},
+              );
+            }
+          } catch (e) {
+            debugPrint("[SYNC_SERVICE] Error procesando #${item.id}: $e");
+            success = false;
           }
-        } catch (e) {
-          debugPrint("[SYNC_SERVICE] Error procesando #${item.id} (${item.action} en ${item.collectionName}): $e");
-          success = false;
-        }
 
-        if (success) {
-          debugPrint("[SYNC_SERVICE] ¡Elemento #${item.id} sincronizado exitosamente con MongoDB Atlas!");
-          if (item.id != null) {
-            await _localDb.removeSyncQueueItem(item.id!);
+          if (success) {
+            if (item.id != null) {
+              await _localDb.removeSyncQueueItem(item.id!);
+            }
+            debugPrint("[SYNC_SERVICE] ¡Elemento #${item.id} sincronizado exitosamente con MongoDB Atlas!");
+          } else {
+            if (item.id != null) {
+              await _localDb.updateSyncQueueRetry(item.id!, item.retryCount);
+            }
+            break;
           }
         } else {
-          debugPrint("[SYNC_SERVICE] Error enviando #${item.id} a MongoDB Atlas. Se reintentará en el próximo ciclo.");
-          if (item.id != null) {
-            await _localDb.updateSyncQueueRetry(item.id!, item.retryCount);
+          // LOTE DE MÚLTIPLES ELEMENTOS (bulkWrite) en 1 sola llamada de red
+          debugPrint("[SYNC_SERVICE] Sincronizando LOTE de ${itemsBatch.length} elementos en '$collectionName' con MongoDB Atlas en 1 sola llamada...");
+
+          final List<Map<String, Object>> statements = [];
+          final List<int> processedIds = [];
+
+          for (var item in itemsBatch) {
+            if (item.id != null) processedIds.add(item.id!);
+            if (item.action == 'INSERT' || item.action == 'UPDATE') {
+              statements.add({
+                'updateOne': {
+                  'filter': {primaryKeyField: item.entityId},
+                  'update': {'\$set': item.payload},
+                  'upsert': true,
+                }
+              });
+            } else if (item.action == 'DELETE') {
+              statements.add({
+                'deleteOne': {
+                  'filter': {primaryKeyField: item.entityId},
+                }
+              });
+            }
           }
-          // Si falla la conexión a MongoDB, detener el ciclo por ahora para no saturar
-          break;
+
+          bool success = false;
+          try {
+            success = await MongoService.bulkWrite(
+              collectionName: collectionName,
+              statements: statements,
+            );
+          } catch (e) {
+            debugPrint("[SYNC_SERVICE] Error en lote bulkWrite para $collectionName: $e");
+            success = false;
+          }
+
+          if (success) {
+            await _localDb.removeSyncQueueItemsBatch(processedIds);
+            debugPrint("[SYNC_SERVICE] ¡LOTE de ${itemsBatch.length} elementos (#${processedIds.first}-#${processedIds.last}) sincronizado exitosamente en MongoDB Atlas en 1 sola petición!");
+          } else {
+            debugPrint("[SYNC_SERVICE] Error enviando lote a Mongo. Se reintentará en el próximo ciclo.");
+            for (var item in itemsBatch) {
+              if (item.id != null) {
+                await _localDb.updateSyncQueueRetry(item.id!, item.retryCount);
+              }
+            }
+            break;
+          }
         }
       }
     } catch (e) {

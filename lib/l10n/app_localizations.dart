@@ -979,6 +979,24 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Sincronizando...'**
   String get syncingStatus;
+
+  /// No description provided for @editCatalogItemTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Editar nombre del artículo'**
+  String get editCatalogItemTitle;
+
+  /// No description provided for @editCatalogItemHint.
+  ///
+  /// In es, this message translates to:
+  /// **'Nombre del artículo en el catálogo'**
+  String get editCatalogItemHint;
+
+  /// No description provided for @cannotEditDefaultCatalogItem.
+  ///
+  /// In es, this message translates to:
+  /// **'Los artículos predeterminados del catálogo no se pueden modificar.'**
+  String get cannotEditDefaultCatalogItem;
 }
 
 class _AppLocalizationsDelegate

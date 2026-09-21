@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
+import '../models/item_catalog_model.dart';
 import '../models/list_detail_item_model.dart';
 import '../models/shopping_list_model.dart';
 import '../services/database_service.dart';
@@ -21,7 +22,9 @@ class ListDetailScreen extends StatefulWidget {
 class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBindingObserver {
   Timer? _syncTimer;
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _searchQuery = "";
+  bool _isDraggingReorder = false;
 
   @override
   void initState() {
@@ -61,7 +64,10 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
       debugPrint("[LIST_DETAIL LOG] Error en acción manual con timer pausado: $e");
     } finally {
       if (mounted) {
-        _startSyncTimer();
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          _startSyncTimer();
+        }
       }
     }
   }
@@ -90,7 +96,96 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     WidgetsBinding.instance.removeObserver(this);
     _stopSyncTimer();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  bool _isDefaultSeedCatalogItem(ItemCatalogModel item) {
+    const defaultSeedNames = {
+      'carne', 'meat',
+      'leche', 'milk',
+      'cereal',
+      'queso', 'cheese',
+      'pan', 'bread',
+      'huevos', 'eggs',
+      'frutas', 'fruits',
+      'verduras', 'vegetables',
+    };
+    final esName = item.nbArticuloEs.trim().toLowerCase();
+    final enName = item.nbArticuloEn.trim().toLowerCase();
+    return defaultSeedNames.contains(esName) || defaultSeedNames.contains(enName);
+  }
+
+  void _showEditCatalogItemDialog(ItemCatalogModel catItem) {
+    final l10n = AppLocalizations.of(context)!;
+    final localeProvider = context.read<LocaleProvider>();
+    final currentLang = localeProvider.locale?.languageCode ?? 'es';
+
+    if (_isDefaultSeedCatalogItem(catItem)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.cannotEditDefaultCatalogItem),
+          backgroundColor: Colors.orange[800],
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    final currentName = catItem.getLocalizedName(currentLang);
+    final textController = TextEditingController(text: currentName);
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(l10n.editCatalogItemTitle),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: textController,
+              textCapitalization: TextCapitalization.sentences,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: l10n.itemNameLabel,
+                hintText: l10n.editCatalogItemHint,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              validator: (v) => v == null || v.trim().isEmpty ? l10n.itemNameLabel : null,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(l10n.btnCancel),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  final dialogNav = Navigator.of(dialogContext);
+                  final newText = textController.text.trim();
+                  dialogNav.pop();
+
+                  _runWithPausedSyncTimer(() async {
+                    final db = context.read<DatabaseService>();
+                    await db.updateCatalogItemName(
+                      idArticulo: catItem.idArticulo,
+                      newName: newText,
+                    );
+                  });
+                }
+              },
+              child: Text(l10n.btnAdd),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _addCustomItem(String itemName) async {
@@ -273,6 +368,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
           });
         },
         child: SingleChildScrollView(
+          controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -329,22 +425,60 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                             ),
                           ),
                         )
-                      : ReorderableListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: pendingItems.length,
-                          onReorder: (oldIndex, newIndex) {
-                            if (newIndex > oldIndex) {
-                              newIndex -= 1;
+                      : Listener(
+                          onPointerMove: (event) {
+                            if (!_isDraggingReorder) return;
+                            final screenHeight = MediaQuery.of(context).size.height;
+                            final dy = event.position.dy;
+
+                            const edgeThreshold = 160.0;
+                            if (dy < edgeThreshold) {
+                              final double scrollOffset = (edgeThreshold - dy) / edgeThreshold * 18;
+                              if (_scrollController.hasClients) {
+                                final newOffset = (_scrollController.offset - scrollOffset).clamp(
+                                  0.0,
+                                  _scrollController.position.maxScrollExtent,
+                                );
+                                _scrollController.jumpTo(newOffset);
+                              }
+                            } else if (dy > screenHeight - edgeThreshold) {
+                              final double scrollOffset = (dy - (screenHeight - edgeThreshold)) / edgeThreshold * 18;
+                              if (_scrollController.hasClients) {
+                                final newOffset = (_scrollController.offset + scrollOffset).clamp(
+                                  0.0,
+                                  _scrollController.position.maxScrollExtent,
+                                );
+                                _scrollController.jumpTo(newOffset);
+                              }
                             }
-                            _runWithPausedSyncTimer(() async {
-                              await db.reorderPendingItems(
-                                widget.shoppingList.idListaCompra,
-                                oldIndex,
-                                newIndex,
-                              );
-                            });
                           },
+                          onPointerUp: (_) {
+                            _isDraggingReorder = false;
+                          },
+                          onPointerCancel: (_) {
+                            _isDraggingReorder = false;
+                          },
+                          child: ReorderableListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: pendingItems.length,
+                            onReorderStart: (index) {
+                              _isDraggingReorder = true;
+                              _stopSyncTimer();
+                            },
+                            onReorder: (oldIndex, newIndex) {
+                              _isDraggingReorder = false;
+                              if (newIndex > oldIndex) {
+                                newIndex -= 1;
+                              }
+                              _runWithPausedSyncTimer(() async {
+                                await db.reorderPendingItems(
+                                  widget.shoppingList.idListaCompra,
+                                  oldIndex,
+                                  newIndex,
+                                );
+                              });
+                            },
                           itemBuilder: (context, index) {
                             final item = pendingItems[index];
                             return Column(
@@ -407,6 +541,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                             );
                           },
                         ),
+                      ),
                 ),
               ),
 
@@ -536,6 +671,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                                   color: Colors.transparent,
                                   child: ListTile(
                                     dense: true,
+                                    onLongPress: () => _showEditCatalogItemDialog(catItem),
                                     title: Row(
                                       children: [
                                         Expanded(

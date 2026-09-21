@@ -490,4 +490,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get syncingStatus => 'Sincronizando...';
+
+  @override
+  String get editCatalogItemTitle => 'Editar nombre del artículo';
+
+  @override
+  String get editCatalogItemHint => 'Nombre del artículo en el catálogo';
+
+  @override
+  String get cannotEditDefaultCatalogItem =>
+      'Los artículos predeterminados del catálogo no se pueden modificar.';
 }

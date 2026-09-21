@@ -578,6 +578,17 @@ class LocalDbService {
     await database.delete('sync_queue', where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<void> removeSyncQueueItemsBatch(List<int> ids) async {
+    if (ids.isEmpty) return;
+    final database = await db;
+    final placeholders = List.filled(ids.length, '?').join(',');
+    await database.delete(
+      'sync_queue',
+      where: 'id IN ($placeholders)',
+      whereArgs: ids,
+    );
+  }
+
   Future<void> updateSyncQueueRetry(int id, int currentRetries) async {
     final database = await db;
     await database.update(

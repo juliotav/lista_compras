@@ -179,6 +179,26 @@ class MongoService {
     }
   }
 
+  /// Ejecuta múltiples operaciones de actualización/inserción/eliminación en lote (bulkWrite) en una sola llamada de red a MongoDB Cloud
+  static Future<bool> bulkWrite({
+    required String collectionName,
+    required List<Map<String, Object>> statements,
+  }) async {
+    if (statements.isEmpty) return true;
+    final db = await _getDb();
+    if (db == null) return false;
+
+    try {
+      final collection = db.collection(collectionName);
+      final res = await collection.bulkWrite(statements);
+      debugPrint("[MONGO SERVICE] bulkWrite exitoso de ${statements.length} operaciones en $collectionName");
+      return res.isSuccess || res.writeErrors.isEmpty;
+    } catch (e) {
+      debugPrint("[MONGO SERVICE] bulkWrite ERROR en $collectionName: $e");
+      return false;
+    }
+  }
+
   /// Cierra limpiamente la conexión activa de MongoDB si existe
   static Future<void> close() async {
     if (_db != null) {

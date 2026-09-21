@@ -478,14 +478,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get updateRequiredDesc =>
-      'A new version of Lista lista is available. You must update the app to continue using it.';
+      'A new version of Lista lista is available. Updating the application is required to continue using it.';
 
   @override
   String get btnGoToStore => 'Go to Store';
 
   @override
-  String get btnCloseApp => 'Close App';
+  String get btnCloseApp => 'Close app';
 
   @override
   String get syncingStatus => 'Syncing...';
+
+  @override
+  String get editCatalogItemTitle => 'Edit Item Name';
+
+  @override
+  String get editCatalogItemHint => 'Catalog item name';
+
+  @override
+  String get cannotEditDefaultCatalogItem =>
+      'Default catalog items cannot be modified.';
 }
