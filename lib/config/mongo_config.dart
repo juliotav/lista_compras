@@ -50,10 +50,32 @@ class MongoConfig {
     return "1.0.20";
   }
 
+  /// Retorna el ambiente actual ('qa' o 'pr')
+  static String get currentEnv {
+    const env = String.fromEnvironment('ENV', defaultValue: 'qa');
+    final cleanEnv = env.trim().toLowerCase();
+    if (cleanEnv == 'pr' || cleanEnv == 'prod' || cleanEnv == 'production') {
+      return 'pr';
+    }
+    return 'qa';
+  }
+
+  /// Retorna la plataforma actual ('android', 'ios', 'web', etc.)
+  static String get currentPlatform {
+    if (kIsWeb) return 'web';
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'android';
+      case TargetPlatform.iOS:
+        return 'ios';
+      default:
+        return defaultTargetPlatform.name.toLowerCase();
+    }
+  }
+
   /// Retorna la URL de la tienda según el entorno (QA vs PR)
   static String get storeUrl {
-    const env = String.fromEnvironment('ENV', defaultValue: 'qa');
-    if (env.trim().toLowerCase() == 'pr') {
+    if (currentEnv == 'pr') {
       // Placeholder para producción
       return 'https://play.google.com/store/apps/details?id=com.sonorodevs.lista_compras'; // TODO: Reemplazar con la URL real de Producción cuando esté disponible
     }

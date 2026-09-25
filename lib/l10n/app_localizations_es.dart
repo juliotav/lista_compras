@@ -500,4 +500,22 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get cannotEditDefaultCatalogItem =>
       'Los artículos predeterminados del catálogo no se pueden modificar.';
+
+  @override
+  String get sortTooltip => 'Ordenar productos';
+
+  @override
+  String get sortOptionManual => 'Orden manual (personalizado)';
+
+  @override
+  String get sortOptionAlphabeticalAsc => 'Alfabético (A - Z)';
+
+  @override
+  String get sortOptionAlphabeticalDesc => 'Alfabético (Z - A)';
+
+  @override
+  String get filterTooltip => 'Buscar en por comprar';
+
+  @override
+  String get filterPendingItemsHint => 'Filtrar por comprar...';
 }

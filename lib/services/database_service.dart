@@ -39,6 +39,11 @@ class DatabaseService extends ChangeNotifier {
   bool _isBackgroundSyncing = false;
   bool get isBackgroundSyncing => _isBackgroundSyncing;
 
+  /// Ejecuta la sincronización inmediata de la cola pendiente y espera a que el backend responda
+  Future<void> syncNow() async {
+    await _syncService.syncNow();
+  }
+
   void _startBackgroundSync() {
     if (!_isBackgroundSyncing) {
       _isBackgroundSyncing = true;
@@ -206,34 +211,81 @@ class DatabaseService extends ChangeNotifier {
   }
 
   /// Consulta en MongoDB Atlas la versión en la colección `app_version` para `app_name: listalista`.
-  /// Si la versión almacenada es estrictamente mayor que `MongoConfig.appVersion`, requiere actualización obligatoria.
+  /// Soporta verificación por plataforma ('android', 'ios') y ambiente ('qa', 'pr').
+  /// Mantiene compatibilidad total con el registro legacy (`app_version` en raíz).
+  /// Si la versión requerida es estrictamente mayor que `MongoConfig.appVersion`, requiere actualización obligatoria.
   Future<void> checkAppVersion() async {
     try {
       await MongoConfig.loadAppVersionFromPubspec();
-      final doc = await MongoService.findOne(
+      final env = MongoConfig.currentEnv;
+      final platform = MongoConfig.currentPlatform;
+      final localVer = MongoConfig.appVersion.trim();
+
+      // 1. Intentar consulta por coincidencia de ambiente y plataforma en raíz
+      Map<String, dynamic>? doc = await MongoService.findOne(
+        collectionName: MongoConfig.colAppVersion,
+        filter: {
+          'app_name': MongoConfig.appName,
+          'environment': env,
+          'platform': platform,
+        },
+      );
+
+      // 2. Fallback a documento general/legacy por app_name
+      doc ??= await MongoService.findOne(
         collectionName: MongoConfig.colAppVersion,
         filter: {'app_name': MongoConfig.appName},
       );
-      if (doc != null && doc.containsKey('app_version')) {
-        final remoteVer = (doc['app_version'] as String?)?.trim();
+
+      if (doc != null) {
+        String? remoteVer;
+
+        // Extraer versión si existe estructura por entornos ('environments')
+        if (doc['environments'] != null) {
+          final envs = doc['environments'];
+          if (envs is Map) {
+            final envData = envs[env] ?? envs[env.toLowerCase()];
+            if (envData is Map) {
+              final platVer = envData[platform] ?? envData[platform.toLowerCase()];
+              if (platVer != null) {
+                remoteVer = platVer.toString().trim();
+              }
+            }
+          }
+        }
+
+        // Fallback a versión global/legacy en raíz 'app_version'
+        remoteVer ??= (doc['app_version'] as String?)?.trim();
+
         _remoteAppVersion = remoteVer;
+
+        debugPrint(
+          "[VERSION CHECK LOG] Env: '$env' | Platform: '$platform' | Local: '$localVer' | Remote: '$remoteVer'",
+        );
+
         if (remoteVer != null && remoteVer.isNotEmpty) {
-          final localVer = MongoConfig.appVersion.trim();
-          if (_compareVersions(localVer, remoteVer) < 0) {
+          final cmp = _compareVersions(localVer, remoteVer);
+          if (cmp < 0) {
             debugPrint(
-              "[VERSION CHECK] ¡Versión de la app ($localVer) es menor a la versión requerida de la BD ($remoteVer)!",
+              "[VERSION CHECK] ¡Versión local ($localVer) es MENOR a la requerida ($remoteVer)! Requiere actualización.",
             );
             _isUpdateRequired = true;
             notifyListeners();
             return;
+          } else {
+            debugPrint(
+              "[VERSION CHECK] Versión local ($localVer) está AL DÍA respecto a la requerida ($remoteVer).",
+            );
           }
         }
+      } else {
+        debugPrint("[VERSION CHECK LOG] No se encontró ningún documento en app_version.");
       }
       _isUpdateRequired = false;
       notifyListeners();
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint(
-        "[VERSION CHECK LOG] Error al consultar app_version en MongoDB: $e",
+        "[VERSION CHECK LOG] Error al consultar app_version en MongoDB: $e\n$stack",
       );
     }
   }
@@ -1584,7 +1636,7 @@ class DatabaseService extends ChangeNotifier {
       },
     );
 
-    await _syncService.processSyncQueue();
+    await _syncService.syncNow();
     return true;
   }
 
@@ -2041,6 +2093,52 @@ class DatabaseService extends ChangeNotifier {
       );
     }
 
+    _syncService.triggerSync();
+  }
+
+  /// Reordena los elementos pendientes por orden alfabético y persiste el nuevo orden en SQLite y MongoDB
+  Future<void> saveAlphabeticalOrder(
+    String idListaCompra, {
+    bool ascending = true,
+  }) async {
+    final pendingList = getPendingItems(idListaCompra);
+    if (pendingList.isEmpty) return;
+
+    pendingList.sort((a, b) {
+      final cmp = a.nbArticulo.toLowerCase().compareTo(b.nbArticulo.toLowerCase());
+      return ascending ? cmp : -cmp;
+    });
+
+    final List<ListDetailItemModel> updatedItems = [];
+    for (int i = 0; i < pendingList.length; i++) {
+      final originalItem = pendingList[i];
+      if (originalItem.nuOrder != i) {
+        final updatedItem = originalItem.copyWith(nuOrder: i);
+        updatedItems.add(updatedItem);
+
+        final idxInMemory = _listDetailItems.indexWhere(
+          (x) => x.idDetalle == originalItem.idDetalle,
+        );
+        if (idxInMemory != -1) {
+          _listDetailItems[idxInMemory] = updatedItem;
+        }
+      }
+    }
+
+    if (updatedItems.isEmpty) return;
+
+    notifyListeners();
+
+    await _localDb.saveListDetailItemsBatch(updatedItems);
+
+    for (var updated in updatedItems) {
+      await _localDb.enqueueSyncItem(
+        collectionName: MongoConfig.colDetalleLista,
+        action: 'UPDATE',
+        entityId: updated.idDetalle,
+        payload: {'nu_order': updated.nuOrder},
+      );
+    }
     _syncService.triggerSync();
   }
 }

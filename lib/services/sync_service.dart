@@ -24,6 +24,18 @@ class SyncService {
     return _instance!;
   }
 
+  /// Cancela el temporizador de debounce si existe
+  void cancelDebounce() {
+    _debounceTimer?.cancel();
+    _debounceTimer = null;
+  }
+
+  /// Dispara la sincronización inmediata sin debounce y espera a que el envío a backend termine
+  Future<void> syncNow() async {
+    cancelDebounce();
+    await processSyncQueue();
+  }
+
   /// Dispara el procesamiento de la cola de sincronización con un pequeño debounce
   void triggerSync({Duration delay = const Duration(milliseconds: 500)}) {
     _debounceTimer?.cancel();
@@ -37,6 +49,10 @@ class SyncService {
     if (_isProcessing) {
       if (_syncCompleter != null) {
         await _syncCompleter!.future;
+      }
+      final remaining = await _localDb.getPendingSyncQueue();
+      if (remaining.isNotEmpty) {
+        return processSyncQueue();
       }
       return;
     }

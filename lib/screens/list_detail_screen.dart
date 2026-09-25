@@ -10,6 +10,12 @@ import '../services/locale_provider.dart';
 import '../widgets/ad_banner_widget.dart';
 import '../widgets/sync_indicator_widget.dart';
 
+enum PendingItemsSortOption {
+  manual,
+  alphabeticalAsc,
+  alphabeticalDesc,
+}
+
 class ListDetailScreen extends StatefulWidget {
   final ShoppingListModel shoppingList;
 
@@ -25,6 +31,11 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
   final ScrollController _scrollController = ScrollController();
   String _searchQuery = "";
   bool _isDraggingReorder = false;
+
+  PendingItemsSortOption _pendingSortOption = PendingItemsSortOption.manual;
+  bool _showPendingFilter = false;
+  final TextEditingController _pendingFilterController = TextEditingController();
+  String _pendingFilterQuery = "";
 
   @override
   void initState() {
@@ -43,12 +54,22 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
         _searchQuery = _searchController.text.trim();
       });
     });
+
+    _pendingFilterController.addListener(() {
+      setState(() {
+        _pendingFilterQuery = _pendingFilterController.text.trim();
+      });
+    });
   }
 
   void _startSyncTimer() {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(const Duration(seconds: 6), (_) async {
       if (mounted) {
+        // Omitir sincronización periódica si el usuario está buscando, filtrando o arrastrando elementos
+        if (_showPendingFilter || _pendingFilterQuery.isNotEmpty || _searchQuery.isNotEmpty || _isDraggingReorder) {
+          return;
+        }
         final db = context.read<DatabaseService>();
         if (db.isFetchingFamilyData) return;
         await db.fetchFamilyData(isSilentPeriodic: true);
@@ -60,6 +81,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     _stopSyncTimer();
     try {
       await action();
+      if (mounted) {
+        await context.read<DatabaseService>().syncNow();
+      }
     } catch (e) {
       debugPrint("[LIST_DETAIL LOG] Error en acción manual con timer pausado: $e");
     } finally {
@@ -96,6 +120,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     WidgetsBinding.instance.removeObserver(this);
     _stopSyncTimer();
     _searchController.dispose();
+    _pendingFilterController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -325,11 +350,33 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     final localeProvider = context.watch<LocaleProvider>();
     final currentLang = localeProvider.locale?.languageCode ?? 'es';
 
-    final pendingItems = db.getPendingItems(widget.shoppingList.idListaCompra);
+    List<ListDetailItemModel> pendingItems = db.getPendingItems(widget.shoppingList.idListaCompra);
     final completedItems = db.getCompletedItems(widget.shoppingList.idListaCompra);
     final catalogItems = db.getCatalogItems();
 
-    // Filtrar el catálogo al vuelo según el texto ingresado en el buscador
+    // 1. Filtrar artículos por comprar si hay término de búsqueda activo en la sección
+    if (_pendingFilterQuery.isNotEmpty) {
+      final qLower = _pendingFilterQuery.toLowerCase();
+      pendingItems = pendingItems.where((item) {
+        final nameMatch = item.nbArticulo.toLowerCase().contains(qLower);
+        final noteMatch = item.dsDetalle?.toLowerCase().contains(qLower) ?? false;
+        return nameMatch || noteMatch;
+      }).toList();
+    }
+
+    // 2. Aplicar ordenamiento
+    switch (_pendingSortOption) {
+      case PendingItemsSortOption.manual:
+        break;
+      case PendingItemsSortOption.alphabeticalAsc:
+        pendingItems.sort((a, b) => a.nbArticulo.toLowerCase().compareTo(b.nbArticulo.toLowerCase()));
+        break;
+      case PendingItemsSortOption.alphabeticalDesc:
+        pendingItems.sort((a, b) => b.nbArticulo.toLowerCase().compareTo(a.nbArticulo.toLowerCase()));
+        break;
+    }
+
+    // Filtrar el catálogo al vuelo según el texto ingresado en el buscador Fast-Add
     final filteredCatalog = catalogItems.where((c) {
       final name = c.getLocalizedName(currentLang).toLowerCase();
       return name.contains(_searchQuery.toLowerCase());
@@ -401,9 +448,163 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                       ),
                     ),
                   ),
+                  const Spacer(),
+
+                  // Icono para desplegar/ocultar barra de búsqueda de por comprar
+                  IconButton(
+                    icon: Icon(
+                      _showPendingFilter ? Icons.filter_alt_off_rounded : Icons.search_rounded,
+                      color: _showPendingFilter || _pendingFilterQuery.isNotEmpty
+                          ? theme.colorScheme.primary
+                          : Colors.grey[700],
+                      size: 22,
+                    ),
+                    tooltip: l10n.filterTooltip,
+                    onPressed: () {
+                      setState(() {
+                        _showPendingFilter = !_showPendingFilter;
+                        if (!_showPendingFilter) {
+                          _pendingFilterController.clear();
+                          _pendingFilterQuery = "";
+                        }
+                      });
+                    },
+                  ),
+
+                  // Botón desplegable para seleccionar tipo de ordenamiento
+                  PopupMenuButton<PendingItemsSortOption>(
+                    icon: Icon(
+                      Icons.sort_rounded,
+                      color: _pendingSortOption != PendingItemsSortOption.manual
+                          ? theme.colorScheme.primary
+                          : Colors.grey[700],
+                      size: 22,
+                    ),
+                    tooltip: l10n.sortTooltip,
+                    initialValue: _pendingSortOption,
+                    onSelected: (PendingItemsSortOption option) {
+                      _runWithPausedSyncTimer(() async {
+                        setState(() {
+                          _pendingSortOption = option;
+                        });
+                        if (option != PendingItemsSortOption.manual) {
+                          final db = context.read<DatabaseService>();
+                          await db.saveAlphabeticalOrder(
+                            widget.shoppingList.idListaCompra,
+                            ascending: option == PendingItemsSortOption.alphabeticalAsc,
+                          );
+                        }
+                      });
+                    },
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<PendingItemsSortOption>>[
+                      PopupMenuItem<PendingItemsSortOption>(
+                        value: PendingItemsSortOption.manual,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.drag_indicator_rounded,
+                              size: 18,
+                              color: _pendingSortOption == PendingItemsSortOption.manual
+                                  ? theme.colorScheme.primary
+                                  : Colors.grey[600],
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              l10n.sortOptionManual,
+                              style: TextStyle(
+                                fontWeight: _pendingSortOption == PendingItemsSortOption.manual
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      PopupMenuItem<PendingItemsSortOption>(
+                        value: PendingItemsSortOption.alphabeticalAsc,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.sort_by_alpha_rounded,
+                              size: 18,
+                              color: _pendingSortOption == PendingItemsSortOption.alphabeticalAsc
+                                  ? theme.colorScheme.primary
+                                  : Colors.grey[600],
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              l10n.sortOptionAlphabeticalAsc,
+                              style: TextStyle(
+                                fontWeight: _pendingSortOption == PendingItemsSortOption.alphabeticalAsc
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<PendingItemsSortOption>(
+                        value: PendingItemsSortOption.alphabeticalDesc,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.sort_by_alpha_rounded,
+                              size: 18,
+                              color: _pendingSortOption == PendingItemsSortOption.alphabeticalDesc
+                                  ? theme.colorScheme.primary
+                                  : Colors.grey[600],
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              l10n.sortOptionAlphabeticalDesc,
+                              style: TextStyle(
+                                fontWeight: _pendingSortOption == PendingItemsSortOption.alphabeticalDesc
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
+
+              // CAMPO DE BÚSQUEDA / FILTRO PARA ARTÍCULOS POR COMPRAR
+              if (_showPendingFilter) ...[
+                TextField(
+                  controller: _pendingFilterController,
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    hintText: l10n.filterPendingItemsHint,
+                    prefixIcon: Icon(Icons.filter_list_rounded, color: theme.colorScheme.primary, size: 20),
+                    suffixIcon: _pendingFilterQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, color: Colors.grey, size: 18),
+                            onPressed: () {
+                              _pendingFilterController.clear();
+                            },
+                          )
+                        : null,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    filled: true,
+                    fillColor: theme.cardColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
 
               Material(
                 color: theme.cardColor,
@@ -413,7 +614,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 120),
+                  constraints: const BoxConstraints(minHeight: 120, maxHeight: 280),
                   child: pendingItems.isEmpty
                       ? Center(
                           child: Padding(
@@ -425,60 +626,65 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                             ),
                           ),
                         )
-                      : Listener(
-                          onPointerMove: (event) {
-                            if (!_isDraggingReorder) return;
-                            final screenHeight = MediaQuery.of(context).size.height;
-                            final dy = event.position.dy;
+                      : Scrollbar(
+                          child: Listener(
+                            onPointerMove: (event) {
+                              if (!_isDraggingReorder) return;
+                              final screenHeight = MediaQuery.of(context).size.height;
+                              final dy = event.position.dy;
 
-                            const edgeThreshold = 160.0;
-                            if (dy < edgeThreshold) {
-                              final double scrollOffset = (edgeThreshold - dy) / edgeThreshold * 18;
-                              if (_scrollController.hasClients) {
-                                final newOffset = (_scrollController.offset - scrollOffset).clamp(
-                                  0.0,
-                                  _scrollController.position.maxScrollExtent,
-                                );
-                                _scrollController.jumpTo(newOffset);
+                              const edgeThreshold = 160.0;
+                              if (dy < edgeThreshold) {
+                                final double scrollOffset = (edgeThreshold - dy) / edgeThreshold * 18;
+                                if (_scrollController.hasClients) {
+                                  final newOffset = (_scrollController.offset - scrollOffset).clamp(
+                                    0.0,
+                                    _scrollController.position.maxScrollExtent,
+                                  );
+                                  _scrollController.jumpTo(newOffset);
+                                }
+                              } else if (dy > screenHeight - edgeThreshold) {
+                                final double scrollOffset = (dy - (screenHeight - edgeThreshold)) / edgeThreshold * 18;
+                                if (_scrollController.hasClients) {
+                                  final newOffset = (_scrollController.offset + scrollOffset).clamp(
+                                    0.0,
+                                    _scrollController.position.maxScrollExtent,
+                                  );
+                                  _scrollController.jumpTo(newOffset);
+                                }
                               }
-                            } else if (dy > screenHeight - edgeThreshold) {
-                              final double scrollOffset = (dy - (screenHeight - edgeThreshold)) / edgeThreshold * 18;
-                              if (_scrollController.hasClients) {
-                                final newOffset = (_scrollController.offset + scrollOffset).clamp(
-                                  0.0,
-                                  _scrollController.position.maxScrollExtent,
-                                );
-                                _scrollController.jumpTo(newOffset);
-                              }
-                            }
-                          },
-                          onPointerUp: (_) {
-                            _isDraggingReorder = false;
-                          },
-                          onPointerCancel: (_) {
-                            _isDraggingReorder = false;
-                          },
-                          child: ReorderableListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: pendingItems.length,
-                            onReorderStart: (index) {
-                              _isDraggingReorder = true;
-                              _stopSyncTimer();
                             },
-                            onReorder: (oldIndex, newIndex) {
+                            onPointerUp: (_) {
                               _isDraggingReorder = false;
-                              if (newIndex > oldIndex) {
-                                newIndex -= 1;
-                              }
-                              _runWithPausedSyncTimer(() async {
-                                await db.reorderPendingItems(
-                                  widget.shoppingList.idListaCompra,
-                                  oldIndex,
-                                  newIndex,
-                                );
-                              });
                             },
+                            onPointerCancel: (_) {
+                              _isDraggingReorder = false;
+                            },
+                            child: ReorderableListView.builder(
+                              shrinkWrap: true,
+                              physics: const ClampingScrollPhysics(),
+                              buildDefaultDragHandles: _pendingSortOption == PendingItemsSortOption.manual && _pendingFilterQuery.isEmpty,
+                              itemCount: pendingItems.length,
+                              onReorderStart: (index) {
+                                _isDraggingReorder = true;
+                                _stopSyncTimer();
+                              },
+                              onReorder: (oldIndex, newIndex) {
+                                if (_pendingSortOption != PendingItemsSortOption.manual || _pendingFilterQuery.isNotEmpty) {
+                                  return;
+                                }
+                                _isDraggingReorder = false;
+                                if (newIndex > oldIndex) {
+                                  newIndex -= 1;
+                                }
+                                _runWithPausedSyncTimer(() async {
+                                  await db.reorderPendingItems(
+                                    widget.shoppingList.idListaCompra,
+                                    oldIndex,
+                                    newIndex,
+                                  );
+                                });
+                              },
                           itemBuilder: (context, index) {
                             final item = pendingItems[index];
                             return Column(
@@ -542,6 +748,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                           },
                         ),
                       ),
+                    ),
                 ),
               ),
 

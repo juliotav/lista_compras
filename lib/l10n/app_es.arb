@@ -204,5 +204,11 @@
   "syncingStatus": "Sincronizando...",
   "editCatalogItemTitle": "Editar nombre del artículo",
   "editCatalogItemHint": "Nombre del artículo en el catálogo",
-  "cannotEditDefaultCatalogItem": "Los artículos predeterminados del catálogo no se pueden modificar."
+  "cannotEditDefaultCatalogItem": "Los artículos predeterminados del catálogo no se pueden modificar.",
+  "sortTooltip": "Ordenar productos",
+  "sortOptionManual": "Orden manual (personalizado)",
+  "sortOptionAlphabeticalAsc": "Alfabético (A - Z)",
+  "sortOptionAlphabeticalDesc": "Alfabético (Z - A)",
+  "filterTooltip": "Buscar en por comprar",
+  "filterPendingItemsHint": "Filtrar por comprar..."
 }

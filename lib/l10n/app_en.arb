@@ -204,5 +204,11 @@
   "syncingStatus": "Syncing...",
   "editCatalogItemTitle": "Edit Item Name",
   "editCatalogItemHint": "Catalog item name",
-  "cannotEditDefaultCatalogItem": "Default catalog items cannot be modified."
+  "cannotEditDefaultCatalogItem": "Default catalog items cannot be modified.",
+  "sortTooltip": "Sort items",
+  "sortOptionManual": "Manual order (custom)",
+  "sortOptionAlphabeticalAsc": "Alphabetical (A - Z)",
+  "sortOptionAlphabeticalDesc": "Alphabetical (Z - A)",
+  "filterTooltip": "Search in pending items",
+  "filterPendingItemsHint": "Filter pending items..."
 }

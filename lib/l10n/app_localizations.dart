@@ -997,6 +997,42 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Los artículos predeterminados del catálogo no se pueden modificar.'**
   String get cannotEditDefaultCatalogItem;
+
+  /// No description provided for @sortTooltip.
+  ///
+  /// In es, this message translates to:
+  /// **'Ordenar productos'**
+  String get sortTooltip;
+
+  /// No description provided for @sortOptionManual.
+  ///
+  /// In es, this message translates to:
+  /// **'Orden manual (personalizado)'**
+  String get sortOptionManual;
+
+  /// No description provided for @sortOptionAlphabeticalAsc.
+  ///
+  /// In es, this message translates to:
+  /// **'Alfabético (A - Z)'**
+  String get sortOptionAlphabeticalAsc;
+
+  /// No description provided for @sortOptionAlphabeticalDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Alfabético (Z - A)'**
+  String get sortOptionAlphabeticalDesc;
+
+  /// No description provided for @filterTooltip.
+  ///
+  /// In es, this message translates to:
+  /// **'Buscar en por comprar'**
+  String get filterTooltip;
+
+  /// No description provided for @filterPendingItemsHint.
+  ///
+  /// In es, this message translates to:
+  /// **'Filtrar por comprar...'**
+  String get filterPendingItemsHint;
 }
 
 class _AppLocalizationsDelegate

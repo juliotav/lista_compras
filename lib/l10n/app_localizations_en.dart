@@ -498,4 +498,22 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get cannotEditDefaultCatalogItem =>
       'Default catalog items cannot be modified.';
+
+  @override
+  String get sortTooltip => 'Sort items';
+
+  @override
+  String get sortOptionManual => 'Manual order (custom)';
+
+  @override
+  String get sortOptionAlphabeticalAsc => 'Alphabetical (A - Z)';
+
+  @override
+  String get sortOptionAlphabeticalDesc => 'Alphabetical (Z - A)';
+
+  @override
+  String get filterTooltip => 'Search in pending items';
+
+  @override
+  String get filterPendingItemsHint => 'Filter pending items...';
 }
