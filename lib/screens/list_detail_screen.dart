@@ -7,6 +7,7 @@ import '../models/list_detail_item_model.dart';
 import '../models/shopping_list_model.dart';
 import '../services/database_service.dart';
 import '../services/locale_provider.dart';
+import '../services/push_notification_service.dart';
 import '../widgets/ad_banner_widget.dart';
 import '../widgets/sync_indicator_widget.dart';
 
@@ -44,6 +45,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<DatabaseService>().fetchFamilyData();
+        unawaited(PushNotificationService.clearBadge());
       }
     });
 
@@ -105,6 +107,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
       debugPrint("[LIST_DETAIL LOG] App reanudada desde segundo plano. Cargando SQLite de inmediato...");
+      unawaited(PushNotificationService.clearBadge());
       final db = context.read<DatabaseService>();
       db.loadLocalDataOnly();
       db.onAppResume();

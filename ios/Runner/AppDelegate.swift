@@ -12,7 +12,33 @@ import UserNotifications
       UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate
     }
     application.registerForRemoteNotifications()
+
+    // Restablecer el badge del icono al abrir la aplicación
+    AppDelegate.clearBadgeCount()
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  override func applicationDidBecomeActive(_ application: UIApplication) {
+    super.applicationDidBecomeActive(application)
+    // Limpiar el badge cada vez que la app pasa a primer plano / activa
+    AppDelegate.clearBadgeCount()
+  }
+
+  /// Limpia el número de notificación (badge) en el icono de la aplicación en iOS
+  static func clearBadgeCount() {
+    if #available(iOS 16.0, *) {
+      UNUserNotificationCenter.current().setBadgeCount(0) { error in
+        if let error = error {
+          print("[IOS BADGE] Error al restablecer badge count: \(error.localizedDescription)")
+        } else {
+          print("[IOS BADGE] Badge restablecido a 0 con éxito (iOS 16+)")
+        }
+      }
+    } else {
+      UIApplication.shared.applicationIconBadgeNumber = 0
+      print("[IOS BADGE] Badge restablecido a 0 con éxito (iOS <16)")
+    }
   }
 
   override func application(
@@ -34,5 +60,23 @@ import UserNotifications
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+    let messenger: FlutterBinaryMessenger
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "BadgePlugin") {
+      messenger = registrar.messenger()
+    } else {
+      messenger = engineBridge.applicationRegistrar.messenger()
+    }
+
+    let badgeChannel = FlutterMethodChannel(name: "com.andylu.lista_compras/badge", binaryMessenger: messenger)
+    badgeChannel.setMethodCallHandler { (call: FlutterMethodCall, result: @escaping FlutterResult) in
+      if call.method == "clearBadge" {
+        AppDelegate.clearBadgeCount()
+        result(true)
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    }
   }
 }
+
