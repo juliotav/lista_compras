@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -90,7 +92,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
     const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
-      presentBadge: true,
+      presentBadge: false,
       presentSound: true,
     );
 
@@ -119,11 +121,29 @@ class PushNotificationService {
       GlobalKey<NavigatorState>();
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+  static const MethodChannel _badgeChannel =
+      MethodChannel('com.andylu.lista_compras/badge');
   static bool _isFirebaseInitialized = false;
   static final Set<String> _subscribedFamilyIds = {};
   static final Set<String> _pendingFamilyIdsToSync = {};
   static String? _lastHandledNotificationKey;
   static DateTime? _lastHandledNotificationTime;
+
+  /// Limpia el badge del icono de la aplicación en iOS y cancela notificaciones locales entregadas
+  static Future<void> clearBadge() async {
+    if (kIsWeb) return;
+    try {
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        await _badgeChannel.invokeMethod('clearBadge');
+      }
+      await _localNotifications.cancelAll();
+      debugPrint(
+        '[PUSH_NOTIF LOG] Badge del icono y notificaciones activas limpiadas.',
+      );
+    } catch (e) {
+      debugPrint('[PUSH_NOTIF LOG] Error al limpiar badge: $e');
+    }
+  }
 
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'high_importance_channel', // id
@@ -167,7 +187,7 @@ class PushNotificationService {
         await messaging
             .setForegroundNotificationPresentationOptions(
               alert: true,
-              badge: true,
+              badge: false, // En primer plano el usuario ya está en la app; no marcar el icono
               sound: true,
             )
             .timeout(const Duration(seconds: 3));
@@ -176,6 +196,9 @@ class PushNotificationService {
           '[PUSH_NOTIF LOG] Advertencia en setForegroundNotificationPresentationOptions: $e',
         );
       }
+
+      // Restablecer el badge al iniciar la app
+      unawaited(clearBadge());
 
       // Inicializar plugin de notificaciones locales para Android / iOS
       const androidInit = AndroidInitializationSettings(
@@ -285,7 +308,7 @@ class PushNotificationService {
                 ),
                 iOS: DarwinNotificationDetails(
                   presentAlert: true,
-                  presentBadge: true,
+                  presentBadge: false,
                   presentSound: true,
                 ),
               ),
@@ -462,6 +485,9 @@ class PushNotificationService {
     debugPrint(
       '[PUSH_NOTIF LOG] Procesando navegación a lista: $idLista en familia: $idFamilia',
     );
+
+    // Limpiar el badge ya que el usuario ha interactuado con la alerta
+    unawaited(clearBadge());
 
     // Esperar a que el contexto del Navigator y su estado estén disponibles
     int retries = 0;

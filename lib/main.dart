@@ -70,7 +70,8 @@ class _ShoppingListAppState extends State<ShoppingListApp> with WidgetsBindingOb
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      debugPrint("[APP_LIFECYCLE] App reanudada (resumed). Disparando sincronización en segundo plano...");
+      debugPrint("[APP_LIFECYCLE] App reanudada (resumed). Disparando sincronización y limpiando badge...");
+      unawaited(PushNotificationService.clearBadge());
       final db = Provider.of<DatabaseService>(context, listen: false);
       db.onAppResume();
     }
