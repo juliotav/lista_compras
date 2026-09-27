@@ -7,6 +7,7 @@ import '../services/database_service.dart';
 import '../widgets/ad_banner_widget.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
+import 'about_privacy_screen.dart';
 
 class FamilySetupScreen extends StatefulWidget {
   const FamilySetupScreen({super.key});
@@ -326,6 +327,16 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
       appBar: AppBar(
         title: Text(l10n.familySetupTitle),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline_rounded),
+            tooltip: l10n.menuAbout,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AboutPrivacyScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout_rounded),
             tooltip: l10n.menuLogout,

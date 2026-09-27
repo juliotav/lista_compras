@@ -516,4 +516,76 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get filterPendingItemsHint => 'Filter pending items...';
+
+  @override
+  String get deleteAccountTitle => 'Delete Account and Data';
+
+  @override
+  String get deleteAccountSubtitle =>
+      'Permanently delete your account, profile, and associated data';
+
+  @override
+  String get deleteAccountWarningTitle =>
+      'This action is permanent and irreversible';
+
+  @override
+  String get deleteAccountWarningDesc =>
+      'By deleting your account, all your personal data and access to the app will be permanently deleted immediately:';
+
+  @override
+  String get deleteAccountBulletProfile =>
+      'Your profile, full name, username, and email will be permanently deleted.';
+
+  @override
+  String get deleteAccountBulletLists =>
+      'Your shopping lists and personal products created will be deleted.';
+
+  @override
+  String get deleteAccountBulletFamily =>
+      'If you belong to a family with other members, you will be unlinked without affecting the group\'s lists. If you are the only member, the family and its lists will be completely removed.';
+
+  @override
+  String get deleteAccountBulletNoRecovery =>
+      'You will not be able to log in again or recover any data from this account.';
+
+  @override
+  String get deleteAccountConfirmPrompt =>
+      'To confirm that you want to delete your account, please enter your current password:';
+
+  @override
+  String get deleteAccountPasswordHint => 'Enter your current password';
+
+  @override
+  String get deleteAccountPasswordEmpty => 'Please enter your password';
+
+  @override
+  String get deleteAccountBtn => 'Permanently Delete My Account';
+
+  @override
+  String get deleteAccountConfirmDialogTitle => 'Permanently Delete Account?';
+
+  @override
+  String get deleteAccountConfirmDialogDesc =>
+      'This action is irreversible and will delete all your data immediately. Do you wish to continue?';
+
+  @override
+  String get deleteAccountConfirmDialogConfirm => 'Yes, delete account';
+
+  @override
+  String get deleteAccountConfirmDialogCancel => 'Cancel';
+
+  @override
+  String get deleteAccountIncorrectPassword =>
+      'The entered password is incorrect.';
+
+  @override
+  String get deleteAccountSuccess =>
+      'Your account and data have been successfully deleted.';
+
+  @override
+  String get deleteAccountError =>
+      'An error occurred while deleting your account. Please try again.';
+
+  @override
+  String get deleteAccountDangerZone => 'Delete account';
 }

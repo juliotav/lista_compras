@@ -235,6 +235,24 @@ class LocalDbService {
     } catch (_) {}
   }
 
+  Future<void> clearAllData() async {
+    final database = await db;
+    await database.transaction((txn) async {
+      await txn.delete('session');
+      await txn.delete('users');
+      await txn.delete('families');
+      await txn.delete('shopping_lists');
+      await txn.delete('list_detail_items');
+      await txn.delete('item_catalog');
+      await txn.delete('sync_queue');
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('session_user_id');
+      await prefs.remove('saved_user_id');
+    } catch (_) {}
+  }
+
   Future<void> saveUser(UserModel user) async {
     final database = await db;
     await database.insert(

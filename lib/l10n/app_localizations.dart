@@ -1033,6 +1033,126 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Filtrar por comprar...'**
   String get filterPendingItemsHint;
+
+  /// No description provided for @deleteAccountTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar cuenta y datos'**
+  String get deleteAccountTitle;
+
+  /// No description provided for @deleteAccountSubtitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Elimina de forma permanente tu cuenta, perfil y datos asociados'**
+  String get deleteAccountSubtitle;
+
+  /// No description provided for @deleteAccountWarningTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Esta acción es permanente e irreversible'**
+  String get deleteAccountWarningTitle;
+
+  /// No description provided for @deleteAccountWarningDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Al eliminar tu cuenta, se borrarán todos tus datos personales y tu acceso a la aplicación de forma inmediata:'**
+  String get deleteAccountWarningDesc;
+
+  /// No description provided for @deleteAccountBulletProfile.
+  ///
+  /// In es, this message translates to:
+  /// **'Tu perfil, nombre completo, usuario y correo electrónico serán eliminados.'**
+  String get deleteAccountBulletProfile;
+
+  /// No description provided for @deleteAccountBulletLists.
+  ///
+  /// In es, this message translates to:
+  /// **'Tus listas de compras y productos personales creados serán borrados.'**
+  String get deleteAccountBulletLists;
+
+  /// No description provided for @deleteAccountBulletFamily.
+  ///
+  /// In es, this message translates to:
+  /// **'Si perteneces a una familia con otros integrantes, serás desvinculado sin afectar las compras del grupo. Si eres el único miembro, la familia y sus listas se eliminarán por completo.'**
+  String get deleteAccountBulletFamily;
+
+  /// No description provided for @deleteAccountBulletNoRecovery.
+  ///
+  /// In es, this message translates to:
+  /// **'No podrás volver a iniciar sesión ni recuperar ningún dato de esta cuenta.'**
+  String get deleteAccountBulletNoRecovery;
+
+  /// No description provided for @deleteAccountConfirmPrompt.
+  ///
+  /// In es, this message translates to:
+  /// **'Para confirmar que deseas borrar tu cuenta, ingresa tu contraseña actual:'**
+  String get deleteAccountConfirmPrompt;
+
+  /// No description provided for @deleteAccountPasswordHint.
+  ///
+  /// In es, this message translates to:
+  /// **'Ingresa tu contraseña actual'**
+  String get deleteAccountPasswordHint;
+
+  /// No description provided for @deleteAccountPasswordEmpty.
+  ///
+  /// In es, this message translates to:
+  /// **'Por favor ingresa tu contraseña'**
+  String get deleteAccountPasswordEmpty;
+
+  /// No description provided for @deleteAccountBtn.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar mi cuenta definitivamente'**
+  String get deleteAccountBtn;
+
+  /// No description provided for @deleteAccountConfirmDialogTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Eliminar cuenta definitivamente?'**
+  String get deleteAccountConfirmDialogTitle;
+
+  /// No description provided for @deleteAccountConfirmDialogDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Esta acción es irreversible y borrará todos tus datos en este instante. ¿Deseas continuar?'**
+  String get deleteAccountConfirmDialogDesc;
+
+  /// No description provided for @deleteAccountConfirmDialogConfirm.
+  ///
+  /// In es, this message translates to:
+  /// **'Sí, eliminar cuenta'**
+  String get deleteAccountConfirmDialogConfirm;
+
+  /// No description provided for @deleteAccountConfirmDialogCancel.
+  ///
+  /// In es, this message translates to:
+  /// **'Cancelar'**
+  String get deleteAccountConfirmDialogCancel;
+
+  /// No description provided for @deleteAccountIncorrectPassword.
+  ///
+  /// In es, this message translates to:
+  /// **'La contraseña ingresada es incorrecta.'**
+  String get deleteAccountIncorrectPassword;
+
+  /// No description provided for @deleteAccountSuccess.
+  ///
+  /// In es, this message translates to:
+  /// **'Tu cuenta y tus datos han sido eliminados correctamente.'**
+  String get deleteAccountSuccess;
+
+  /// No description provided for @deleteAccountError.
+  ///
+  /// In es, this message translates to:
+  /// **'Ocurrió un error al eliminar tu cuenta. Por favor intenta de nuevo.'**
+  String get deleteAccountError;
+
+  /// No description provided for @deleteAccountDangerZone.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar cuenta definitivamente'**
+  String get deleteAccountDangerZone;
 }
 
 class _AppLocalizationsDelegate

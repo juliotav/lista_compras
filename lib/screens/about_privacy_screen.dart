@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../config/mongo_config.dart';
 import '../l10n/app_localizations.dart';
+import '../services/database_service.dart';
 import '../widgets/ad_banner_widget.dart';
+import 'delete_account_screen.dart';
 
 class AboutPrivacyScreen extends StatelessWidget {
   const AboutPrivacyScreen({super.key});
@@ -11,6 +14,7 @@ class AboutPrivacyScreen extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final db = context.watch<DatabaseService>();
 
     return Scaffold(
       appBar: AppBar(
@@ -69,6 +73,103 @@ class AboutPrivacyScreen extends StatelessWidget {
                 ),
               ),
             ),
+            if (db.currentUser != null) ...[
+              const SizedBox(height: 32),
+              const Divider(),
+              const SizedBox(height: 16),
+              Text(
+                l10n.deleteAccountDangerZone,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red[700],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: isDark ? Colors.red.withValues(alpha: 0.4) : Colors.red.withValues(alpha: 0.25),
+                    width: 1.2,
+                  ),
+                ),
+                color: isDark ? const Color(0xFF2B1414) : const Color(0xFFFFF5F5),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.delete_forever_rounded,
+                              color: Colors.red,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  l10n.deleteAccountTitle,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.red[200] : Colors.red[900],
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  l10n.deleteAccountSubtitle,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: isDark ? Colors.grey[400] : Colors.grey[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red, width: 1.2),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(Icons.person_remove_rounded, size: 20),
+                          label: Text(
+                            l10n.deleteAccountTitle,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const DeleteAccountScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

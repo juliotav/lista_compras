@@ -518,4 +518,77 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get filterPendingItemsHint => 'Filtrar por comprar...';
+
+  @override
+  String get deleteAccountTitle => 'Eliminar cuenta y datos';
+
+  @override
+  String get deleteAccountSubtitle =>
+      'Elimina de forma permanente tu cuenta, perfil y datos asociados';
+
+  @override
+  String get deleteAccountWarningTitle =>
+      'Esta acción es permanente e irreversible';
+
+  @override
+  String get deleteAccountWarningDesc =>
+      'Al eliminar tu cuenta, se borrarán todos tus datos personales y tu acceso a la aplicación de forma inmediata:';
+
+  @override
+  String get deleteAccountBulletProfile =>
+      'Tu perfil, nombre completo, usuario y correo electrónico serán eliminados.';
+
+  @override
+  String get deleteAccountBulletLists =>
+      'Tus listas de compras y productos personales creados serán borrados.';
+
+  @override
+  String get deleteAccountBulletFamily =>
+      'Si perteneces a una familia con otros integrantes, serás desvinculado sin afectar las compras del grupo. Si eres el único miembro, la familia y sus listas se eliminarán por completo.';
+
+  @override
+  String get deleteAccountBulletNoRecovery =>
+      'No podrás volver a iniciar sesión ni recuperar ningún dato de esta cuenta.';
+
+  @override
+  String get deleteAccountConfirmPrompt =>
+      'Para confirmar que deseas borrar tu cuenta, ingresa tu contraseña actual:';
+
+  @override
+  String get deleteAccountPasswordHint => 'Ingresa tu contraseña actual';
+
+  @override
+  String get deleteAccountPasswordEmpty => 'Por favor ingresa tu contraseña';
+
+  @override
+  String get deleteAccountBtn => 'Eliminar mi cuenta definitivamente';
+
+  @override
+  String get deleteAccountConfirmDialogTitle =>
+      '¿Eliminar cuenta definitivamente?';
+
+  @override
+  String get deleteAccountConfirmDialogDesc =>
+      'Esta acción es irreversible y borrará todos tus datos en este instante. ¿Deseas continuar?';
+
+  @override
+  String get deleteAccountConfirmDialogConfirm => 'Sí, eliminar cuenta';
+
+  @override
+  String get deleteAccountConfirmDialogCancel => 'Cancelar';
+
+  @override
+  String get deleteAccountIncorrectPassword =>
+      'La contraseña ingresada es incorrecta.';
+
+  @override
+  String get deleteAccountSuccess =>
+      'Tu cuenta y tus datos han sido eliminados correctamente.';
+
+  @override
+  String get deleteAccountError =>
+      'Ocurrió un error al eliminar tu cuenta. Por favor intenta de nuevo.';
+
+  @override
+  String get deleteAccountDangerZone => 'Eliminar cuenta definitivamente';
 }

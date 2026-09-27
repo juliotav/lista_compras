@@ -150,6 +150,24 @@ class _HomeScreenState extends State<HomeScreen> {
     final db = context.watch<DatabaseService>();
     final family = db.currentFamily;
     final user = db.currentUser;
+
+    if (user == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      });
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     final shoppingLists = db.getActiveShoppingLists();
 
     final userFamilies = db.userFamilies;
@@ -178,17 +196,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     : Colors.deepPurple,
               ),
               accountName: Text(
-                user?.nbCompleto ?? l10n.defaultUser,
+                user.nbCompleto.isNotEmpty ? user.nbCompleto : l10n.defaultUser,
                 style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
               ),
               accountEmail: Text(
-                user?.nbEmail ?? '',
+                user.nbEmail,
                 style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
               ),
               currentAccountPicture: CircleAvatar(
                 backgroundColor: theme.colorScheme.primary,
                 child: Text(
-                  user?.nbCompleto.isNotEmpty == true ? user!.nbCompleto[0].toUpperCase() : 'U',
+                  user.nbCompleto.isNotEmpty ? user.nbCompleto[0].toUpperCase() : 'U',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,

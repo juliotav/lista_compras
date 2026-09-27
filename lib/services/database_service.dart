@@ -805,6 +805,145 @@ class DatabaseService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Elimina de forma permanente la cuenta del usuario y sus datos de MongoDB y del almacenamiento local.
+  Future<Map<String, dynamic>> deleteAccount({required String password}) async {
+    if (_currentUser == null) {
+      return {'success': false, 'error': 'no_user'};
+    }
+
+    final cleanPass = password.trim();
+    final passHash = SecurityService.hashPassword(cleanPass);
+    if (_currentUser!.clPass != passHash) {
+      return {'success': false, 'error': 'incorrect_password'};
+    }
+
+    final userId = _currentUser!.idUsuario;
+
+    try {
+      // 1. Obtener todas las familias asociadas al usuario
+      final userFamDocs = await MongoService.find(
+        collectionName: MongoConfig.colUsuarioFamilia,
+        filter: {'id_usuario': userId},
+      );
+
+      final Set<String> familyIds = userFamDocs
+          .map((d) => d['id_familia'] as String?)
+          .where((id) => id != null && id.isNotEmpty)
+          .cast<String>()
+          .toSet();
+
+      if (_currentUser?.idFamilia != null && _currentUser!.idFamilia!.isNotEmpty) {
+        familyIds.add(_currentUser!.idFamilia!);
+      }
+
+      for (var famId in familyIds) {
+        final allMembers = await MongoService.find(
+          collectionName: MongoConfig.colUsuarioFamilia,
+          filter: {'id_familia': famId, 'status': 'active'},
+        );
+
+        final otherActiveMembers = allMembers
+            .where((m) => m['id_usuario'] != userId)
+            .toList();
+
+        if (otherActiveMembers.isEmpty) {
+          // El usuario es el único miembro activo: borrar familia y sus listas
+          final lists = await MongoService.find(
+            collectionName: MongoConfig.colListasCompra,
+            filter: {'id_familia': famId},
+          );
+          final listIds = lists
+              .map((l) => l['id_lista_compra'] as String?)
+              .where((id) => id != null && id.isNotEmpty)
+              .cast<String>()
+              .toList();
+
+          for (var listId in listIds) {
+            await MongoService.deleteMany(
+              collectionName: MongoConfig.colDetalleLista,
+              filter: {'id_lista_compra': listId},
+            );
+            await _localDb.deleteShoppingListLocally(listId);
+          }
+
+          await MongoService.deleteMany(
+            collectionName: MongoConfig.colListasCompra,
+            filter: {'id_familia': famId},
+          );
+          await MongoService.deleteMany(
+            collectionName: MongoConfig.colCArticulo,
+            filter: {'id_familia': famId},
+          );
+          await MongoService.deleteMany(
+            collectionName: MongoConfig.colUsuarioFamilia,
+            filter: {'id_familia': famId},
+          );
+          await MongoService.deleteOne(
+            collectionName: MongoConfig.colFamilia,
+            filter: {'id_familia': famId},
+          );
+          await _localDb.deleteFamilyLocally(famId);
+        } else {
+          // Hay otros miembros activos: sólo desvincular al usuario
+          await MongoService.deleteMany(
+            collectionName: MongoConfig.colUsuarioFamilia,
+            filter: {'id_usuario': userId, 'id_familia': famId},
+          );
+
+          // Si era el creador, transferir autoría al siguiente miembro activo
+          final famDoc = await MongoService.findOne(
+            collectionName: MongoConfig.colFamilia,
+            filter: {'id_familia': famId},
+          );
+          if (famDoc != null && famDoc['id_creador'] == userId) {
+            final newCreatorId = otherActiveMembers.first['id_usuario'] as String;
+            await MongoService.updateOne(
+              collectionName: MongoConfig.colFamilia,
+              filter: {'id_familia': famId},
+              update: {
+                r'$set': {'id_creador': newCreatorId},
+              },
+            );
+          }
+        }
+      }
+
+      // 2. Limpiar cualquier registro residual en usuario_familia
+      await MongoService.deleteMany(
+        collectionName: MongoConfig.colUsuarioFamilia,
+        filter: {'id_usuario': userId},
+      );
+
+      // 3. Eliminar el documento del usuario en la colección usuario
+      await MongoService.deleteOne(
+        collectionName: MongoConfig.colUsuario,
+        filter: {'id_usuario': userId},
+      );
+
+      // 4. Limpieza local completa y desuscripción de notificaciones push
+      _syncService.cancelDebounce();
+      await PushNotificationService.unsubscribeAllFamilies();
+      await _localDb.clearAllData();
+
+      // 5. Limpieza total de estado en memoria
+      _currentUser = null;
+      _users.clear();
+      _shoppingLists.clear();
+      _listDetailItems.clear();
+      _catalogItems.clear();
+      _userFamilies.clear();
+      _families.clear();
+      _isBackgroundSyncing = false;
+      _isFetchingFamilyData = false;
+
+      notifyListeners();
+      return {'success': true};
+    } catch (e) {
+      debugPrint("[DB_SERVICE LOG] Error en deleteAccount: $e");
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
   // --- RECUPERACIÓN DE CONTRASEÑA ---
   Future<Map<String, dynamic>> requestPasswordReset(
     String emailOrUsername,
