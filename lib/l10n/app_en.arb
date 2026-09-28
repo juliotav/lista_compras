@@ -9,6 +9,7 @@
   "introSlide3Title": "Family Collaboration",
   "introSlide3Desc": "Create or join a shared family group to shop together.",
   "btnStart": "Get Started",
+  "btnNext": "Next",
   
   "loginTitle": "Sign In",
   "loginSubtitle": "Welcome back to your Lista lista app",
@@ -104,6 +105,9 @@
   "menuAbout": "About",
   "menuFamilyMembers": "Family Members",
   "menuLanguage": "Language / Idioma",
+  "menuTheme": "Theme",
+  "themeLight": "Light Mode",
+  "themeDark": "Dark Mode",
   "menuLogout": "Sign Out",
   
   "privacyPolicyTitle": "Privacy Policy",
@@ -230,5 +234,50 @@
   "deleteAccountIncorrectPassword": "The entered password is incorrect.",
   "deleteAccountSuccess": "Your account and data have been successfully deleted.",
   "deleteAccountError": "An error occurred while deleting your account. Please try again.",
-  "deleteAccountDangerZone": "Delete account"
+  "deleteAccountDangerZone": "Delete account",
+  "activationTitle": "Activate Account",
+  "activationSubtitle": "We sent a 6-digit activation code to your email address:",
+  "activationPinHint": "6-digit code",
+  "activationPinError": "Please enter a valid 6-digit code",
+  "activationVerifyBtn": "Verify & Activate Account",
+  "activationResendBtn": "Resend code",
+  "activationResendSuccess": "A new activation code has been sent to your email.",
+  "activationExpired": "The code has expired. Please request a new one.",
+  "activationIncorrectPin": "The code entered is incorrect. Check your email and try again.",
+  "activationRateLimitBlocked": "You reached the limit of 5 emails in 10 minutes. Please wait {minutes} minutes before requesting another code.",
+  "@activationRateLimitBlocked": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "activationRateLimitCounter": "Sends: {count} of {max}",
+  "@activationRateLimitCounter": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+  "activationDeleteAccount": "Mistyped your email or want to cancel registration?",
+  "activationDeleteAccountBtn": "Delete unactivated account",
+  "activationDeleteDialogTitle": "Delete unactivated account?",
+  "activationDeleteDialogDesc": "If you mistyped your email or do not wish to continue, we will delete this account so you can register again with the correct email.",
+  "activationDeleteConfirm": "Yes, delete account",
+  "activationDeleteSuccess": "The account has been deleted. You can now register again.",
+  "activationCodeExpiresIn": "Code expires in {time}",
+  "@activationCodeExpiresIn": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "activationLockCountdown": "You can resend in {time}",
+  "@activationLockCountdown": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "activationGenericError": "An unexpected error occurred. Please try again.",
+  "activationSendNewEmailBtn": "Send a new activation email",
+  "activationExpiredNoticeTitle": "Your activation code has expired",
+  "activationExpiredNoticeDesc": "The code sent previously is no longer valid. Tap the button to receive a new code in your email and activate your account.",
+  "activationExpiredInputHint": "Request a new code to continue"
 }

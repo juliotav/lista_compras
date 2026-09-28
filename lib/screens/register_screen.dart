@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/database_service.dart';
 import '../services/security_service.dart';
+import 'account_activation_screen.dart';
 import 'family_setup_screen.dart';
 import 'home_screen.dart';
 
@@ -70,8 +71,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!mounted) return;
 
-      // Navegación según tenga familia asignada o no
-      if (db.currentFamily != null) {
+      if (db.currentUser?.status == 'pending_activation') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const AccountActivationScreen()),
+          (route) => false,
+        );
+      } else if (db.currentFamily != null) {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const HomeScreen()),

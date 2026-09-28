@@ -9,6 +9,7 @@
   "introSlide3Title": "Colaboración Familiar",
   "introSlide3Desc": "Crea o únete a una familia compartida para comprar en equipo.",
   "btnStart": "Comenzar",
+  "btnNext": "Siguiente",
   
   "loginTitle": "Iniciar Sesión",
   "loginSubtitle": "Bienvenido de nuevo a tu Lista lista",
@@ -104,6 +105,9 @@
   "menuAbout": "Acerca de",
   "menuFamilyMembers": "Miembros de la Familia",
   "menuLanguage": "Idioma / Language",
+  "menuTheme": "Tema visual",
+  "themeLight": "Modo Claro",
+  "themeDark": "Modo Oscuro",
   "menuLogout": "Cerrar Sesión",
   
   "privacyPolicyTitle": "Aviso de Privacidad",
@@ -230,5 +234,50 @@
   "deleteAccountIncorrectPassword": "La contraseña ingresada es incorrecta.",
   "deleteAccountSuccess": "Tu cuenta y tus datos han sido eliminados correctamente.",
   "deleteAccountError": "Ocurrió un error al eliminar tu cuenta. Por favor intenta de nuevo.",
-  "deleteAccountDangerZone": "Eliminar cuenta definitivamente"
+  "deleteAccountDangerZone": "Eliminar cuenta definitivamente",
+  "activationTitle": "Activar cuenta",
+  "activationSubtitle": "Hemos enviado un código de activación de 6 dígitos a tu correo electrónico:",
+  "activationPinHint": "Código de 6 dígitos",
+  "activationPinError": "Por favor ingresa un código válido de 6 dígitos",
+  "activationVerifyBtn": "Verificar y Activar Cuenta",
+  "activationResendBtn": "Reenviar código",
+  "activationResendSuccess": "Te hemos enviado un nuevo código de activación a tu correo.",
+  "activationExpired": "El código ha expirado. Por favor solicita uno nuevo.",
+  "activationIncorrectPin": "El código ingresado es incorrecto. Verifica el correo e intenta de nuevo.",
+  "activationRateLimitBlocked": "Has alcanzado el límite de 5 envíos en 10 minutos. Por favor espera {minutes} minutos antes de volver a solicitar un código.",
+  "@activationRateLimitBlocked": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "activationRateLimitCounter": "Envíos: {count} de {max}",
+  "@activationRateLimitCounter": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+  "activationDeleteAccount": "¿Te equivocaste de correo o deseas cancelar el registro?",
+  "activationDeleteAccountBtn": "Eliminar cuenta no activada",
+  "activationDeleteDialogTitle": "¿Eliminar cuenta no activada?",
+  "activationDeleteDialogDesc": "Si te equivocaste de correo o no deseas continuar, eliminaremos este registro para que puedas volver a registrarte con el correo correcto.",
+  "activationDeleteConfirm": "Sí, eliminar cuenta",
+  "activationDeleteSuccess": "La cuenta ha sido eliminada. Ya puedes registrarte nuevamente.",
+  "activationCodeExpiresIn": "El código expira en {time}",
+  "@activationCodeExpiresIn": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "activationLockCountdown": "Podrás reenviar en {time}",
+  "@activationLockCountdown": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "activationGenericError": "Ocurrió un error inesperado. Por favor intenta de nuevo.",
+  "activationSendNewEmailBtn": "Enviar un nuevo correo de activación",
+  "activationExpiredNoticeTitle": "Tu código de activación ha expirado",
+  "activationExpiredNoticeDesc": "El código enviado anteriormente ya no es válido. Presiona el botón para recibir un nuevo código en tu correo y poder activar tu cuenta.",
+  "activationExpiredInputHint": "Solicita un nuevo código para continuar"
 }

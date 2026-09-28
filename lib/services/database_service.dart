@@ -695,17 +695,29 @@ class DatabaseService extends ChangeNotifier {
     final cleanUsername = nbUsuario?.trim().toLowerCase();
     final cleanPass = password.trim();
 
+    final escapedEmail = RegExp.escape(cleanEmail);
     final remoteUser = await MongoService.findOne(
       collectionName: MongoConfig.colUsuario,
-      filter: {'nb_email': cleanEmail},
+      filter: {
+        'nb_email': {r'$regex': '^$escapedEmail\$', r'$options': 'i'},
+      },
     );
 
-    if (remoteUser != null ||
-        _users.any((u) => u.nbEmail.toLowerCase() == cleanEmail)) {
+    if (remoteUser != null) {
       throw Exception("El correo electrónico ya está registrado.");
     }
 
+    // Asegurar que no quede ningún residuo local (en memoria ni en SQLite) para este correo
+    _users.removeWhere((u) => u.nbEmail.toLowerCase() == cleanEmail);
+    await _localDb.deleteUserByEmail(cleanEmail);
+
     final passHash = SecurityService.hashPassword(cleanPass);
+    final rnd = Random();
+    final pinCode = (100000 + rnd.nextInt(900000)).toString();
+    final pinHash = SecurityService.hashPassword(pinCode);
+    final now = DateTime.now().toUtc();
+    final expiresAt = now.add(const Duration(minutes: 10)).toIso8601String();
+
     final newUser = UserModel(
       idUsuario: _uuid.v4(),
       nbCompleto: nbCompleto.trim(),
@@ -713,11 +725,27 @@ class DatabaseService extends ChangeNotifier {
       nbEmail: cleanEmail,
       clPass: passHash,
       dsVersionApp: MongoConfig.appVersion,
+      status: 'pending_activation',
     );
+
+    final userDoc = newUser.toMap();
+    userDoc['cd_activacion_pin'] = pinHash;
+    userDoc['fh_activacion_expires'] = expiresAt;
+    userDoc['fh_ultimo_envio_activacion'] = now.toIso8601String();
+    userDoc['fh_primer_envio_ventana'] = now.toIso8601String();
+    userDoc['nu_envios_activacion'] = 1;
 
     await MongoService.insertOne(
       collectionName: MongoConfig.colUsuario,
-      document: newUser.toMap(),
+      document: userDoc,
+    );
+
+    unawaited(
+      EmailService.sendActivationCodeEmail(
+        toEmail: cleanEmail,
+        pinCode: pinCode,
+        userName: nbCompleto.trim(),
+      ),
     );
 
     _users.add(newUser);
@@ -725,12 +753,262 @@ class DatabaseService extends ChangeNotifier {
     await _localDb.saveUser(newUser);
     await _localDb.saveSessionUserId(newUser.idUsuario);
 
+    notifyListeners();
+    return true;
+  }
+
+  // --- ACTIVACIÓN DE CUENTA ---
+
+  /// Reenvía el código de activación con control de saturación (máximo 5 correos en 10 minutos).
+  Future<Map<String, dynamic>> resendActivationCode() async {
+    if (_currentUser == null) {
+      return {'success': false, 'error': 'no_user'};
+    }
+
+    final userId = _currentUser!.idUsuario;
+    final now = DateTime.now().toUtc();
+
+    final userDoc = await MongoService.findOne(
+      collectionName: MongoConfig.colUsuario,
+      filter: {'id_usuario': userId},
+    );
+
+    if (userDoc == null) {
+      return {'success': false, 'error': 'user_not_found'};
+    }
+
+    if (userDoc['status'] == 'active') {
+      _currentUser = _currentUser!.copyWith(status: 'active');
+      await _localDb.saveUser(_currentUser!);
+      notifyListeners();
+      return {'success': true, 'already_active': true};
+    }
+
+    // 1. Validar si hay un bloqueo de 10 minutos activo
+    if (userDoc['fh_bloqueo_activacion'] != null) {
+      final blockedUntil = DateTime.tryParse(userDoc['fh_bloqueo_activacion'].toString());
+      if (blockedUntil != null && now.isBefore(blockedUntil)) {
+        final remainingSeconds = blockedUntil.difference(now).inSeconds;
+        final remainingMinutes = (remainingSeconds / 60).ceil();
+        return {
+          'success': false,
+          'error': 'rate_limit_exceeded',
+          'remainingSeconds': remainingSeconds,
+          'remainingMinutes': remainingMinutes,
+        };
+      }
+    }
+
+    // 2. Control de ventana de 10 minutos
+    int sendCount = (userDoc['nu_envios_activacion'] as num?)?.toInt() ?? 0;
+    DateTime? firstSentInWindow;
+    if (userDoc['fh_primer_envio_ventana'] != null) {
+      firstSentInWindow = DateTime.tryParse(userDoc['fh_primer_envio_ventana'].toString());
+    } else if (userDoc['fh_ultimo_envio_activacion'] != null) {
+      firstSentInWindow = DateTime.tryParse(userDoc['fh_ultimo_envio_activacion'].toString());
+    }
+
+    DateTime windowStart = firstSentInWindow ?? now;
+    if (now.difference(windowStart).inMinutes >= 10) {
+      sendCount = 0;
+      windowStart = now;
+    }
+
+    if (sendCount >= 5) {
+      final blockUntil = (userDoc['fh_bloqueo_activacion'] != null)
+          ? DateTime.tryParse(userDoc['fh_bloqueo_activacion'].toString()) ?? windowStart.add(const Duration(minutes: 10))
+          : windowStart.add(const Duration(minutes: 10));
+      final remainingSeconds = max(1, blockUntil.difference(now).inSeconds);
+      final remainingMinutes = (remainingSeconds / 60).ceil();
+      return {
+        'success': false,
+        'error': 'rate_limit_exceeded',
+        'remainingSeconds': remainingSeconds,
+        'remainingMinutes': remainingMinutes,
+      };
+    }
+
+    sendCount++;
+    DateTime? blockUntil;
+    if (sendCount >= 5) {
+      blockUntil = now.add(const Duration(minutes: 10));
+    }
+
+    // 3. Generar nuevo PIN de 6 dígitos
+    final rnd = Random();
+    final pinCode = (100000 + rnd.nextInt(900000)).toString();
+    final pinHash = SecurityService.hashPassword(pinCode);
+    final expiresAt = now.add(const Duration(minutes: 10)).toIso8601String();
+
+    final updateFields = <String, dynamic>{
+      'cd_activacion_pin': pinHash,
+      'fh_activacion_expires': expiresAt,
+      'fh_ultimo_envio_activacion': now.toIso8601String(),
+      'fh_primer_envio_ventana': windowStart.toIso8601String(),
+      'nu_envios_activacion': sendCount,
+    };
+    if (blockUntil != null) {
+      updateFields['fh_bloqueo_activacion'] = blockUntil.toIso8601String();
+    }
+
+    await MongoService.updateOne(
+      collectionName: MongoConfig.colUsuario,
+      filter: {'id_usuario': userId},
+      update: {
+        r'$set': updateFields,
+        if (blockUntil == null) r'$unset': {'fh_bloqueo_activacion': ''},
+      },
+    );
+
+    // 4. Enviar correo
+    final targetEmail = userDoc['nb_email'] as String? ?? _currentUser!.nbEmail;
+    final targetName = userDoc['nb_completo'] as String? ?? _currentUser!.nbCompleto;
+
+    final sent = await EmailService.sendActivationCodeEmail(
+      toEmail: targetEmail,
+      pinCode: pinCode,
+      userName: targetName,
+    );
+
+    if (sent) {
+      return {
+        'success': true,
+        'sendCount': sendCount,
+        'remainingAttempts': max(0, 5 - sendCount),
+        'isBlockedNow': blockUntil != null,
+        'remainingMinutes': blockUntil != null ? 10 : null,
+      };
+    } else {
+      return {'success': false, 'error': 'send_email_error'};
+    }
+  }
+
+  /// Verifica el PIN de activación y cambia el estatus a activo.
+  Future<Map<String, dynamic>> verifyActivationCode(String pinCode) async {
+    if (_currentUser == null) {
+      return {'success': false, 'error': 'no_user'};
+    }
+
+    final cleanPin = pinCode.trim();
+    if (cleanPin.length != 6) {
+      return {'success': false, 'error': 'invalid_format'};
+    }
+
+    final userId = _currentUser!.idUsuario;
+    final now = DateTime.now().toUtc();
+
+    final userDoc = await MongoService.findOne(
+      collectionName: MongoConfig.colUsuario,
+      filter: {'id_usuario': userId},
+    );
+
+    if (userDoc == null) {
+      return {'success': false, 'error': 'user_not_found'};
+    }
+
+    if (userDoc['status'] == 'active') {
+      _currentUser = _currentUser!.copyWith(status: 'active');
+      await _localDb.saveUser(_currentUser!);
+      notifyListeners();
+      return {'success': true};
+    }
+
+    // Validar expiración
+    final expiresStr = userDoc['fh_activacion_expires'] as String?;
+    if (expiresStr != null) {
+      final expires = DateTime.tryParse(expiresStr);
+      if (expires != null && now.isAfter(expires)) {
+        return {'success': false, 'error': 'expired'};
+      }
+    }
+
+    // Validar PIN
+    final storedHash = userDoc['cd_activacion_pin'] as String?;
+    final pinHash = SecurityService.hashPassword(cleanPin);
+    if (storedHash != pinHash) {
+      return {'success': false, 'error': 'incorrect_pin'};
+    }
+
+    // Activar usuario en MongoDB
+    await MongoService.updateOne(
+      collectionName: MongoConfig.colUsuario,
+      filter: {'id_usuario': userId},
+      update: {
+        r'$set': {'status': 'active'},
+        r'$unset': {
+          'cd_activacion_pin': '',
+          'fh_activacion_expires': '',
+          'nu_envios_activacion': '',
+          'fh_ultimo_envio_activacion': '',
+          'fh_primer_envio_ventana': '',
+          'fh_bloqueo_activacion': '',
+        },
+      },
+    );
+
+    _currentUser = _currentUser!.copyWith(status: 'active');
+    await _localDb.saveUser(_currentUser!);
+
     if (_currentUser?.idFamilia != null) {
       await fetchFamilyData();
     }
 
     notifyListeners();
-    return true;
+    return {'success': true};
+  }
+
+  /// Obtiene información sobre el estado de activación y tasa de envíos para la interfaz de usuario.
+  Future<Map<String, dynamic>> getActivationStatus() async {
+    if (_currentUser == null) {
+      return {'status': 'none'};
+    }
+    final userId = _currentUser!.idUsuario;
+    final now = DateTime.now().toUtc();
+    final userDoc = await MongoService.findOne(
+      collectionName: MongoConfig.colUsuario,
+      filter: {'id_usuario': userId},
+    );
+    if (userDoc == null) return {'status': 'not_found'};
+
+    final status = userDoc['status'] as String? ?? 'active';
+    if (status == 'active') {
+      return {'status': 'active'};
+    }
+
+    int remainingBlockSeconds = 0;
+    if (userDoc['fh_bloqueo_activacion'] != null) {
+      final blockedUntil = DateTime.tryParse(userDoc['fh_bloqueo_activacion'].toString());
+      if (blockedUntil != null && now.isBefore(blockedUntil)) {
+        remainingBlockSeconds = blockedUntil.difference(now).inSeconds;
+      }
+    }
+
+    int sendCount = (userDoc['nu_envios_activacion'] as num?)?.toInt() ?? 1;
+    DateTime? windowStart;
+    if (userDoc['fh_primer_envio_ventana'] != null) {
+      windowStart = DateTime.tryParse(userDoc['fh_primer_envio_ventana'].toString());
+    }
+    if (windowStart != null && now.difference(windowStart).inMinutes >= 10) {
+      sendCount = 0;
+    }
+
+    int remainingPinSeconds = 0;
+    if (userDoc['fh_activacion_expires'] != null) {
+      final expiresAt = DateTime.tryParse(userDoc['fh_activacion_expires'].toString());
+      if (expiresAt != null && now.isBefore(expiresAt)) {
+        remainingPinSeconds = expiresAt.difference(now).inSeconds;
+      }
+    }
+
+    return {
+      'status': status,
+      'sendCount': sendCount,
+      'maxSends': 5,
+      'isBlocked': remainingBlockSeconds > 0,
+      'remainingBlockSeconds': remainingBlockSeconds,
+      'remainingPinSeconds': remainingPinSeconds,
+      'email': userDoc['nb_email'] as String? ?? _currentUser!.nbEmail,
+    };
   }
 
   Future<bool> loginUser(String emailOrUsername, String password) async {
@@ -796,7 +1074,11 @@ class DatabaseService extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _syncService.cancelDebounce();
     _currentUser = null;
+    _users.clear();
+    _userFamilies.clear();
+    _families.clear();
     await _localDb.clearSession();
     _shoppingLists.clear();
     _listDetailItems.clear();
@@ -806,15 +1088,20 @@ class DatabaseService extends ChangeNotifier {
   }
 
   /// Elimina de forma permanente la cuenta del usuario y sus datos de MongoDB y del almacenamiento local.
-  Future<Map<String, dynamic>> deleteAccount({required String password}) async {
+  Future<Map<String, dynamic>> deleteAccount({
+    String? password,
+    bool isPendingActivation = false,
+  }) async {
     if (_currentUser == null) {
       return {'success': false, 'error': 'no_user'};
     }
 
-    final cleanPass = password.trim();
-    final passHash = SecurityService.hashPassword(cleanPass);
-    if (_currentUser!.clPass != passHash) {
-      return {'success': false, 'error': 'incorrect_password'};
+    if (!isPendingActivation || (password != null && password.trim().isNotEmpty)) {
+      final cleanPass = (password ?? '').trim();
+      final passHash = SecurityService.hashPassword(cleanPass);
+      if (_currentUser!.clPass != passHash) {
+        return {'success': false, 'error': 'incorrect_password'};
+      }
     }
 
     final userId = _currentUser!.idUsuario;

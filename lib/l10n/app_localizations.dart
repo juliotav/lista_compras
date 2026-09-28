@@ -146,6 +146,12 @@ abstract class AppLocalizations {
   /// **'Comenzar'**
   String get btnStart;
 
+  /// No description provided for @btnNext.
+  ///
+  /// In es, this message translates to:
+  /// **'Siguiente'**
+  String get btnNext;
+
   /// No description provided for @loginTitle.
   ///
   /// In es, this message translates to:
@@ -637,6 +643,24 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Idioma / Language'**
   String get menuLanguage;
+
+  /// No description provided for @menuTheme.
+  ///
+  /// In es, this message translates to:
+  /// **'Tema visual'**
+  String get menuTheme;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In es, this message translates to:
+  /// **'Modo Claro'**
+  String get themeLight;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In es, this message translates to:
+  /// **'Modo Oscuro'**
+  String get themeDark;
 
   /// No description provided for @menuLogout.
   ///
@@ -1153,6 +1177,150 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Eliminar cuenta definitivamente'**
   String get deleteAccountDangerZone;
+
+  /// No description provided for @activationTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Activar cuenta'**
+  String get activationTitle;
+
+  /// No description provided for @activationSubtitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Hemos enviado un código de activación de 6 dígitos a tu correo electrónico:'**
+  String get activationSubtitle;
+
+  /// No description provided for @activationPinHint.
+  ///
+  /// In es, this message translates to:
+  /// **'Código de 6 dígitos'**
+  String get activationPinHint;
+
+  /// No description provided for @activationPinError.
+  ///
+  /// In es, this message translates to:
+  /// **'Por favor ingresa un código válido de 6 dígitos'**
+  String get activationPinError;
+
+  /// No description provided for @activationVerifyBtn.
+  ///
+  /// In es, this message translates to:
+  /// **'Verificar y Activar Cuenta'**
+  String get activationVerifyBtn;
+
+  /// No description provided for @activationResendBtn.
+  ///
+  /// In es, this message translates to:
+  /// **'Reenviar código'**
+  String get activationResendBtn;
+
+  /// No description provided for @activationResendSuccess.
+  ///
+  /// In es, this message translates to:
+  /// **'Te hemos enviado un nuevo código de activación a tu correo.'**
+  String get activationResendSuccess;
+
+  /// No description provided for @activationExpired.
+  ///
+  /// In es, this message translates to:
+  /// **'El código ha expirado. Por favor solicita uno nuevo.'**
+  String get activationExpired;
+
+  /// No description provided for @activationIncorrectPin.
+  ///
+  /// In es, this message translates to:
+  /// **'El código ingresado es incorrecto. Verifica el correo e intenta de nuevo.'**
+  String get activationIncorrectPin;
+
+  /// No description provided for @activationRateLimitBlocked.
+  ///
+  /// In es, this message translates to:
+  /// **'Has alcanzado el límite de 5 envíos en 10 minutos. Por favor espera {minutes} minutos antes de volver a solicitar un código.'**
+  String activationRateLimitBlocked(int minutes);
+
+  /// No description provided for @activationRateLimitCounter.
+  ///
+  /// In es, this message translates to:
+  /// **'Envíos: {count} de {max}'**
+  String activationRateLimitCounter(int count, int max);
+
+  /// No description provided for @activationDeleteAccount.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Te equivocaste de correo o deseas cancelar el registro?'**
+  String get activationDeleteAccount;
+
+  /// No description provided for @activationDeleteAccountBtn.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar cuenta no activada'**
+  String get activationDeleteAccountBtn;
+
+  /// No description provided for @activationDeleteDialogTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Eliminar cuenta no activada?'**
+  String get activationDeleteDialogTitle;
+
+  /// No description provided for @activationDeleteDialogDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Si te equivocaste de correo o no deseas continuar, eliminaremos este registro para que puedas volver a registrarte con el correo correcto.'**
+  String get activationDeleteDialogDesc;
+
+  /// No description provided for @activationDeleteConfirm.
+  ///
+  /// In es, this message translates to:
+  /// **'Sí, eliminar cuenta'**
+  String get activationDeleteConfirm;
+
+  /// No description provided for @activationDeleteSuccess.
+  ///
+  /// In es, this message translates to:
+  /// **'La cuenta ha sido eliminada. Ya puedes registrarte nuevamente.'**
+  String get activationDeleteSuccess;
+
+  /// No description provided for @activationCodeExpiresIn.
+  ///
+  /// In es, this message translates to:
+  /// **'El código expira en {time}'**
+  String activationCodeExpiresIn(String time);
+
+  /// No description provided for @activationLockCountdown.
+  ///
+  /// In es, this message translates to:
+  /// **'Podrás reenviar en {time}'**
+  String activationLockCountdown(String time);
+
+  /// No description provided for @activationGenericError.
+  ///
+  /// In es, this message translates to:
+  /// **'Ocurrió un error inesperado. Por favor intenta de nuevo.'**
+  String get activationGenericError;
+
+  /// No description provided for @activationSendNewEmailBtn.
+  ///
+  /// In es, this message translates to:
+  /// **'Enviar un nuevo correo de activación'**
+  String get activationSendNewEmailBtn;
+
+  /// No description provided for @activationExpiredNoticeTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Tu código de activación ha expirado'**
+  String get activationExpiredNoticeTitle;
+
+  /// No description provided for @activationExpiredNoticeDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'El código enviado anteriormente ya no es válido. Presiona el botón para recibir un nuevo código en tu correo y poder activar tu cuenta.'**
+  String get activationExpiredNoticeDesc;
+
+  /// No description provided for @activationExpiredInputHint.
+  ///
+  /// In es, this message translates to:
+  /// **'Solicita un nuevo código para continuar'**
+  String get activationExpiredInputHint;
 }
 
 class _AppLocalizationsDelegate

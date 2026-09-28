@@ -36,6 +36,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get btnStart => 'Get Started';
 
   @override
+  String get btnNext => 'Next';
+
+  @override
   String get loginTitle => 'Sign In';
 
   @override
@@ -290,6 +293,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get menuLanguage => 'Language / Idioma';
+
+  @override
+  String get menuTheme => 'Theme';
+
+  @override
+  String get themeLight => 'Light Mode';
+
+  @override
+  String get themeDark => 'Dark Mode';
 
   @override
   String get menuLogout => 'Sign Out';
@@ -588,4 +600,93 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deleteAccountDangerZone => 'Delete account';
+
+  @override
+  String get activationTitle => 'Activate Account';
+
+  @override
+  String get activationSubtitle =>
+      'We sent a 6-digit activation code to your email address:';
+
+  @override
+  String get activationPinHint => '6-digit code';
+
+  @override
+  String get activationPinError => 'Please enter a valid 6-digit code';
+
+  @override
+  String get activationVerifyBtn => 'Verify & Activate Account';
+
+  @override
+  String get activationResendBtn => 'Resend code';
+
+  @override
+  String get activationResendSuccess =>
+      'A new activation code has been sent to your email.';
+
+  @override
+  String get activationExpired =>
+      'The code has expired. Please request a new one.';
+
+  @override
+  String get activationIncorrectPin =>
+      'The code entered is incorrect. Check your email and try again.';
+
+  @override
+  String activationRateLimitBlocked(int minutes) {
+    return 'You reached the limit of 5 emails in 10 minutes. Please wait $minutes minutes before requesting another code.';
+  }
+
+  @override
+  String activationRateLimitCounter(int count, int max) {
+    return 'Sends: $count of $max';
+  }
+
+  @override
+  String get activationDeleteAccount =>
+      'Mistyped your email or want to cancel registration?';
+
+  @override
+  String get activationDeleteAccountBtn => 'Delete unactivated account';
+
+  @override
+  String get activationDeleteDialogTitle => 'Delete unactivated account?';
+
+  @override
+  String get activationDeleteDialogDesc =>
+      'If you mistyped your email or do not wish to continue, we will delete this account so you can register again with the correct email.';
+
+  @override
+  String get activationDeleteConfirm => 'Yes, delete account';
+
+  @override
+  String get activationDeleteSuccess =>
+      'The account has been deleted. You can now register again.';
+
+  @override
+  String activationCodeExpiresIn(String time) {
+    return 'Code expires in $time';
+  }
+
+  @override
+  String activationLockCountdown(String time) {
+    return 'You can resend in $time';
+  }
+
+  @override
+  String get activationGenericError =>
+      'An unexpected error occurred. Please try again.';
+
+  @override
+  String get activationSendNewEmailBtn => 'Send a new activation email';
+
+  @override
+  String get activationExpiredNoticeTitle => 'Your activation code has expired';
+
+  @override
+  String get activationExpiredNoticeDesc =>
+      'The code sent previously is no longer valid. Tap the button to receive a new code in your email and activate your account.';
+
+  @override
+  String get activationExpiredInputHint => 'Request a new code to continue';
 }

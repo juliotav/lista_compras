@@ -319,11 +319,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.brightness_6_rounded, color: Colors.grey),
-                          SizedBox(width: 12),
-                          Text("Tema visual", style: TextStyle(fontWeight: FontWeight.w600)),
+                          const Icon(Icons.brightness_6_rounded, color: Colors.grey),
+                          const SizedBox(width: 12),
+                          Text(l10n.menuTheme, style: const TextStyle(fontWeight: FontWeight.w600)),
                         ],
                       ),
                       const SizedBox(height: 6),
@@ -333,8 +333,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         underline: const SizedBox(),
                         items: [
                           DropdownMenuItem(value: 'system', child: Text(l10n.systemDefault)),
-                          const DropdownMenuItem(value: 'light', child: Text("Modo Claro")),
-                          const DropdownMenuItem(value: 'dark', child: Text("Modo Oscuro")),
+                          DropdownMenuItem(value: 'light', child: Text(l10n.themeLight)),
+                          DropdownMenuItem(value: 'dark', child: Text(l10n.themeDark)),
                         ],
                         onChanged: (val) {
                           if (val == 'light') {

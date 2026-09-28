@@ -36,6 +36,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get btnStart => 'Comenzar';
 
   @override
+  String get btnNext => 'Siguiente';
+
+  @override
   String get loginTitle => 'Iniciar Sesión';
 
   @override
@@ -292,6 +295,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get menuLanguage => 'Idioma / Language';
+
+  @override
+  String get menuTheme => 'Tema visual';
+
+  @override
+  String get themeLight => 'Modo Claro';
+
+  @override
+  String get themeDark => 'Modo Oscuro';
 
   @override
   String get menuLogout => 'Cerrar Sesión';
@@ -591,4 +603,97 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get deleteAccountDangerZone => 'Eliminar cuenta definitivamente';
+
+  @override
+  String get activationTitle => 'Activar cuenta';
+
+  @override
+  String get activationSubtitle =>
+      'Hemos enviado un código de activación de 6 dígitos a tu correo electrónico:';
+
+  @override
+  String get activationPinHint => 'Código de 6 dígitos';
+
+  @override
+  String get activationPinError =>
+      'Por favor ingresa un código válido de 6 dígitos';
+
+  @override
+  String get activationVerifyBtn => 'Verificar y Activar Cuenta';
+
+  @override
+  String get activationResendBtn => 'Reenviar código';
+
+  @override
+  String get activationResendSuccess =>
+      'Te hemos enviado un nuevo código de activación a tu correo.';
+
+  @override
+  String get activationExpired =>
+      'El código ha expirado. Por favor solicita uno nuevo.';
+
+  @override
+  String get activationIncorrectPin =>
+      'El código ingresado es incorrecto. Verifica el correo e intenta de nuevo.';
+
+  @override
+  String activationRateLimitBlocked(int minutes) {
+    return 'Has alcanzado el límite de 5 envíos en 10 minutos. Por favor espera $minutes minutos antes de volver a solicitar un código.';
+  }
+
+  @override
+  String activationRateLimitCounter(int count, int max) {
+    return 'Envíos: $count de $max';
+  }
+
+  @override
+  String get activationDeleteAccount =>
+      '¿Te equivocaste de correo o deseas cancelar el registro?';
+
+  @override
+  String get activationDeleteAccountBtn => 'Eliminar cuenta no activada';
+
+  @override
+  String get activationDeleteDialogTitle => '¿Eliminar cuenta no activada?';
+
+  @override
+  String get activationDeleteDialogDesc =>
+      'Si te equivocaste de correo o no deseas continuar, eliminaremos este registro para que puedas volver a registrarte con el correo correcto.';
+
+  @override
+  String get activationDeleteConfirm => 'Sí, eliminar cuenta';
+
+  @override
+  String get activationDeleteSuccess =>
+      'La cuenta ha sido eliminada. Ya puedes registrarte nuevamente.';
+
+  @override
+  String activationCodeExpiresIn(String time) {
+    return 'El código expira en $time';
+  }
+
+  @override
+  String activationLockCountdown(String time) {
+    return 'Podrás reenviar en $time';
+  }
+
+  @override
+  String get activationGenericError =>
+      'Ocurrió un error inesperado. Por favor intenta de nuevo.';
+
+  @override
+  String get activationSendNewEmailBtn =>
+      'Enviar un nuevo correo de activación';
+
+  @override
+  String get activationExpiredNoticeTitle =>
+      'Tu código de activación ha expirado';
+
+  @override
+  String get activationExpiredNoticeDesc =>
+      'El código enviado anteriormente ya no es válido. Presiona el botón para recibir un nuevo código en tu correo y poder activar tu cuenta.';
+
+  @override
+  String get activationExpiredInputHint =>
+      'Solicita un nuevo código para continuar';
 }

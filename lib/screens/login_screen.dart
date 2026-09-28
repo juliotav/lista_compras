@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/database_service.dart';
+import 'account_activation_screen.dart';
 import 'family_setup_screen.dart';
 import 'forgot_password_screen.dart';
 import 'home_screen.dart';
@@ -45,7 +46,13 @@ class _LoginScreenState extends State<LoginScreen> {
     debugPrint("[UI LOG] Resultado del Login: success=$success");
 
     if (success) {
-      if (db.currentFamily != null) {
+      if (db.currentUser?.status == 'pending_activation') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const AccountActivationScreen()),
+          (route) => false,
+        );
+      } else if (db.currentFamily != null) {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const HomeScreen()),
