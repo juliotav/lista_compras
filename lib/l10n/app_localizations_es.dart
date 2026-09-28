@@ -36,6 +36,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get btnStart => 'Comenzar';
 
   @override
+  String get btnNext => 'Siguiente';
+
+  @override
   String get loginTitle => 'Iniciar Sesión';
 
   @override
@@ -294,6 +297,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get menuLanguage => 'Idioma / Language';
 
   @override
+  String get menuTheme => 'Tema visual';
+
+  @override
+  String get themeLight => 'Modo Claro';
+
+  @override
+  String get themeDark => 'Modo Oscuro';
+
+  @override
   String get menuLogout => 'Cerrar Sesión';
 
   @override
@@ -518,4 +530,170 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get filterPendingItemsHint => 'Filtrar por comprar...';
+
+  @override
+  String get deleteAccountTitle => 'Eliminar cuenta y datos';
+
+  @override
+  String get deleteAccountSubtitle =>
+      'Elimina de forma permanente tu cuenta, perfil y datos asociados';
+
+  @override
+  String get deleteAccountWarningTitle =>
+      'Esta acción es permanente e irreversible';
+
+  @override
+  String get deleteAccountWarningDesc =>
+      'Al eliminar tu cuenta, se borrarán todos tus datos personales y tu acceso a la aplicación de forma inmediata:';
+
+  @override
+  String get deleteAccountBulletProfile =>
+      'Tu perfil, nombre completo, usuario y correo electrónico serán eliminados.';
+
+  @override
+  String get deleteAccountBulletLists =>
+      'Tus listas de compras y productos personales creados serán borrados.';
+
+  @override
+  String get deleteAccountBulletFamily =>
+      'Si perteneces a una familia con otros integrantes, serás desvinculado sin afectar las compras del grupo. Si eres el único miembro, la familia y sus listas se eliminarán por completo.';
+
+  @override
+  String get deleteAccountBulletNoRecovery =>
+      'No podrás volver a iniciar sesión ni recuperar ningún dato de esta cuenta.';
+
+  @override
+  String get deleteAccountConfirmPrompt =>
+      'Para confirmar que deseas borrar tu cuenta, ingresa tu contraseña actual:';
+
+  @override
+  String get deleteAccountPasswordHint => 'Ingresa tu contraseña actual';
+
+  @override
+  String get deleteAccountPasswordEmpty => 'Por favor ingresa tu contraseña';
+
+  @override
+  String get deleteAccountBtn => 'Eliminar mi cuenta definitivamente';
+
+  @override
+  String get deleteAccountConfirmDialogTitle =>
+      '¿Eliminar cuenta definitivamente?';
+
+  @override
+  String get deleteAccountConfirmDialogDesc =>
+      'Esta acción es irreversible y borrará todos tus datos en este instante. ¿Deseas continuar?';
+
+  @override
+  String get deleteAccountConfirmDialogConfirm => 'Sí, eliminar cuenta';
+
+  @override
+  String get deleteAccountConfirmDialogCancel => 'Cancelar';
+
+  @override
+  String get deleteAccountIncorrectPassword =>
+      'La contraseña ingresada es incorrecta.';
+
+  @override
+  String get deleteAccountSuccess =>
+      'Tu cuenta y tus datos han sido eliminados correctamente.';
+
+  @override
+  String get deleteAccountError =>
+      'Ocurrió un error al eliminar tu cuenta. Por favor intenta de nuevo.';
+
+  @override
+  String get deleteAccountDangerZone => 'Eliminar cuenta definitivamente';
+
+  @override
+  String get activationTitle => 'Activar cuenta';
+
+  @override
+  String get activationSubtitle =>
+      'Hemos enviado un código de activación de 6 dígitos a tu correo electrónico:';
+
+  @override
+  String get activationPinHint => 'Código de 6 dígitos';
+
+  @override
+  String get activationPinError =>
+      'Por favor ingresa un código válido de 6 dígitos';
+
+  @override
+  String get activationVerifyBtn => 'Verificar y Activar Cuenta';
+
+  @override
+  String get activationResendBtn => 'Reenviar código';
+
+  @override
+  String get activationResendSuccess =>
+      'Te hemos enviado un nuevo código de activación a tu correo.';
+
+  @override
+  String get activationExpired =>
+      'El código ha expirado. Por favor solicita uno nuevo.';
+
+  @override
+  String get activationIncorrectPin =>
+      'El código ingresado es incorrecto. Verifica el correo e intenta de nuevo.';
+
+  @override
+  String activationRateLimitBlocked(int minutes) {
+    return 'Has alcanzado el límite de 5 envíos en 10 minutos. Por favor espera $minutes minutos antes de volver a solicitar un código.';
+  }
+
+  @override
+  String activationRateLimitCounter(int count, int max) {
+    return 'Envíos: $count de $max';
+  }
+
+  @override
+  String get activationDeleteAccount =>
+      '¿Te equivocaste de correo o deseas cancelar el registro?';
+
+  @override
+  String get activationDeleteAccountBtn => 'Eliminar cuenta no activada';
+
+  @override
+  String get activationDeleteDialogTitle => '¿Eliminar cuenta no activada?';
+
+  @override
+  String get activationDeleteDialogDesc =>
+      'Si te equivocaste de correo o no deseas continuar, eliminaremos este registro para que puedas volver a registrarte con el correo correcto.';
+
+  @override
+  String get activationDeleteConfirm => 'Sí, eliminar cuenta';
+
+  @override
+  String get activationDeleteSuccess =>
+      'La cuenta ha sido eliminada. Ya puedes registrarte nuevamente.';
+
+  @override
+  String activationCodeExpiresIn(String time) {
+    return 'El código expira en $time';
+  }
+
+  @override
+  String activationLockCountdown(String time) {
+    return 'Podrás reenviar en $time';
+  }
+
+  @override
+  String get activationGenericError =>
+      'Ocurrió un error inesperado. Por favor intenta de nuevo.';
+
+  @override
+  String get activationSendNewEmailBtn =>
+      'Enviar un nuevo correo de activación';
+
+  @override
+  String get activationExpiredNoticeTitle =>
+      'Tu código de activación ha expirado';
+
+  @override
+  String get activationExpiredNoticeDesc =>
+      'El código enviado anteriormente ya no es válido. Presiona el botón para recibir un nuevo código en tu correo y poder activar tu cuenta.';
+
+  @override
+  String get activationExpiredInputHint =>
+      'Solicita un nuevo código para continuar';
 }

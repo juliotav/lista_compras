@@ -150,6 +150,24 @@ class _HomeScreenState extends State<HomeScreen> {
     final db = context.watch<DatabaseService>();
     final family = db.currentFamily;
     final user = db.currentUser;
+
+    if (user == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      });
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     final shoppingLists = db.getActiveShoppingLists();
 
     final userFamilies = db.userFamilies;
@@ -178,17 +196,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     : Colors.deepPurple,
               ),
               accountName: Text(
-                user?.nbCompleto ?? l10n.defaultUser,
+                user.nbCompleto.isNotEmpty ? user.nbCompleto : l10n.defaultUser,
                 style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
               ),
               accountEmail: Text(
-                user?.nbEmail ?? '',
+                user.nbEmail,
                 style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
               ),
               currentAccountPicture: CircleAvatar(
                 backgroundColor: theme.colorScheme.primary,
                 child: Text(
-                  user?.nbCompleto.isNotEmpty == true ? user!.nbCompleto[0].toUpperCase() : 'U',
+                  user.nbCompleto.isNotEmpty ? user.nbCompleto[0].toUpperCase() : 'U',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -301,11 +319,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.brightness_6_rounded, color: Colors.grey),
-                          SizedBox(width: 12),
-                          Text("Tema visual", style: TextStyle(fontWeight: FontWeight.w600)),
+                          const Icon(Icons.brightness_6_rounded, color: Colors.grey),
+                          const SizedBox(width: 12),
+                          Text(l10n.menuTheme, style: const TextStyle(fontWeight: FontWeight.w600)),
                         ],
                       ),
                       const SizedBox(height: 6),
@@ -315,8 +333,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         underline: const SizedBox(),
                         items: [
                           DropdownMenuItem(value: 'system', child: Text(l10n.systemDefault)),
-                          const DropdownMenuItem(value: 'light', child: Text("Modo Claro")),
-                          const DropdownMenuItem(value: 'dark', child: Text("Modo Oscuro")),
+                          DropdownMenuItem(value: 'light', child: Text(l10n.themeLight)),
+                          DropdownMenuItem(value: 'dark', child: Text(l10n.themeDark)),
                         ],
                         onChanged: (val) {
                           if (val == 'light') {

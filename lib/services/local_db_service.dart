@@ -89,6 +89,9 @@ class LocalDbService {
         try {
           await db.execute('ALTER TABLE list_detail_items ADD COLUMN nu_order INTEGER NOT NULL DEFAULT 0;');
         } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT "active";');
+        } catch (_) {}
       },
     );
   }
@@ -104,7 +107,8 @@ class LocalDbService {
         nb_email TEXT NOT NULL,
         cl_pass TEXT NOT NULL,
         id_familia TEXT,
-        ds_version_app TEXT
+        ds_version_app TEXT,
+        status TEXT NOT NULL DEFAULT 'active'
       )
     ''');
 
@@ -235,6 +239,24 @@ class LocalDbService {
     } catch (_) {}
   }
 
+  Future<void> clearAllData() async {
+    final database = await db;
+    await database.transaction((txn) async {
+      await txn.delete('session');
+      await txn.delete('users');
+      await txn.delete('families');
+      await txn.delete('shopping_lists');
+      await txn.delete('list_detail_items');
+      await txn.delete('item_catalog');
+      await txn.delete('sync_queue');
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('session_user_id');
+      await prefs.remove('saved_user_id');
+    } catch (_) {}
+  }
+
   Future<void> saveUser(UserModel user) async {
     final database = await db;
     await database.insert(
@@ -251,6 +273,20 @@ class LocalDbService {
       return UserModel.fromMap(res.first);
     }
     return null;
+  }
+
+  Future<void> deleteUser(String userId) async {
+    final database = await db;
+    await database.delete('users', where: 'id_usuario = ?', whereArgs: [userId]);
+  }
+
+  Future<void> deleteUserByEmail(String email) async {
+    final database = await db;
+    await database.delete(
+      'users',
+      where: 'LOWER(nb_email) = ?',
+      whereArgs: [email.trim().toLowerCase()],
+    );
   }
 
   Future<List<UserModel>> getAllUsers() async {

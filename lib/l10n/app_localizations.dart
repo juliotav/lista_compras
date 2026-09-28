@@ -146,6 +146,12 @@ abstract class AppLocalizations {
   /// **'Comenzar'**
   String get btnStart;
 
+  /// No description provided for @btnNext.
+  ///
+  /// In es, this message translates to:
+  /// **'Siguiente'**
+  String get btnNext;
+
   /// No description provided for @loginTitle.
   ///
   /// In es, this message translates to:
@@ -638,6 +644,24 @@ abstract class AppLocalizations {
   /// **'Idioma / Language'**
   String get menuLanguage;
 
+  /// No description provided for @menuTheme.
+  ///
+  /// In es, this message translates to:
+  /// **'Tema visual'**
+  String get menuTheme;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In es, this message translates to:
+  /// **'Modo Claro'**
+  String get themeLight;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In es, this message translates to:
+  /// **'Modo Oscuro'**
+  String get themeDark;
+
   /// No description provided for @menuLogout.
   ///
   /// In es, this message translates to:
@@ -1033,6 +1057,270 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Filtrar por comprar...'**
   String get filterPendingItemsHint;
+
+  /// No description provided for @deleteAccountTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar cuenta y datos'**
+  String get deleteAccountTitle;
+
+  /// No description provided for @deleteAccountSubtitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Elimina de forma permanente tu cuenta, perfil y datos asociados'**
+  String get deleteAccountSubtitle;
+
+  /// No description provided for @deleteAccountWarningTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Esta acción es permanente e irreversible'**
+  String get deleteAccountWarningTitle;
+
+  /// No description provided for @deleteAccountWarningDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Al eliminar tu cuenta, se borrarán todos tus datos personales y tu acceso a la aplicación de forma inmediata:'**
+  String get deleteAccountWarningDesc;
+
+  /// No description provided for @deleteAccountBulletProfile.
+  ///
+  /// In es, this message translates to:
+  /// **'Tu perfil, nombre completo, usuario y correo electrónico serán eliminados.'**
+  String get deleteAccountBulletProfile;
+
+  /// No description provided for @deleteAccountBulletLists.
+  ///
+  /// In es, this message translates to:
+  /// **'Tus listas de compras y productos personales creados serán borrados.'**
+  String get deleteAccountBulletLists;
+
+  /// No description provided for @deleteAccountBulletFamily.
+  ///
+  /// In es, this message translates to:
+  /// **'Si perteneces a una familia con otros integrantes, serás desvinculado sin afectar las compras del grupo. Si eres el único miembro, la familia y sus listas se eliminarán por completo.'**
+  String get deleteAccountBulletFamily;
+
+  /// No description provided for @deleteAccountBulletNoRecovery.
+  ///
+  /// In es, this message translates to:
+  /// **'No podrás volver a iniciar sesión ni recuperar ningún dato de esta cuenta.'**
+  String get deleteAccountBulletNoRecovery;
+
+  /// No description provided for @deleteAccountConfirmPrompt.
+  ///
+  /// In es, this message translates to:
+  /// **'Para confirmar que deseas borrar tu cuenta, ingresa tu contraseña actual:'**
+  String get deleteAccountConfirmPrompt;
+
+  /// No description provided for @deleteAccountPasswordHint.
+  ///
+  /// In es, this message translates to:
+  /// **'Ingresa tu contraseña actual'**
+  String get deleteAccountPasswordHint;
+
+  /// No description provided for @deleteAccountPasswordEmpty.
+  ///
+  /// In es, this message translates to:
+  /// **'Por favor ingresa tu contraseña'**
+  String get deleteAccountPasswordEmpty;
+
+  /// No description provided for @deleteAccountBtn.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar mi cuenta definitivamente'**
+  String get deleteAccountBtn;
+
+  /// No description provided for @deleteAccountConfirmDialogTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Eliminar cuenta definitivamente?'**
+  String get deleteAccountConfirmDialogTitle;
+
+  /// No description provided for @deleteAccountConfirmDialogDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Esta acción es irreversible y borrará todos tus datos en este instante. ¿Deseas continuar?'**
+  String get deleteAccountConfirmDialogDesc;
+
+  /// No description provided for @deleteAccountConfirmDialogConfirm.
+  ///
+  /// In es, this message translates to:
+  /// **'Sí, eliminar cuenta'**
+  String get deleteAccountConfirmDialogConfirm;
+
+  /// No description provided for @deleteAccountConfirmDialogCancel.
+  ///
+  /// In es, this message translates to:
+  /// **'Cancelar'**
+  String get deleteAccountConfirmDialogCancel;
+
+  /// No description provided for @deleteAccountIncorrectPassword.
+  ///
+  /// In es, this message translates to:
+  /// **'La contraseña ingresada es incorrecta.'**
+  String get deleteAccountIncorrectPassword;
+
+  /// No description provided for @deleteAccountSuccess.
+  ///
+  /// In es, this message translates to:
+  /// **'Tu cuenta y tus datos han sido eliminados correctamente.'**
+  String get deleteAccountSuccess;
+
+  /// No description provided for @deleteAccountError.
+  ///
+  /// In es, this message translates to:
+  /// **'Ocurrió un error al eliminar tu cuenta. Por favor intenta de nuevo.'**
+  String get deleteAccountError;
+
+  /// No description provided for @deleteAccountDangerZone.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar cuenta definitivamente'**
+  String get deleteAccountDangerZone;
+
+  /// No description provided for @activationTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Activar cuenta'**
+  String get activationTitle;
+
+  /// No description provided for @activationSubtitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Hemos enviado un código de activación de 6 dígitos a tu correo electrónico:'**
+  String get activationSubtitle;
+
+  /// No description provided for @activationPinHint.
+  ///
+  /// In es, this message translates to:
+  /// **'Código de 6 dígitos'**
+  String get activationPinHint;
+
+  /// No description provided for @activationPinError.
+  ///
+  /// In es, this message translates to:
+  /// **'Por favor ingresa un código válido de 6 dígitos'**
+  String get activationPinError;
+
+  /// No description provided for @activationVerifyBtn.
+  ///
+  /// In es, this message translates to:
+  /// **'Verificar y Activar Cuenta'**
+  String get activationVerifyBtn;
+
+  /// No description provided for @activationResendBtn.
+  ///
+  /// In es, this message translates to:
+  /// **'Reenviar código'**
+  String get activationResendBtn;
+
+  /// No description provided for @activationResendSuccess.
+  ///
+  /// In es, this message translates to:
+  /// **'Te hemos enviado un nuevo código de activación a tu correo.'**
+  String get activationResendSuccess;
+
+  /// No description provided for @activationExpired.
+  ///
+  /// In es, this message translates to:
+  /// **'El código ha expirado. Por favor solicita uno nuevo.'**
+  String get activationExpired;
+
+  /// No description provided for @activationIncorrectPin.
+  ///
+  /// In es, this message translates to:
+  /// **'El código ingresado es incorrecto. Verifica el correo e intenta de nuevo.'**
+  String get activationIncorrectPin;
+
+  /// No description provided for @activationRateLimitBlocked.
+  ///
+  /// In es, this message translates to:
+  /// **'Has alcanzado el límite de 5 envíos en 10 minutos. Por favor espera {minutes} minutos antes de volver a solicitar un código.'**
+  String activationRateLimitBlocked(int minutes);
+
+  /// No description provided for @activationRateLimitCounter.
+  ///
+  /// In es, this message translates to:
+  /// **'Envíos: {count} de {max}'**
+  String activationRateLimitCounter(int count, int max);
+
+  /// No description provided for @activationDeleteAccount.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Te equivocaste de correo o deseas cancelar el registro?'**
+  String get activationDeleteAccount;
+
+  /// No description provided for @activationDeleteAccountBtn.
+  ///
+  /// In es, this message translates to:
+  /// **'Eliminar cuenta no activada'**
+  String get activationDeleteAccountBtn;
+
+  /// No description provided for @activationDeleteDialogTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Eliminar cuenta no activada?'**
+  String get activationDeleteDialogTitle;
+
+  /// No description provided for @activationDeleteDialogDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Si te equivocaste de correo o no deseas continuar, eliminaremos este registro para que puedas volver a registrarte con el correo correcto.'**
+  String get activationDeleteDialogDesc;
+
+  /// No description provided for @activationDeleteConfirm.
+  ///
+  /// In es, this message translates to:
+  /// **'Sí, eliminar cuenta'**
+  String get activationDeleteConfirm;
+
+  /// No description provided for @activationDeleteSuccess.
+  ///
+  /// In es, this message translates to:
+  /// **'La cuenta ha sido eliminada. Ya puedes registrarte nuevamente.'**
+  String get activationDeleteSuccess;
+
+  /// No description provided for @activationCodeExpiresIn.
+  ///
+  /// In es, this message translates to:
+  /// **'El código expira en {time}'**
+  String activationCodeExpiresIn(String time);
+
+  /// No description provided for @activationLockCountdown.
+  ///
+  /// In es, this message translates to:
+  /// **'Podrás reenviar en {time}'**
+  String activationLockCountdown(String time);
+
+  /// No description provided for @activationGenericError.
+  ///
+  /// In es, this message translates to:
+  /// **'Ocurrió un error inesperado. Por favor intenta de nuevo.'**
+  String get activationGenericError;
+
+  /// No description provided for @activationSendNewEmailBtn.
+  ///
+  /// In es, this message translates to:
+  /// **'Enviar un nuevo correo de activación'**
+  String get activationSendNewEmailBtn;
+
+  /// No description provided for @activationExpiredNoticeTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Tu código de activación ha expirado'**
+  String get activationExpiredNoticeTitle;
+
+  /// No description provided for @activationExpiredNoticeDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'El código enviado anteriormente ya no es válido. Presiona el botón para recibir un nuevo código en tu correo y poder activar tu cuenta.'**
+  String get activationExpiredNoticeDesc;
+
+  /// No description provided for @activationExpiredInputHint.
+  ///
+  /// In es, this message translates to:
+  /// **'Solicita un nuevo código para continuar'**
+  String get activationExpiredInputHint;
 }
 
 class _AppLocalizationsDelegate

@@ -36,6 +36,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get btnStart => 'Get Started';
 
   @override
+  String get btnNext => 'Next';
+
+  @override
   String get loginTitle => 'Sign In';
 
   @override
@@ -292,6 +295,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get menuLanguage => 'Language / Idioma';
 
   @override
+  String get menuTheme => 'Theme';
+
+  @override
+  String get themeLight => 'Light Mode';
+
+  @override
+  String get themeDark => 'Dark Mode';
+
+  @override
   String get menuLogout => 'Sign Out';
 
   @override
@@ -516,4 +528,165 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get filterPendingItemsHint => 'Filter pending items...';
+
+  @override
+  String get deleteAccountTitle => 'Delete Account and Data';
+
+  @override
+  String get deleteAccountSubtitle =>
+      'Permanently delete your account, profile, and associated data';
+
+  @override
+  String get deleteAccountWarningTitle =>
+      'This action is permanent and irreversible';
+
+  @override
+  String get deleteAccountWarningDesc =>
+      'By deleting your account, all your personal data and access to the app will be permanently deleted immediately:';
+
+  @override
+  String get deleteAccountBulletProfile =>
+      'Your profile, full name, username, and email will be permanently deleted.';
+
+  @override
+  String get deleteAccountBulletLists =>
+      'Your shopping lists and personal products created will be deleted.';
+
+  @override
+  String get deleteAccountBulletFamily =>
+      'If you belong to a family with other members, you will be unlinked without affecting the group\'s lists. If you are the only member, the family and its lists will be completely removed.';
+
+  @override
+  String get deleteAccountBulletNoRecovery =>
+      'You will not be able to log in again or recover any data from this account.';
+
+  @override
+  String get deleteAccountConfirmPrompt =>
+      'To confirm that you want to delete your account, please enter your current password:';
+
+  @override
+  String get deleteAccountPasswordHint => 'Enter your current password';
+
+  @override
+  String get deleteAccountPasswordEmpty => 'Please enter your password';
+
+  @override
+  String get deleteAccountBtn => 'Permanently Delete My Account';
+
+  @override
+  String get deleteAccountConfirmDialogTitle => 'Permanently Delete Account?';
+
+  @override
+  String get deleteAccountConfirmDialogDesc =>
+      'This action is irreversible and will delete all your data immediately. Do you wish to continue?';
+
+  @override
+  String get deleteAccountConfirmDialogConfirm => 'Yes, delete account';
+
+  @override
+  String get deleteAccountConfirmDialogCancel => 'Cancel';
+
+  @override
+  String get deleteAccountIncorrectPassword =>
+      'The entered password is incorrect.';
+
+  @override
+  String get deleteAccountSuccess =>
+      'Your account and data have been successfully deleted.';
+
+  @override
+  String get deleteAccountError =>
+      'An error occurred while deleting your account. Please try again.';
+
+  @override
+  String get deleteAccountDangerZone => 'Delete account';
+
+  @override
+  String get activationTitle => 'Activate Account';
+
+  @override
+  String get activationSubtitle =>
+      'We sent a 6-digit activation code to your email address:';
+
+  @override
+  String get activationPinHint => '6-digit code';
+
+  @override
+  String get activationPinError => 'Please enter a valid 6-digit code';
+
+  @override
+  String get activationVerifyBtn => 'Verify & Activate Account';
+
+  @override
+  String get activationResendBtn => 'Resend code';
+
+  @override
+  String get activationResendSuccess =>
+      'A new activation code has been sent to your email.';
+
+  @override
+  String get activationExpired =>
+      'The code has expired. Please request a new one.';
+
+  @override
+  String get activationIncorrectPin =>
+      'The code entered is incorrect. Check your email and try again.';
+
+  @override
+  String activationRateLimitBlocked(int minutes) {
+    return 'You reached the limit of 5 emails in 10 minutes. Please wait $minutes minutes before requesting another code.';
+  }
+
+  @override
+  String activationRateLimitCounter(int count, int max) {
+    return 'Sends: $count of $max';
+  }
+
+  @override
+  String get activationDeleteAccount =>
+      'Mistyped your email or want to cancel registration?';
+
+  @override
+  String get activationDeleteAccountBtn => 'Delete unactivated account';
+
+  @override
+  String get activationDeleteDialogTitle => 'Delete unactivated account?';
+
+  @override
+  String get activationDeleteDialogDesc =>
+      'If you mistyped your email or do not wish to continue, we will delete this account so you can register again with the correct email.';
+
+  @override
+  String get activationDeleteConfirm => 'Yes, delete account';
+
+  @override
+  String get activationDeleteSuccess =>
+      'The account has been deleted. You can now register again.';
+
+  @override
+  String activationCodeExpiresIn(String time) {
+    return 'Code expires in $time';
+  }
+
+  @override
+  String activationLockCountdown(String time) {
+    return 'You can resend in $time';
+  }
+
+  @override
+  String get activationGenericError =>
+      'An unexpected error occurred. Please try again.';
+
+  @override
+  String get activationSendNewEmailBtn => 'Send a new activation email';
+
+  @override
+  String get activationExpiredNoticeTitle => 'Your activation code has expired';
+
+  @override
+  String get activationExpiredNoticeDesc =>
+      'The code sent previously is no longer valid. Tap the button to receive a new code in your email and activate your account.';
+
+  @override
+  String get activationExpiredInputHint => 'Request a new code to continue';
 }

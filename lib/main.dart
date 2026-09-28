@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'l10n/app_localizations.dart';
+import 'screens/account_activation_screen.dart';
 import 'screens/family_setup_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/intro_slides_screen.dart';
@@ -183,6 +184,9 @@ class RootSessionDecider extends StatelessWidget {
     }
 
     if (db.currentUser != null) {
+      if (db.currentUser!.status == 'pending_activation') {
+        return const AccountActivationScreen();
+      }
       if (db.currentUser!.idFamilia != null) {
         return const HomeScreen();
       }
