@@ -38,7 +38,21 @@ void main() async {
 
   // 2. Inicializar servicios pesados y permisos en segundo plano sin congelar el renderizado
   if (!kIsWeb) {
-    unawaited(MobileAds.instance.initialize().catchError((e) {
+    unawaited(MobileAds.instance.initialize().then((status) async {
+      try {
+        await MobileAds.instance.updateRequestConfiguration(
+          RequestConfiguration(
+            testDeviceIds: [
+              'GADSimulatorID',
+              'SIMULATOR',
+            ],
+          ),
+        );
+      } catch (e) {
+        debugPrint("[ADS LOG] Error al configurar testDeviceIds: $e");
+      }
+      return status;
+    }).catchError((e) {
       debugPrint("[ADS LOG] Error al inicializar MobileAds: $e");
       return InitializationStatus({});
     }));
