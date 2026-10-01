@@ -73,13 +73,17 @@ class MongoConfig {
     }
   }
 
-  /// Retorna la URL de la tienda según el entorno (QA vs PR)
+  static const String androidStoreUrl =
+      'https://play.google.com/store/apps/details?id=com.sonorodevs.lista_compras';
+  static const String iosStoreUrl =
+      'https://apps.apple.com/us/app/lista-lista/id6808903719';
+
+  /// Retorna la URL de la tienda según la plataforma actual (iOS vs Android)
   static String get storeUrl {
-    if (currentEnv == 'pr') {
-      // Placeholder para producción
-      return 'https://play.google.com/store/apps/details?id=com.sonorodevs.lista_compras'; // TODO: Reemplazar con la URL real de Producción cuando esté disponible
+    if (currentPlatform == 'ios') {
+      return iosStoreUrl;
     }
-    // Entorno QA / Closed Testing
-    return 'https://play.google.com/store/apps/details?id=com.sonorodevs.lista_compras';
+    return androidStoreUrl;
   }
 }
+
