@@ -43,7 +43,7 @@ class AboutPrivacyScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "Versión ${MongoConfig.appVersion}",
+                    "Versión ${MongoConfig.versionDisplay}",
                     style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
                   ),
                 ],

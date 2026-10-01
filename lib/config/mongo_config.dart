@@ -50,6 +50,15 @@ class MongoConfig {
     return "1.0.20";
   }
 
+  /// Retorna la versión para mostrar en UI. Si el ambiente no es 'pr', agrega el distintivo (beta).
+  static String get versionDisplay {
+    if (currentEnv == 'pr') {
+      return appVersion;
+    }
+    return '$appVersion (beta)';
+  }
+
+
   /// Retorna el ambiente actual ('qa' o 'pr')
   static String get currentEnv {
     const env = String.fromEnvironment('ENV', defaultValue: 'qa');
