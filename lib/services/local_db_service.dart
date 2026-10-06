@@ -651,4 +651,24 @@ class LocalDbService {
     );
     return res.map((r) => r['entity_id'] as String).toSet();
   }
+
+  Future<Map<String, String>> getPendingSyncActions(String collectionName) async {
+    final database = await db;
+    final res = await database.query(
+      'sync_queue',
+      columns: ['entity_id', 'action'],
+      where: 'collection_name = ?',
+      whereArgs: [collectionName],
+      orderBy: 'id ASC',
+    );
+    final Map<String, String> map = {};
+    for (var r in res) {
+      final entityId = r['entity_id'] as String?;
+      final action = r['action'] as String?;
+      if (entityId != null && action != null) {
+        map[entityId] = action;
+      }
+    }
+    return map;
+  }
 }

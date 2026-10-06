@@ -2034,12 +2034,14 @@ class DatabaseService extends ChangeNotifier {
     );
 
     _catalogItems[idx] = updatedCatalog;
+    _syncService.recordLocalMutation(entityId: idArticulo, action: 'UPDATE');
     await _localDb.saveCatalogItem(updatedCatalog, syncStatus: 'pending');
 
     for (int i = 0; i < _listDetailItems.length; i++) {
       if (_listDetailItems[i].idArticulo == idArticulo) {
         final updatedDetail = _listDetailItems[i].copyWith(nbArticulo: cleanName);
         _listDetailItems[i] = updatedDetail;
+        _syncService.recordLocalMutation(entityId: updatedDetail.idDetalle, action: 'UPDATE');
         await _localDb.saveListDetailItem(updatedDetail, syncStatus: 'pending');
         await _localDb.enqueueSyncItem(
           collectionName: MongoConfig.colDetalleLista,
@@ -2089,6 +2091,7 @@ class DatabaseService extends ChangeNotifier {
       final target = _catalogItems[idx];
       final updatedCatalog = target.copyWith(nuUso: target.nuUso + 1);
       _catalogItems[idx] = updatedCatalog;
+      _syncService.recordLocalMutation(entityId: target.idArticulo, action: 'UPDATE');
       _localDb.saveCatalogItem(updatedCatalog, syncStatus: 'pending');
 
       _localDb.enqueueSyncItem(
@@ -2179,6 +2182,7 @@ class DatabaseService extends ChangeNotifier {
 
       _listDetailItems.removeAt(completedExistingIdx);
       _listDetailItems.add(reactivatedItem);
+      _syncService.recordLocalMutation(entityId: reactivatedItem.idDetalle, action: 'UPDATE');
       await _localDb.saveListDetailItem(reactivatedItem, syncStatus: 'pending');
       notifyListeners();
 
@@ -2195,7 +2199,7 @@ class DatabaseService extends ChangeNotifier {
       );
 
       _checkAndTriggerListNotification(idListaCompra);
-      _syncService.triggerSync();
+      _syncService.triggerSync(delay: Duration.zero);
       return true;
     }
 
@@ -2217,6 +2221,7 @@ class DatabaseService extends ChangeNotifier {
 
     // Agregar DE INMEDIATO en SQLite y en memoria local (0ms UI latency)
     _listDetailItems.add(newItem);
+    _syncService.recordLocalMutation(entityId: newItem.idDetalle, action: 'INSERT');
     await _localDb.saveListDetailItem(newItem, syncStatus: 'pending');
     notifyListeners();
 
@@ -2229,7 +2234,7 @@ class DatabaseService extends ChangeNotifier {
     );
 
     _checkAndTriggerListNotification(idListaCompra);
-    _syncService.triggerSync();
+    _syncService.triggerSync(delay: Duration.zero);
     return true;
   }
 
@@ -2394,6 +2399,7 @@ class DatabaseService extends ChangeNotifier {
       );
 
       _catalogItems.add(newCatalogItem);
+      _syncService.recordLocalMutation(entityId: artId, action: 'INSERT');
       await _localDb.saveCatalogItem(newCatalogItem, syncStatus: 'pending');
 
       await _localDb.enqueueSyncItem(
@@ -2421,6 +2427,7 @@ class DatabaseService extends ChangeNotifier {
           : _listDetailItems[idx].copyWith(dsDetalle: cleanNote);
 
       _listDetailItems[idx] = updated;
+      _syncService.recordLocalMutation(entityId: idDetalle, action: 'UPDATE');
       await _localDb.saveListDetailItem(updated, syncStatus: 'pending');
       notifyListeners();
 
@@ -2430,11 +2437,12 @@ class DatabaseService extends ChangeNotifier {
         entityId: idDetalle,
         payload: {'ds_detalle': cleanNote},
       );
-      _syncService.triggerSync();
+      _syncService.triggerSync(delay: Duration.zero);
     }
   }
 
   Future<void> removeListDetailItem(String idDetalle) async {
+    _syncService.recordLocalMutation(entityId: idDetalle, action: 'DELETE');
     _listDetailItems.removeWhere((item) => item.idDetalle == idDetalle);
     await _localDb.deleteListDetailItemLocally(idDetalle);
     notifyListeners();
@@ -2445,7 +2453,7 @@ class DatabaseService extends ChangeNotifier {
       entityId: idDetalle,
       payload: {'id_detalle': idDetalle},
     );
-    _syncService.triggerSync();
+    _syncService.triggerSync(delay: Duration.zero);
   }
 
   Future<void> markItemAsCompleted(String idDetalle) async {
@@ -2458,6 +2466,7 @@ class DatabaseService extends ChangeNotifier {
       );
       _listDetailItems[idx] = updated;
       _incrementCatalogUsage(updated.idArticulo, updated.nbArticulo);
+      _syncService.recordLocalMutation(entityId: idDetalle, action: 'UPDATE');
       await _localDb.saveListDetailItem(updated, syncStatus: 'pending');
       notifyListeners();
 
@@ -2475,7 +2484,7 @@ class DatabaseService extends ChangeNotifier {
         updated.idListaCompra,
         productName: updated.nbArticulo,
       );
-      _syncService.triggerSync();
+      _syncService.triggerSync(delay: Duration.zero);
     }
   }
 
@@ -2504,6 +2513,7 @@ class DatabaseService extends ChangeNotifier {
       if (idxInMemory != -1) {
         _listDetailItems[idxInMemory] = updatedItem;
       }
+      _syncService.recordLocalMutation(entityId: updatedItem.idDetalle, action: 'UPDATE');
     }
 
     notifyListeners();
@@ -2519,7 +2529,7 @@ class DatabaseService extends ChangeNotifier {
       );
     }
 
-    _syncService.triggerSync();
+    _syncService.triggerSync(delay: Duration.zero);
   }
 
   /// Reordena los elementos pendientes por orden alfabético y persiste el nuevo orden en SQLite y MongoDB
@@ -2548,6 +2558,7 @@ class DatabaseService extends ChangeNotifier {
         if (idxInMemory != -1) {
           _listDetailItems[idxInMemory] = updatedItem;
         }
+        _syncService.recordLocalMutation(entityId: updatedItem.idDetalle, action: 'UPDATE');
       }
     }
 
@@ -2565,6 +2576,6 @@ class DatabaseService extends ChangeNotifier {
         payload: {'nu_order': updated.nuOrder},
       );
     }
-    _syncService.triggerSync();
+    _syncService.triggerSync(delay: Duration.zero);
   }
 }

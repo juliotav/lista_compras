@@ -30,6 +30,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
   Timer? _syncTimer;
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _pendingScrollController = ScrollController();
   String _searchQuery = "";
   bool _isDraggingReorder = false;
 
@@ -37,6 +38,31 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
   bool _showPendingFilter = false;
   final TextEditingController _pendingFilterController = TextEditingController();
   String _pendingFilterQuery = "";
+  Set<String>? _previousPendingItemIds;
+
+  void _scrollToBottomPendingItems() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_pendingScrollController.hasClients) {
+        _pendingScrollController.animateTo(
+          _pendingScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      Future.delayed(const Duration(milliseconds: 120), () {
+        if (!mounted) return;
+        if (_pendingScrollController.hasClients &&
+            _pendingScrollController.position.pixels < _pendingScrollController.position.maxScrollExtent) {
+          _pendingScrollController.animateTo(
+            _pendingScrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      });
+    });
+  }
 
   @override
   void initState() {
@@ -125,6 +151,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     _searchController.dispose();
     _pendingFilterController.dispose();
     _scrollController.dispose();
+    _pendingScrollController.dispose();
     super.dispose();
   }
 
@@ -228,7 +255,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
         nbArticulo: cleanName,
       );
 
-      if (!added && mounted) {
+      if (added) {
+        _scrollToBottomPendingItems();
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(l10n.itemAlreadyInList(cleanName)),
@@ -353,7 +382,18 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     final localeProvider = context.watch<LocaleProvider>();
     final currentLang = localeProvider.locale?.languageCode ?? 'es';
 
-    List<ListDetailItemModel> pendingItems = db.getPendingItems(widget.shoppingList.idListaCompra);
+    final List<ListDetailItemModel> rawPendingItems = db.getPendingItems(widget.shoppingList.idListaCompra);
+    final currentPendingIds = rawPendingItems.map((i) => i.idDetalle).toSet();
+
+    if (_previousPendingItemIds != null) {
+      final hasNewItems = currentPendingIds.difference(_previousPendingItemIds!).isNotEmpty;
+      if (hasNewItems && !_isDraggingReorder) {
+        _scrollToBottomPendingItems();
+      }
+    }
+    _previousPendingItemIds = currentPendingIds;
+
+    List<ListDetailItemModel> pendingItems = List.from(rawPendingItems);
     final completedItems = db.getCompletedItems(widget.shoppingList.idListaCompra);
     final catalogItems = db.getCatalogItems();
 
@@ -630,6 +670,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                           ),
                         )
                       : Scrollbar(
+                          controller: _pendingScrollController,
                           child: Listener(
                             onPointerMove: (event) {
                               if (!_isDraggingReorder) return;
@@ -664,6 +705,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                               _isDraggingReorder = false;
                             },
                             child: ReorderableListView.builder(
+                              scrollController: _pendingScrollController,
                               shrinkWrap: true,
                               physics: const ClampingScrollPhysics(),
                               buildDefaultDragHandles: _pendingSortOption == PendingItemsSortOption.manual && _pendingFilterQuery.isEmpty,
@@ -728,6 +770,52 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                                       ],
                                     ),
                                   ),
+                                  confirmDismiss: (direction) async {
+                                    if (direction == DismissDirection.endToStart) {
+                                      final isEn = (context.read<LocaleProvider>().locale?.languageCode ?? 'es') == 'en';
+                                      final bool? confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (dialogContext) {
+                                          return AlertDialog(
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                            title: Row(
+                                              children: [
+                                                Icon(Icons.warning_amber_rounded, color: Colors.red[700], size: 28),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    l10n.actionDelete,
+                                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            content: Text(
+                                              isEn
+                                                  ? 'Are you sure you want to delete "${item.nbArticulo}" from the list?'
+                                                  : '¿Estás seguro de que deseas eliminar "${item.nbArticulo}" de la lista?',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(dialogContext, false),
+                                                child: Text(l10n.btnCancel),
+                                              ),
+                                              ElevatedButton(
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: Colors.red,
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                ),
+                                                onPressed: () => Navigator.pop(dialogContext, true),
+                                                child: Text(l10n.btnDelete, style: const TextStyle(color: Colors.white)),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+                                      return confirm ?? false;
+                                    }
+                                    return true;
+                                  },
                                   onDismissed: (direction) {
                                     _runWithPausedSyncTimer(() async {
                                       if (direction == DismissDirection.startToEnd) {
@@ -906,7 +994,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                                           nbArticulo: name,
                                         );
 
-                                        if (!added && context.mounted) {
+                                        if (added) {
+                                          _scrollToBottomPendingItems();
+                                        } else if (context.mounted) {
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
                                               content: Text(l10n.itemAlreadyInList(name)),
