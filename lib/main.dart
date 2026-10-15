@@ -12,6 +12,7 @@ import 'screens/intro_slides_screen.dart';
 import 'screens/update_required_screen.dart';
 import 'services/database_service.dart';
 import 'services/locale_provider.dart';
+import 'services/mongo_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/theme_provider.dart';
 
@@ -85,10 +86,15 @@ class _ShoppingListAppState extends State<ShoppingListApp> with WidgetsBindingOb
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      debugPrint("[APP_LIFECYCLE] App reanudada (resumed). Disparando sincronización y limpiando badge...");
+      debugPrint("[APP_LIFECYCLE] App reanudada (resumed). Disparando sincronización push-before-pull y limpiando badge...");
       unawaited(PushNotificationService.clearBadge());
       final db = Provider.of<DatabaseService>(context, listen: false);
       db.onAppResume();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      debugPrint("[APP_LIFECYCLE] App minimizada / en segundo plano. Cerrando sockets inactivos para ahorrar batería...");
+      unawaited(MongoService.close());
     }
   }
 

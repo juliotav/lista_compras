@@ -8,6 +8,7 @@ import '../widgets/ad_banner_widget.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'about_privacy_screen.dart';
+import '../widgets/sync_indicator_widget.dart';
 
 class FamilySetupScreen extends StatefulWidget {
   const FamilySetupScreen({super.key});
@@ -327,6 +328,7 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
       appBar: AppBar(
         title: Text(l10n.familySetupTitle),
         actions: [
+          const SyncIndicatorWidget(),
           IconButton(
             icon: const Icon(Icons.info_outline_rounded),
             tooltip: l10n.menuAbout,

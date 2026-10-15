@@ -502,6 +502,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncingStatus => 'Syncing...';
 
   @override
+  String get offlineStatus => '(Offline)';
+
+  @override
+  String get offlineTooltip =>
+      'Offline mode. Your changes are saved locally and will sync when reconnected.';
+
+  @override
   String get editCatalogItemTitle => 'Edit Item Name';
 
   @override

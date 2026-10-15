@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/database_service.dart';
+import '../services/connectivity_service.dart';
 import '../widgets/ad_banner_widget.dart';
+import '../widgets/sync_indicator_widget.dart';
 
 class FamilyMembersScreen extends StatefulWidget {
   const FamilyMembersScreen({super.key});
@@ -33,7 +35,9 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen>
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(const Duration(seconds: 6), (_) {
       if (mounted) {
-        context.read<DatabaseService>().fetchFamilyData(isSilentPeriodic: true);
+        final db = context.read<DatabaseService>();
+        if (db.isOffline || db.isFetchingFamilyData || db.isBackgroundSyncing || db.isReconnectingSync) return;
+        db.fetchFamilyData(isSilentPeriodic: true);
       }
     });
   }
@@ -90,10 +94,38 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen>
       appBar: AppBar(
         title: Text(l10n.membersTitle),
         actions: [
+          const SyncIndicatorWidget(),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: "Sincronizar",
-            onPressed: () => db.fetchFamilyData(),
+            tooltip: l10n.syncTooltip,
+            onPressed: () async {
+              if (db.isOffline) {
+                final restored = await ConnectivityService().checkConnectivity();
+                if (!restored && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          const Icon(Icons.cloud_off_rounded, color: Colors.white, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              l10n.offlineTooltip,
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: Colors.orange.shade800,
+                      duration: const Duration(seconds: 3),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  return;
+                }
+              }
+              await db.fetchFamilyData();
+            },
           ),
         ],
       ),

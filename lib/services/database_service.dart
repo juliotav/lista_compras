@@ -10,6 +10,7 @@ import '../models/shopping_list_model.dart';
 import '../models/item_catalog_model.dart';
 import '../models/list_detail_item_model.dart';
 import '../models/user_family_model.dart';
+import 'connectivity_service.dart';
 import 'email_service.dart';
 import 'local_db_service.dart';
 import 'mongo_service.dart';
@@ -21,6 +22,11 @@ class DatabaseService extends ChangeNotifier {
   final Uuid _uuid = const Uuid();
   final LocalDbService _localDb = LocalDbService();
   final SyncService _syncService = SyncService();
+  final ConnectivityService _connectivity = ConnectivityService();
+  bool _wasOffline = false;
+
+  bool get isOnline => _connectivity.isOnline;
+  bool get isOffline => _connectivity.isOffline;
 
   final List<UserModel> _users = [];
   final List<FamilyModel> _families = [];
@@ -39,22 +45,119 @@ class DatabaseService extends ChangeNotifier {
   bool _isBackgroundSyncing = false;
   bool get isBackgroundSyncing => _isBackgroundSyncing;
 
+  bool _isReconnectingSync = false;
+  bool get isReconnectingSync => _isReconnectingSync;
+
+  /// Retorna la cantidad de mutaciones locales pendientes en la cola por hacer push
+  Future<int> getPendingSyncCount() async {
+    return await _localDb.getPendingSyncCount();
+  }
+
+  /// Retorna true si hay cambios locales en cola por hacer push a MongoDB
+  Future<bool> hasPendingPush() async {
+    final count = await _localDb.getPendingSyncCount();
+    return count > 0;
+  }
+
   /// Ejecuta la sincronización inmediata de la cola pendiente y espera a que el backend responda
   Future<void> syncNow() async {
     await _syncService.syncNow();
   }
 
+  Timer? _backgroundSyncTimeoutTimer;
+
   void _startBackgroundSync() {
+    _backgroundSyncTimeoutTimer?.cancel();
     if (!_isBackgroundSyncing) {
       _isBackgroundSyncing = true;
       notifyListeners();
     }
+    // Safety watchdog: Si la sincronización dura más de 12 segundos por latencia o caída de red, forzar apagado
+    _backgroundSyncTimeoutTimer = Timer(const Duration(seconds: 12), () {
+      if (_isBackgroundSyncing) {
+        debugPrint(
+          "[DB_SERVICE] Watchdog: Tiempo límite de sincronización alcanzado (12s). Forzando cierre del indicador.",
+        );
+        _isBackgroundSyncing = false;
+        _isFetchingFamilyData = false;
+        _isReconnectingSync = false;
+        notifyListeners();
+      }
+    });
   }
 
   void _stopBackgroundSync() {
+    _backgroundSyncTimeoutTimer?.cancel();
+    _backgroundSyncTimeoutTimer = null;
     if (_isBackgroundSyncing) {
       _isBackgroundSyncing = false;
       notifyListeners();
+    }
+  }
+
+  void _handleConnectivityChange() async {
+    final currentOnline = _connectivity.isOnline;
+    if (currentOnline && _wasOffline) {
+      _wasOffline = false;
+      final pendingCount = await _localDb.getPendingSyncCount();
+      if (pendingCount > 0) {
+        debugPrint(
+          "[DB_SERVICE] ¡Conexión restablecida con $pendingCount datos pendientes por hacer push! Disparando sincronización...",
+        );
+        unawaited(onInternetRestored(isAppOpen: false));
+      } else {
+        debugPrint(
+          "[DB_SERVICE] ¡Conexión restablecida! Pero la cola está en 0 (sin datos por hacer push). Sincronización omitida.",
+        );
+      }
+    } else if (!currentOnline && !_wasOffline) {
+      _wasOffline = true;
+      debugPrint("[DB_SERVICE] Modo sin conexión activado.");
+    }
+    notifyListeners();
+  }
+
+  /// Ejecuta la sincronización:
+  /// - Si isAppOpen es false, SOLO activa la sincronización si hay datos pendientes por hacer push (sync_queue > 0).
+  /// - Si la cola está en 0 y isAppOpen es false, omite la sincronización para evitar consumo de red y batería.
+  /// - Si isAppOpen es true (al abrir la app o reanudarla), sincroniza con MongoDB para obtener la última versión.
+  Future<void> onInternetRestored({bool isAppOpen = false}) async {
+    if (isOffline) {
+      debugPrint("[DB_SERVICE] Dispositivo sin conexión (offline). Sincronización omitida.");
+      return;
+    }
+    if (_isReconnectingSync) return;
+
+    final pendingCount = await _localDb.getPendingSyncCount();
+    if (!isAppOpen && pendingCount == 0) {
+      debugPrint("[DB_SERVICE] Cola de sincronización en 0 y no es apertura de app. Sincronización omitida.");
+      return;
+    }
+
+    _isReconnectingSync = true;
+    _startBackgroundSync();
+    try {
+      debugPrint(
+        "[DB_SERVICE] --- INICIO DE SINCRONIZACIÓN (${isAppOpen ? 'APERTURA DE APP' : 'PUSH DE $pendingCount CAMBIOS'}) ---",
+      );
+      if (pendingCount > 0) {
+        debugPrint("[DB_SERVICE] 1/3: Reiniciando contadores de reintento en sync_queue...");
+        await _localDb.resetSyncQueueRetries();
+
+        debugPrint("[DB_SERVICE] 2/3: Subiendo mutaciones locales pendientes a MongoDB en bulk...");
+        await _syncService.syncNow();
+      }
+
+      debugPrint("[DB_SERVICE] 3/3: Descargando y fusionando delta remota de todas las listas y familias...");
+      await fetchFamilyData(isSilentPeriodic: false);
+
+      unawaited(checkAppVersion());
+      debugPrint("[DB_SERVICE] --- SINCRONIZACIÓN COMPLETADA CON ÉXITO ---");
+    } catch (e) {
+      debugPrint("[DB_SERVICE] Error durante sincronización: $e");
+    } finally {
+      _isReconnectingSync = false;
+      _stopBackgroundSync();
     }
   }
 
@@ -106,8 +209,16 @@ class DatabaseService extends ChangeNotifier {
   }
 
   DatabaseService() {
+    _wasOffline = _connectivity.isOffline;
+    _connectivity.addListener(_handleConnectivityChange);
     _initSeedData();
     initSession();
+  }
+
+  @override
+  void dispose() {
+    _connectivity.removeListener(_handleConnectivityChange);
+    super.dispose();
   }
 
   void _initSeedData() {
@@ -138,7 +249,7 @@ class DatabaseService extends ChangeNotifier {
         }
 
         if (_currentUser?.idFamilia != null) {
-          await _loadFromLocalDb(_currentUser!.idFamilia!);
+          await loadLocalDataOnly();
         }
 
         if (_currentUser != null) {
@@ -146,8 +257,14 @@ class DatabaseService extends ChangeNotifier {
           _checkAndUpdateUserAppVersion(_currentUser!);
         }
 
-        // Consultar usuario en MongoDB de fondo
+        // Consultar usuario en MongoDB de fondo únicamente si está online
         unawaited(() async {
+          if (isOffline) {
+            debugPrint(
+              "[DB_SERVICE LOG] Modo offline al iniciar sesión. Datos locales cargados exitosamente de SQLite.",
+            );
+            return;
+          }
           try {
             final remoteUser = await MongoService.findOne(
               collectionName: MongoConfig.colUsuario,
@@ -172,7 +289,8 @@ class DatabaseService extends ChangeNotifier {
               PushNotificationService.subscribeToFamily(
                 _currentUser!.idFamilia,
               );
-              await fetchFamilyData();
+              // PUSH ANTES DE PULL: Subir cambios locales pendientes de todas las listas/familias y luego descargar deltas
+              await onInternetRestored(isAppOpen: true);
             }
           } catch (e) {
             debugPrint(
@@ -186,7 +304,9 @@ class DatabaseService extends ChangeNotifier {
     } finally {
       _isInitialized = true;
       notifyListeners();
-      unawaited(checkAppVersion());
+      if (isOnline) {
+        unawaited(checkAppVersion());
+      }
     }
   }
 
@@ -353,7 +473,8 @@ class DatabaseService extends ChangeNotifier {
           a[i].status != b[i].status ||
           a[i].dsDetalle != b[i].dsDetalle ||
           a[i].nuOrder != b[i].nuOrder ||
-          a[i].nbArticulo != b[i].nbArticulo) {
+          a[i].nbArticulo != b[i].nbArticulo ||
+          a[i].fechaAgrego != b[i].fechaAgrego) {
         return false;
       }
     }
@@ -364,8 +485,9 @@ class DatabaseService extends ChangeNotifier {
   Future<void> _loadFromLocalDb(String famId) async {
     try {
       final localLists = await _localDb.getShoppingLists(famId);
-      final bool listsChanged = !_areListsEqual(_shoppingLists, localLists);
-      _shoppingLists.clear();
+      final currentFamLists = _shoppingLists.where((l) => l.idFamilia == famId).toList();
+      final bool listsChanged = !_areListsEqual(currentFamLists, localLists);
+      _shoppingLists.removeWhere((l) => l.idFamilia == famId);
       _shoppingLists.addAll(localLists);
 
       final localCatalog = await _localDb.getCatalogItems(famId);
@@ -376,14 +498,15 @@ class DatabaseService extends ChangeNotifier {
       _catalogItems.removeWhere((c) => c.idFamilia == famId);
       _catalogItems.addAll(localCatalog);
 
-      final activeListIds = _shoppingLists.map((l) => l.idListaCompra).toList();
+      final activeListIds = localLists.map((l) => l.idListaCompra).toList();
       final localDetails = await _localDb.getAllListDetailsForFamily(
         activeListIds,
       );
 
-      final bool detailsChanged = !_areDetailsEqual(_listDetailItems, localDetails);
+      final currentDetails = _listDetailItems.where((d) => activeListIds.contains(d.idListaCompra)).toList();
+      final bool detailsChanged = !_areDetailsEqual(currentDetails, localDetails);
       if (detailsChanged) {
-        _listDetailItems.clear();
+        _listDetailItems.removeWhere((d) => activeListIds.contains(d.idListaCompra));
         _listDetailItems.addAll(localDetails);
       }
 
@@ -417,33 +540,41 @@ class DatabaseService extends ChangeNotifier {
     }
   }
 
-  /// Carga instantáneamente desde SQLite los datos locales de la familia sin peticiones de red
+  /// Carga instantáneamente desde SQLite los datos locales de todas las familias conocidas sin peticiones de red
   Future<void> loadLocalDataOnly() async {
-    final famId = _currentUser?.idFamilia;
-    if (famId != null && famId.isNotEmpty) {
-      await _loadFromLocalDb(famId);
+    try {
+      final localFamilies = await _localDb.getFamilies();
+      if (localFamilies.isNotEmpty) {
+        _families.clear();
+        _families.addAll(localFamilies);
+        _userFamilies.clear();
+        _userFamilies.addAll(localFamilies);
+        for (var f in localFamilies) {
+          await _loadFromLocalDb(f.idFamilia);
+        }
+      } else {
+        final famId = _currentUser?.idFamilia;
+        if (famId != null && famId.isNotEmpty) {
+          await _loadFromLocalDb(famId);
+        }
+      }
+    } catch (e) {
+      debugPrint("[DB_SERVICE LOG] Error en loadLocalDataOnly: $e");
     }
   }
 
-  /// Reanudación desde segundo plano: Carga SQLite de inmediato y dispara delta sync no bloqueante
+  /// Reanudación desde segundo plano: Comprueba conectividad, carga SQLite de inmediato y dispara delta sync si está online
   Future<void> onAppResume() async {
-    unawaited(checkAppVersion());
+    await _connectivity.checkConnectivity();
     final famId = _currentUser?.idFamilia;
     if (famId != null && famId.isNotEmpty) {
       debugPrint(
         "[DB_SERVICE LOG] App reanudada. Cargando SQLite de inmediato...",
       );
       await _loadFromLocalDb(famId);
-      _startBackgroundSync();
-      try {
-        await _syncService.pullDeltaSync(
-          famId: famId,
-          onDataUpdated: () async {
-            await _loadFromLocalDb(famId);
-          },
-        );
-      } finally {
-        _stopBackgroundSync();
+      if (isOnline) {
+        // PUSH ANTES DE PULL: Subir cambios locales pendientes de todas las listas/familias y luego descargar deltas
+        await onInternetRestored(isAppOpen: true);
       }
     }
   }
@@ -469,13 +600,15 @@ class DatabaseService extends ChangeNotifier {
           .toSet();
 
       final List<FamilyModel> loadedFamilies = [];
-      for (var famId in knownFamIds) {
+      if (knownFamIds.isNotEmpty) {
         final famDocs = await MongoService.find(
           collectionName: MongoConfig.colFamilia,
-          filter: {'id_familia': famId},
+          filter: {
+            'id_familia': {'\$in': knownFamIds.toList()},
+          },
         );
-        if (famDocs.isNotEmpty) {
-          loadedFamilies.add(FamilyModel.fromMap(famDocs.first));
+        for (var doc in famDocs) {
+          loadedFamilies.add(FamilyModel.fromMap(doc));
         }
       }
 
@@ -530,7 +663,6 @@ class DatabaseService extends ChangeNotifier {
         PushNotificationService.subscribeToFamily(activeFamId);
         notifyListeners();
       }
-      await cleanOrphanCatalogItems();
     } catch (e) {
       debugPrint("[DB_SERVICE LOG] Error en fetchUserFamilies: $e");
     }
@@ -575,12 +707,29 @@ class DatabaseService extends ChangeNotifier {
     final userId = _currentUser?.idUsuario;
     if (userId == null) return;
 
-    if (!isSilentPeriodic) {
-      _startBackgroundSync();
+    if (isOffline) {
+      debugPrint(
+        "[DB_SERVICE LOG] Dispositivo sin conexión (offline). Omitiendo peticiones de red en fetchFamilyData.",
+      );
+      final initialFamId = _currentUser?.idFamilia;
+      if (initialFamId != null && initialFamId.isNotEmpty && _listDetailItems.isEmpty) {
+        await _loadFromLocalDb(initialFamId);
+      }
+      return;
+    }
+
+    // Si hay una reconexión en curso y esta llamada proviene de un timer periódico, ignorar para evitar colisiones
+    if (_isReconnectingSync && isSilentPeriodic) {
+      debugPrint("[DB_SERVICE LOG] Sincronización periódica omitida: reconexión activa.");
+      return;
     }
 
     if (_isFetchingFamilyData) return;
     _isFetchingFamilyData = true;
+
+    if (!isSilentPeriodic) {
+      _startBackgroundSync();
+    }
 
     try {
       // 1. Cargar estado de SQLite de inmediato solo si la memoria RAM no está poblada aún (0ms delay UI)
@@ -637,12 +786,14 @@ class DatabaseService extends ChangeNotifier {
 
         final Set<String> validMemberIds = Set.from(memberIds);
 
-        for (var mId in memberIds) {
-          final userDoc = await MongoService.findOne(
+        if (memberIds.isNotEmpty) {
+          final userDocs = await MongoService.find(
             collectionName: MongoConfig.colUsuario,
-            filter: {'id_usuario': mId},
+            filter: {
+              'id_usuario': {'\$in': memberIds.toList()},
+            },
           );
-          if (userDoc != null) {
+          for (var userDoc in userDocs) {
             final user = UserModel.fromMap(userDoc).copyWith(idFamilia: famId);
             await _localDb.saveUser(user);
             final idx = _users.indexWhere((u) => u.idUsuario == user.idUsuario);
@@ -669,18 +820,85 @@ class DatabaseService extends ChangeNotifier {
         );
       }
 
-      // 3. Disparar sincronización delta en segundo plano
+      // 3. Disparar sincronización delta de la familia activa
       await _syncService.pullDeltaSync(
         famId: famId,
         onDataUpdated: () async {
           await _loadFromLocalDb(famId);
         },
       );
+
+      // 4. Precarga única offline de todas las familias si aún no se ha sellado
+      unawaited(warmUpOfflineCacheForAllFamilies(userId));
     } catch (e) {
       debugPrint("[DB_SERVICE LOG] Error en fetchFamilyData: $e");
     } finally {
       _isFetchingFamilyData = false;
       _stopBackgroundSync();
+    }
+  }
+
+  /// Realiza la precarga/migración única de todas las familias del usuario a SQLite
+  /// para garantizar que, si el usuario se queda sin conexión y cambia de familia,
+  /// toda la información de listas, catálogos y productos ya esté disponible en local.
+  /// Una vez completada, se sella con la bandera `offline_cache_v1_userId` y no vuelve a ejecutarse.
+  Future<void> warmUpOfflineCacheForAllFamilies(String userId) async {
+    if (isOffline) return;
+    final isDone = await _localDb.isOfflineCacheWarmUpDone(userId);
+    if (isDone) return;
+
+    try {
+      debugPrint("[DB_SERVICE] --- INICIANDO PRECARGA ÚNICA OFFLINE PARA TODAS LAS FAMILIAS ($userId) ---");
+      // 1. Obtener todas las familias del usuario
+      final allFamIds = _userFamilies.map((f) => f.idFamilia).where((id) => id.isNotEmpty).toList();
+      if (allFamIds.isEmpty) return;
+
+      // 2. Descargar en lote todas las listas de todas las familias en 1 sola consulta
+      final listDocs = await MongoService.find(
+        collectionName: MongoConfig.colListasCompra,
+        filter: {
+          'id_familia': {'\$in': allFamIds},
+        },
+      );
+      final allLists = listDocs.map((doc) => ShoppingListModel.fromMap(doc)).toList();
+
+      // Guardar listas en SQLite por familia
+      for (var fId in allFamIds) {
+        final famLists = allLists.where((l) => l.idFamilia == fId).toList();
+        await _localDb.saveShoppingLists(famLists, famId: fId);
+      }
+
+      // 3. Descargar en lote el catálogo de todas las familias en 1 sola consulta
+      final catalogDocs = await MongoService.find(
+        collectionName: MongoConfig.colCArticulo,
+        filter: {
+          'id_familia': {'\$in': allFamIds},
+        },
+      );
+      final allCatalog = catalogDocs.map((doc) => ItemCatalogModel.fromMap(doc)).toList();
+      for (var fId in allFamIds) {
+        final famCatalog = allCatalog.where((c) => c.idFamilia == fId).toList();
+        await _localDb.saveCatalogItems(famCatalog, famId: fId);
+      }
+
+      // 4. Descargar en lote todos los detalles/productos de todas las listas en 1 sola consulta
+      final allListIds = allLists.map((l) => l.idListaCompra).toList();
+      if (allListIds.isNotEmpty) {
+        final detailDocs = await MongoService.find(
+          collectionName: MongoConfig.colDetalleLista,
+          filter: {
+            'id_lista_compra': {'\$in': allListIds},
+          },
+        );
+        final allDetails = detailDocs.map((doc) => ListDetailItemModel.fromMap(doc)).toList();
+        await _localDb.saveListDetailItemsBatch(allDetails, activeListIds: allListIds);
+      }
+
+      // 5. Sellar la migración en SharedPreferences para que jamás vuelva a correr
+      await _localDb.setOfflineCacheWarmUpDone(userId, done: true);
+      debugPrint("[DB_SERVICE] --- ¡PRECARGA ÚNICA OFFLINE SELLADA CON ÉXITO PARA $userId! ---");
+    } catch (e) {
+      debugPrint("[DB_SERVICE] Error en precarga única offline: $e");
     }
   }
 
@@ -1356,38 +1574,46 @@ class DatabaseService extends ChangeNotifier {
     _currentUser = _currentUser!.copyWith(idFamilia: idFamilia);
     await _localDb.saveUser(_currentUser!);
     await _loadFromLocalDb(idFamilia);
-
-    await MongoService.updateOne(
-      collectionName: MongoConfig.colUsuario,
-      filter: {'id_usuario': _currentUser!.idUsuario},
-      update: {
-        '\$set': {'id_familia': idFamilia},
-      },
-    );
-
-    // Asegurar que la familia esté registrada en _userFamilies si no existía localmente
-    if (!_userFamilies.any((f) => f.idFamilia == idFamilia)) {
-      try {
-        final famDocs = await MongoService.find(
-          collectionName: MongoConfig.colFamilia,
-          filter: {'id_familia': idFamilia},
-        );
-        if (famDocs.isNotEmpty) {
-          final loadedFam = FamilyModel.fromMap(famDocs.first);
-          _userFamilies.add(loadedFam);
-          if (!_families.any((f) => f.idFamilia == idFamilia)) {
-            _families.add(loadedFam);
-          }
-          await _localDb.saveFamilies(_userFamilies);
-        }
-      } catch (e) {
-        debugPrint("[DB_SERVICE] Error asegurando familia al cambiar: $e");
-      }
-    }
-
-    await fetchFamilyData();
-    PushNotificationService.subscribeToFamily(idFamilia);
     notifyListeners();
+
+    unawaited(() async {
+      try {
+        await MongoService.updateOne(
+          collectionName: MongoConfig.colUsuario,
+          filter: {'id_usuario': _currentUser!.idUsuario},
+          update: {
+            '\$set': {'id_familia': idFamilia},
+          },
+        );
+
+        PushNotificationService.subscribeToFamily(idFamilia);
+
+        // Asegurar que la familia esté registrada en _userFamilies si no existía localmente
+        if (!_userFamilies.any((f) => f.idFamilia == idFamilia)) {
+          final famDocs = await MongoService.find(
+            collectionName: MongoConfig.colFamilia,
+            filter: {'id_familia': idFamilia},
+          );
+          if (famDocs.isNotEmpty) {
+            final loadedFam = FamilyModel.fromMap(famDocs.first);
+            _userFamilies.add(loadedFam);
+            if (!_families.any((f) => f.idFamilia == idFamilia)) {
+              _families.add(loadedFam);
+            }
+            await _localDb.saveFamilies(_userFamilies);
+          }
+        }
+
+        await _syncService.pullDeltaSync(
+          famId: idFamilia,
+          onDataUpdated: () async {
+            await _loadFromLocalDb(idFamilia);
+          },
+        );
+      } catch (e) {
+        debugPrint("[DB_SERVICE] Error en background sync de switchFamily: $e");
+      }
+    }());
   }
 
   Future<void> leaveFamily(String idFamilia) async {
@@ -1864,6 +2090,7 @@ class DatabaseService extends ChangeNotifier {
     );
 
     // 1. Guardar en SQLite localmente de inmediato (0ms UI feedback)
+    _syncService.recordLocalMutation(entityId: newList.idListaCompra, action: 'INSERT');
     await _localDb.saveShoppingList(newList, syncStatus: 'pending');
     _shoppingLists.add(newList);
     notifyListeners();
@@ -1894,6 +2121,7 @@ class DatabaseService extends ChangeNotifier {
       final updatedList = target.copyWith(isActive: false);
       _shoppingLists[idx] = updatedList;
 
+      _syncService.recordLocalMutation(entityId: idListaCompra, action: 'DELETE');
       await _localDb.saveShoppingList(updatedList, syncStatus: 'pending');
       notifyListeners();
 
@@ -2171,9 +2399,11 @@ class DatabaseService extends ChangeNotifier {
           .where((i) => i.idListaCompra == idListaCompra && i.isPending)
           .length;
 
+      final now = DateTime.now();
       final reactivatedItem = existingItem.copyWith(
         status: 'pending',
         fechaCompra: null,
+        fechaAgrego: now,
         idUsuarioAgrego: _currentUser?.idUsuario,
         dsDetalle: cleanDsDetalle,
         clearDsDetalle: cleanDsDetalle == null || cleanDsDetalle.isEmpty,
@@ -2193,6 +2423,7 @@ class DatabaseService extends ChangeNotifier {
         payload: {
           'status': 'pending',
           'id_usuario_agrego': reactivatedItem.idUsuarioAgrego,
+          'fecha_agrego': reactivatedItem.fechaAgrego?.toIso8601String(),
           'ds_detalle': reactivatedItem.dsDetalle,
           'nu_order': reactivatedItem.nuOrder,
         },
@@ -2215,6 +2446,7 @@ class DatabaseService extends ChangeNotifier {
       nbArticulo: cleanName,
       dsDetalle: dsDetalle,
       status: 'pending',
+      fechaAgrego: DateTime.now(),
       idUsuarioAgrego: _currentUser?.idUsuario,
       nuOrder: currentPendingCount,
     );

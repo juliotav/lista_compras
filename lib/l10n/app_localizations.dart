@@ -1004,6 +1004,18 @@ abstract class AppLocalizations {
   /// **'Sincronizando...'**
   String get syncingStatus;
 
+  /// No description provided for @offlineStatus.
+  ///
+  /// In es, this message translates to:
+  /// **'(Offline)'**
+  String get offlineStatus;
+
+  /// No description provided for @offlineTooltip.
+  ///
+  /// In es, this message translates to:
+  /// **'Modo sin conexión. Tus cambios se guardan localmente y se sincronizarán al reconectarte.'**
+  String get offlineTooltip;
+
   /// No description provided for @editCatalogItemTitle.
   ///
   /// In es, this message translates to:

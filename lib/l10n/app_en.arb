@@ -206,6 +206,8 @@
   "btnGoToStore": "Go to Store",
   "btnCloseApp": "Close app",
   "syncingStatus": "Syncing...",
+  "offlineStatus": "(Offline)",
+  "offlineTooltip": "Offline mode. Your changes are saved locally and will sync when reconnected.",
   "editCatalogItemTitle": "Edit Item Name",
   "editCatalogItemHint": "Catalog item name",
   "cannotEditDefaultCatalogItem": "Default catalog items cannot be modified.",

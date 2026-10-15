@@ -4,6 +4,7 @@ import '../config/mongo_config.dart';
 import '../models/item_catalog_model.dart';
 import '../models/list_detail_item_model.dart';
 import '../models/shopping_list_model.dart';
+import 'connectivity_service.dart';
 import 'local_db_service.dart';
 import 'mongo_service.dart';
 
@@ -23,6 +24,7 @@ class SyncService {
   static SyncService? _instance;
   final LocalDbService _localDb = LocalDbService();
   final Map<String, _LocalMutation> _recentMutations = {};
+  final Set<String> _tombstones = {};
   Timer? _debounceTimer;
   bool _isProcessing = false;
   bool _isSyncingDelta = false;
@@ -37,28 +39,32 @@ class SyncService {
     return _instance!;
   }
 
-  /// Registra una acción local de usuario (DELETE, UPDATE, INSERT) con marca de tiempo para evitar resurrecciones
+  /// Registra una acción local de usuario (DELETE, UPDATE, INSERT) con marca de tiempo y tombstone para evitar resurrecciones
   void recordLocalMutation({
     required String entityId,
     required String action,
   }) {
+    if (action == 'DELETE') {
+      _tombstones.add(entityId);
+    }
     _recentMutations[entityId] = _LocalMutation(
       entityId: entityId,
       action: action,
       timestamp: DateTime.now(),
     );
-    // Limpieza de entradas con más de 60 segundos
-    final threshold = DateTime.now().subtract(const Duration(seconds: 60));
+    // Limpieza defensiva de mutaciones muy antiguas (> 24 horas) para no acumular memoria infinita
+    final threshold = DateTime.now().subtract(const Duration(hours: 24));
     _recentMutations.removeWhere((_, m) => m.timestamp.isBefore(threshold));
   }
 
-  /// Limpia la marca de mutación local una vez que se confirma sincronización
+  /// Limpia la marca de mutación local una vez que se confirma sincronización con MongoDB
   void clearLocalMutation(String entityId) {
     _recentMutations.remove(entityId);
   }
 
-  /// Comprueba si una entidad fue eliminada localmente
+  /// Comprueba si una entidad fue eliminada localmente (garantía anti-resurrección con Tombstone)
   bool isLocallyDeleted(String entityId, {DateTime? since}) {
+    if (_tombstones.contains(entityId)) return true;
     final m = _recentMutations[entityId];
     if (m == null) return false;
     if (m.action != 'DELETE') return false;
@@ -96,13 +102,14 @@ class SyncService {
 
   /// Procesa en lotes (bulkWrite) todos los elementos pendientes en sync_queue enviándolos a MongoDB Atlas en 1 sola llamada de red por lote
   Future<void> processSyncQueue() async {
+    if (ConnectivityService().isOffline) {
+      debugPrint("[SYNC_SERVICE] Modo offline: posponiendo vaciado de sync_queue hasta reconexión.");
+      return;
+    }
+
     if (_isProcessing) {
       if (_syncCompleter != null) {
         await _syncCompleter!.future;
-      }
-      final remaining = await _localDb.getPendingSyncQueue();
-      if (remaining.isNotEmpty) {
-        return processSyncQueue();
       }
       return;
     }
@@ -160,6 +167,10 @@ class SyncService {
             clearLocalMutation(item.entityId);
             debugPrint("[SYNC_SERVICE] ¡Elemento #${item.id} sincronizado exitosamente con MongoDB Atlas!");
           } else {
+            if (ConnectivityService().isOffline) {
+              debugPrint("[SYNC_SERVICE] Pérdida de conexión detectada. Se conserva el ítem #${item.id} en cola sin penalizar reintentos.");
+              break;
+            }
             if (item.id != null) {
               await _localDb.updateSyncQueueRetry(item.id!, item.retryCount);
             }
@@ -210,6 +221,10 @@ class SyncService {
             debugPrint("[SYNC_SERVICE] ¡LOTE de ${itemsBatch.length} elementos (#${processedIds.first}-#${processedIds.last}) sincronizado exitosamente en MongoDB Atlas en 1 sola petición!");
           } else {
             debugPrint("[SYNC_SERVICE] Error enviando lote a Mongo. Se reintentará en el próximo ciclo.");
+            if (ConnectivityService().isOffline) {
+              debugPrint("[SYNC_SERVICE] Pérdida de conexión detectada. Se conserva el lote en cola sin penalizar reintentos.");
+              break;
+            }
             for (var item in itemsBatch) {
               if (item.id != null) {
                 await _localDb.updateSyncQueueRetry(item.id!, item.retryCount);
@@ -242,6 +257,10 @@ class SyncService {
   /// Ejecuta sincronización delta en segundo plano descargando cambios de Mongo y fusionando defensivamente con SQLite
   Future<bool> pullDeltaSync({required String famId, required Function onDataUpdated}) async {
     if (famId.isEmpty) return false;
+    if (ConnectivityService().isOffline) {
+      debugPrint("[SYNC_SERVICE] Dispositivo sin conexión. Omitiendo pullDeltaSync.");
+      return false;
+    }
     if (_isSyncingDelta) return false;
     _isSyncingDelta = true;
 
@@ -274,13 +293,26 @@ class SyncService {
       }.toList();
 
       final List<ListDetailItemModel> remoteDetails = [];
-      for (var listId in allListIds) {
+      if (allListIds.isNotEmpty) {
         final detailDocs = await MongoService.find(
           collectionName: MongoConfig.colDetalleLista,
-          filter: {'id_lista_compra': listId},
+          filter: {
+            'id_lista_compra': {'\$in': allListIds},
+          },
         );
         for (var doc in detailDocs) {
-          remoteDetails.add(ListDetailItemModel.fromMap(doc));
+          final item = ListDetailItemModel.fromMap(doc);
+          remoteDetails.add(item);
+
+          if (doc['fecha_agrego'] == null && item.fechaAgrego != null) {
+            unawaited(MongoService.updateOne(
+              collectionName: MongoConfig.colDetalleLista,
+              filter: {'id_detalle': item.idDetalle},
+              update: {
+                '\$set': {'fecha_agrego': item.fechaAgrego!.toIso8601String()},
+              },
+            ));
+          }
         }
       }
 
@@ -369,7 +401,9 @@ class SyncService {
           // 👉 EL PRODUCTO FUE MODIFICADO LOCALMENTE: Preservar la versión de SQLite/RAM
           final local = localDetailMap[d.idDetalle];
           if (local != null) {
-            mergedDetails[d.idDetalle] = local;
+            mergedDetails[d.idDetalle] = (local.fechaAgrego == null && d.fechaAgrego != null)
+                ? local.copyWith(fechaAgrego: d.fechaAgrego)
+                : local;
             continue;
           }
         }

@@ -13,6 +13,7 @@ import 'list_detail_screen.dart';
 import 'login_screen.dart';
 import '../widgets/ad_banner_widget.dart';
 import '../services/ad_interstitial_service.dart';
+import '../services/connectivity_service.dart';
 import '../widgets/sync_indicator_widget.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -181,7 +182,34 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: l10n.syncTooltip,
-            onPressed: () => db.fetchFamilyData(),
+            onPressed: () async {
+              if (db.isOffline) {
+                final restored = await ConnectivityService().checkConnectivity();
+                if (!restored && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          const Icon(Icons.cloud_off_rounded, color: Colors.white, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              l10n.offlineTooltip,
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: Colors.orange.shade800,
+                      duration: const Duration(seconds: 3),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  return;
+                }
+              }
+              await db.fetchFamilyData();
+            },
           ),
         ],
       ),

@@ -92,6 +92,9 @@ class LocalDbService {
         try {
           await db.execute('ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT "active";');
         } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE list_detail_items ADD COLUMN fecha_agrego TEXT;');
+        } catch (_) {}
       },
     );
   }
@@ -146,6 +149,7 @@ class LocalDbService {
         ds_detalle TEXT,
         status TEXT NOT NULL DEFAULT 'pending',
         fecha_compra TEXT,
+        fecha_agrego TEXT,
         id_usuario_finalizo TEXT,
         id_usuario_agrego TEXT,
         nu_order INTEGER NOT NULL DEFAULT 0,
@@ -236,6 +240,24 @@ class LocalDbService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('session_user_id');
+    } catch (_) {}
+  }
+
+  /// Comprueba si ya se realizó la precarga única de todas las familias a SQLite para el usuario
+  Future<bool> isOfflineCacheWarmUpDone(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('offline_cache_v1_$userId') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Sella la bandera de precarga única de todas las familias a SQLite
+  Future<void> setOfflineCacheWarmUpDone(String userId, {bool done = true}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('offline_cache_v1_$userId', done);
     } catch (_) {}
   }
 
@@ -429,8 +451,10 @@ class LocalDbService {
         dsDetalle: m['ds_detalle'] as String?,
         status: m['status'] as String? ?? 'pending',
         fechaCompra: m['fecha_compra'] != null ? DateTime.tryParse(m['fecha_compra'].toString()) : null,
+        fechaAgrego: m['fecha_agrego'] != null ? DateTime.tryParse(m['fecha_agrego'].toString()) : null,
         idUsuarioFinalizo: m['id_usuario_finalizo'] as String?,
         idUsuarioAgrego: m['id_usuario_agrego'] as String?,
+        nuOrder: m['nu_order'] as int? ?? 0,
       );
     }).toList();
   }
@@ -453,6 +477,7 @@ class LocalDbService {
         dsDetalle: m['ds_detalle'] as String?,
         status: m['status'] as String? ?? 'pending',
         fechaCompra: m['fecha_compra'] != null ? DateTime.tryParse(m['fecha_compra'].toString()) : null,
+        fechaAgrego: m['fecha_agrego'] != null ? DateTime.tryParse(m['fecha_agrego'].toString()) : null,
         idUsuarioFinalizo: m['id_usuario_finalizo'] as String?,
         idUsuarioAgrego: m['id_usuario_agrego'] as String?,
         nuOrder: m['nu_order'] as int? ?? 0,
@@ -470,6 +495,7 @@ class LocalDbService {
       'ds_detalle': item.dsDetalle,
       'status': item.status,
       'fecha_compra': item.fechaCompra?.toIso8601String(),
+      'fecha_agrego': item.fechaAgrego?.toIso8601String(),
       'id_usuario_finalizo': item.idUsuarioFinalizo,
       'id_usuario_agrego': item.idUsuarioAgrego,
       'nu_order': item.nuOrder,
@@ -514,6 +540,7 @@ class LocalDbService {
           'ds_detalle': item.dsDetalle,
           'status': item.status,
           'fecha_compra': item.fechaCompra?.toIso8601String(),
+          'fecha_agrego': item.fechaAgrego?.toIso8601String(),
           'id_usuario_finalizo': item.idUsuarioFinalizo,
           'id_usuario_agrego': item.idUsuarioAgrego,
           'nu_order': item.nuOrder,
@@ -633,6 +660,12 @@ class LocalDbService {
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  /// Reinicia los contadores de reintento de la cola para que ningún cambio pendiente quede huérfano tras reconexión
+  Future<void> resetSyncQueueRetries() async {
+    final database = await db;
+    await database.update('sync_queue', {'retry_count': 0});
   }
 
   Future<int> getPendingSyncCount() async {

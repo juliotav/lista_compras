@@ -8,6 +8,7 @@ import '../models/shopping_list_model.dart';
 import '../services/database_service.dart';
 import '../services/locale_provider.dart';
 import '../services/push_notification_service.dart';
+import '../services/connectivity_service.dart';
 import '../widgets/ad_banner_widget.dart';
 import '../widgets/sync_indicator_widget.dart';
 
@@ -99,7 +100,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
           return;
         }
         final db = context.read<DatabaseService>();
-        if (db.isFetchingFamilyData) return;
+        if (db.isOffline || db.isFetchingFamilyData || db.isBackgroundSyncing || db.isReconnectingSync) return;
         await db.fetchFamilyData(isSilentPeriodic: true);
       }
     });
@@ -438,7 +439,32 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: l10n.syncTooltip,
-            onPressed: () {
+            onPressed: () async {
+              if (db.isOffline) {
+                final restored = await ConnectivityService().checkConnectivity();
+                if (!restored && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          const Icon(Icons.cloud_off_rounded, color: Colors.white, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              l10n.offlineTooltip,
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: Colors.orange.shade800,
+                      duration: const Duration(seconds: 3),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  return;
+                }
+              }
               _runWithPausedSyncTimer(() async {
                 await db.fetchFamilyData();
               });
@@ -1072,6 +1098,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                           final item = completedItems[index];
                           final addedByName = db.getUserDisplayName(item.idUsuarioAgrego);
                           final hasNote = item.dsDetalle != null && item.dsDetalle!.trim().isNotEmpty;
+                          final addedInfo = _buildAddedInfo(addedByName, item.fechaAgrego, context);
                           return Material(
                             color: Colors.transparent,
                             child: ListTile(
@@ -1084,7 +1111,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                                   color: Colors.grey[700],
                                 ),
                               ),
-                              subtitle: (hasNote || addedByName.isNotEmpty)
+                              subtitle: (hasNote || addedInfo.isNotEmpty)
                                   ? Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       mainAxisSize: MainAxisSize.min,
@@ -1098,11 +1125,11 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                                               color: Colors.grey[600],
                                             ),
                                           ),
-                                        if (addedByName.isNotEmpty)
+                                        if (addedInfo.isNotEmpty)
                                           Align(
                                             alignment: Alignment.bottomRight,
                                             child: Text(
-                                              l10n.addedBy(addedByName),
+                                              addedInfo,
                                               style: TextStyle(
                                                 fontSize: 11,
                                                 fontStyle: FontStyle.italic,
@@ -1130,6 +1157,51 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
       ),
     );
   }
+}
+
+String _formatItemDate(DateTime? date, BuildContext context) {
+  if (date == null) return '';
+  final local = date.toLocal();
+  final now = DateTime.now();
+  final isToday = local.year == now.year && local.month == now.month && local.day == now.day;
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+  final timeStr = '$hour:$minute';
+
+  final isEs = Localizations.localeOf(context).languageCode == 'es';
+  final monthsEs = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  final monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  final monthStr = (isEs ? monthsEs : monthsEn)[local.month - 1];
+
+  if (isToday) {
+    return isEs ? 'Hoy, $timeStr' : 'Today, $timeStr';
+  }
+
+  final yesterday = now.subtract(const Duration(days: 1));
+  final isYesterday = local.year == yesterday.year && local.month == yesterday.month && local.day == yesterday.day;
+  if (isYesterday) {
+    return isEs ? 'Ayer, $timeStr' : 'Yesterday, $timeStr';
+  }
+
+  if (local.year == now.year) {
+    return isEs ? '${local.day} $monthStr, $timeStr' : '$monthStr ${local.day}, $timeStr';
+  } else {
+    return isEs ? '${local.day} $monthStr ${local.year}' : '$monthStr ${local.day}, ${local.year}';
+  }
+}
+
+String _buildAddedInfo(String addedByName, DateTime? date, BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
+  final dateText = _formatItemDate(date, context);
+  if (addedByName.isNotEmpty && dateText.isNotEmpty) {
+    return "${l10n.addedBy(addedByName)} • $dateText";
+  } else if (addedByName.isNotEmpty) {
+    return l10n.addedBy(addedByName);
+  } else if (dateText.isNotEmpty) {
+    final prefix = Localizations.localeOf(context).languageCode == 'es' ? 'Agregado' : 'Added';
+    return "$prefix: $dateText";
+  }
+  return '';
 }
 
 class PendingItemTile extends StatefulWidget {
@@ -1200,6 +1272,7 @@ class _PendingItemTileState extends State<PendingItemTile> {
     final db = context.watch<DatabaseService>();
     final noteText = widget.item.dsDetalle?.trim() ?? "";
     final addedByName = db.getUserDisplayName(widget.item.idUsuarioAgrego);
+    final addedInfo = _buildAddedInfo(addedByName, widget.item.fechaAgrego, context);
 
     return InkWell(
       onTap: () {
@@ -1284,12 +1357,12 @@ class _PendingItemTileState extends State<PendingItemTile> {
                 ),
               ],
             ),
-            if (addedByName.isNotEmpty) ...[
+            if (addedInfo.isNotEmpty) ...[
               const SizedBox(height: 2),
               Align(
                 alignment: Alignment.bottomRight,
                 child: Text(
-                  l10n.addedBy(addedByName),
+                  addedInfo,
                   style: TextStyle(
                     fontSize: 11,
                     fontStyle: FontStyle.italic,
