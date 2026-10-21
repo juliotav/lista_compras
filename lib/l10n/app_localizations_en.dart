@@ -696,4 +696,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get activationExpiredInputHint => 'Request a new code to continue';
+
+  @override
+  String get btnUndo => 'Undo';
+
+  @override
+  String itemMarkedPurchased(String name) {
+    return '\"$name\" marked as purchased';
+  }
 }

@@ -1333,6 +1333,18 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Solicita un nuevo código para continuar'**
   String get activationExpiredInputHint;
+
+  /// No description provided for @btnUndo.
+  ///
+  /// In es, this message translates to:
+  /// **'Deshacer'**
+  String get btnUndo;
+
+  /// No description provided for @itemMarkedPurchased.
+  ///
+  /// In es, this message translates to:
+  /// **'\"{name}\" marcado como comprado'**
+  String itemMarkedPurchased(String name);
 }
 
 class _AppLocalizationsDelegate

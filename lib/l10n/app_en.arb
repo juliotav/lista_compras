@@ -281,5 +281,12 @@
   "activationSendNewEmailBtn": "Send a new activation email",
   "activationExpiredNoticeTitle": "Your activation code has expired",
   "activationExpiredNoticeDesc": "The code sent previously is no longer valid. Tap the button to receive a new code in your email and activate your account.",
-  "activationExpiredInputHint": "Request a new code to continue"
+  "activationExpiredInputHint": "Request a new code to continue",
+  "btnUndo": "Undo",
+  "itemMarkedPurchased": "\"{name}\" marked as purchased",
+  "@itemMarkedPurchased": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  }
 }

@@ -486,39 +486,55 @@ class DatabaseService extends ChangeNotifier {
     try {
       final localLists = await _localDb.getShoppingLists(famId);
       final currentFamLists = _shoppingLists.where((l) => l.idFamilia == famId).toList();
-      final bool listsChanged = !_areListsEqual(currentFamLists, localLists);
-      _shoppingLists.removeWhere((l) => l.idFamilia == famId);
-      _shoppingLists.addAll(localLists);
+      bool listsChanged = false;
+      if (localLists.isNotEmpty || currentFamLists.isEmpty) {
+        listsChanged = !_areListsEqual(currentFamLists, localLists);
+        if (listsChanged) {
+          _shoppingLists.removeWhere((l) => l.idFamilia == famId);
+          _shoppingLists.addAll(localLists);
+        }
+      }
 
       final localCatalog = await _localDb.getCatalogItems(famId);
-      final bool catalogChanged = !_areCatalogEqual(
-        _catalogItems.where((c) => c.idFamilia == famId).toList(),
-        localCatalog,
-      );
-      _catalogItems.removeWhere((c) => c.idFamilia == famId);
-      _catalogItems.addAll(localCatalog);
+      final currentFamCatalog = _catalogItems.where((c) => c.idFamilia == famId).toList();
+      bool catalogChanged = false;
+      if (localCatalog.isNotEmpty || currentFamCatalog.isEmpty) {
+        catalogChanged = !_areCatalogEqual(currentFamCatalog, localCatalog);
+        if (catalogChanged) {
+          _catalogItems.removeWhere((c) => c.idFamilia == famId);
+          _catalogItems.addAll(localCatalog);
+        }
+      }
 
-      final activeListIds = localLists.map((l) => l.idListaCompra).toList();
+      final activeListIds = (localLists.isNotEmpty ? localLists : currentFamLists)
+          .map((l) => l.idListaCompra)
+          .toList();
       final localDetails = await _localDb.getAllListDetailsForFamily(
         activeListIds,
       );
 
       final currentDetails = _listDetailItems.where((d) => activeListIds.contains(d.idListaCompra)).toList();
-      final bool detailsChanged = !_areDetailsEqual(currentDetails, localDetails);
-      if (detailsChanged) {
-        _listDetailItems.removeWhere((d) => activeListIds.contains(d.idListaCompra));
-        _listDetailItems.addAll(localDetails);
+      bool detailsChanged = false;
+      if (localDetails.isNotEmpty || currentDetails.isEmpty) {
+        detailsChanged = !_areDetailsEqual(currentDetails, localDetails);
+        if (detailsChanged) {
+          _listDetailItems.removeWhere((d) => activeListIds.contains(d.idListaCompra));
+          _listDetailItems.addAll(localDetails);
+        }
       }
 
       final localFamilies = await _localDb.getFamilies();
-      final bool familiesChanged = _userFamilies.length != localFamilies.length;
-      _families.clear();
-      _families.addAll(localFamilies);
-      _userFamilies.clear();
-      _userFamilies.addAll(localFamilies);
-      PushNotificationService.syncFamilySubscriptions(
-        _userFamilies.map((f) => f.idFamilia).toList(),
-      );
+      bool familiesChanged = false;
+      if (localFamilies.isNotEmpty) {
+        familiesChanged = _userFamilies.length != localFamilies.length;
+        _families.clear();
+        _families.addAll(localFamilies);
+        _userFamilies.clear();
+        _userFamilies.addAll(localFamilies);
+        PushNotificationService.syncFamilySubscriptions(
+          _userFamilies.map((f) => f.idFamilia).toList(),
+        );
+      }
 
       final localUsers = await _localDb.getAllUsers();
       for (var u in localUsers) {
@@ -612,56 +628,36 @@ class DatabaseService extends ChangeNotifier {
         }
       }
 
-      _userFamilies.clear();
-      _userFamilies.addAll(loadedFamilies);
-      await _localDb.saveFamilies(loadedFamilies);
-      PushNotificationService.syncFamilySubscriptions(
-        _userFamilies.map((f) => f.idFamilia).toList(),
-      );
-
-      final oldFamId = _currentUser?.idFamilia;
-      final isOldFamActive =
-          oldFamId != null && _userFamilies.any((f) => f.idFamilia == oldFamId);
-
-      if (oldFamId != null && !isOldFamActive) {
-        debugPrint(
-          "[DB_SERVICE LOG] El usuario '$userId' ya no pertenece a la familia '$oldFamId'. Purgando datos locales...",
+      // Solo actualizamos familias si obtuvimos resultados válidos del servidor
+      if (loadedFamilies.isNotEmpty) {
+        _userFamilies.clear();
+        _userFamilies.addAll(loadedFamilies);
+        await _localDb.saveFamilies(loadedFamilies);
+        PushNotificationService.syncFamilySubscriptions(
+          _userFamilies.map((f) => f.idFamilia).toList(),
         );
-        await _localDb.deleteFamilyLocally(oldFamId);
-      }
 
-      if (_userFamilies.isEmpty) {
-        if (_currentUser?.idFamilia != null) {
-          _currentUser = _currentUser!.copyWith(clearFamilia: true);
-          await _localDb.saveUser(_currentUser!);
+        final oldFamId = _currentUser?.idFamilia;
+        final isOldFamActive =
+            oldFamId != null && _userFamilies.any((f) => f.idFamilia == oldFamId);
+
+        if (!isOldFamActive) {
+          final activeFamId = _userFamilies.first.idFamilia;
+          _currentUser = _currentUser!.copyWith(idFamilia: activeFamId);
+          if (_currentUser != null) {
+            await _localDb.saveUser(_currentUser!);
+          }
           await MongoService.updateOne(
             collectionName: MongoConfig.colUsuario,
             filter: {'id_usuario': userId},
             update: {
-              '\$unset': {'id_familia': ""},
+              '\$set': {'id_familia': activeFamId},
             },
           );
-          _shoppingLists.clear();
-          _listDetailItems.clear();
-          _catalogItems.clear();
+          await _loadFromLocalDb(activeFamId);
+          PushNotificationService.subscribeToFamily(activeFamId);
           notifyListeners();
         }
-      } else if (!isOldFamActive) {
-        final activeFamId = _userFamilies.first.idFamilia;
-        _currentUser = _currentUser!.copyWith(idFamilia: activeFamId);
-        if (_currentUser != null) {
-          await _localDb.saveUser(_currentUser!);
-        }
-        await MongoService.updateOne(
-          collectionName: MongoConfig.colUsuario,
-          filter: {'id_usuario': userId},
-          update: {
-            '\$set': {'id_familia': activeFamId},
-          },
-        );
-        await _loadFromLocalDb(activeFamId);
-        PushNotificationService.subscribeToFamily(activeFamId);
-        notifyListeners();
       }
     } catch (e) {
       debugPrint("[DB_SERVICE LOG] Error en fetchUserFamilies: $e");
@@ -2717,6 +2713,33 @@ class DatabaseService extends ChangeNotifier {
         productName: updated.nbArticulo,
       );
       _syncService.triggerSync(delay: Duration.zero);
+    }
+  }
+
+  Future<void> unmarkItemAsCompleted(String idDetalle) async {
+    final idx = _listDetailItems.indexWhere((i) => i.idDetalle == idDetalle);
+    if (idx != -1) {
+      final updated = _listDetailItems[idx].copyWith(
+        status: 'pending',
+        clearFechaCompra: true,
+        clearIdUsuarioFinalizo: true,
+      );
+      _listDetailItems[idx] = updated;
+      _syncService.recordLocalMutation(entityId: idDetalle, action: 'UPDATE');
+      await _localDb.saveListDetailItem(updated, syncStatus: 'pending');
+      notifyListeners();
+
+      await _localDb.enqueueSyncItem(
+        collectionName: MongoConfig.colDetalleLista,
+        action: 'UPDATE',
+        entityId: idDetalle,
+        payload: {
+          'status': 'pending',
+          'fecha_compra': null,
+          'id_usuario_finalizo': null,
+        },
+      );
+      _syncService.triggerSync(delay: const Duration(seconds: 1));
     }
   }
 

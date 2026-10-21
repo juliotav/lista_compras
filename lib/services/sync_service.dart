@@ -326,80 +326,66 @@ class SyncService {
       final pendingDetailActions = await _localDb.getPendingSyncActions(MongoConfig.colDetalleLista);
 
       // --- MERGE LISTAS ---
-      final Map<String, ShoppingListModel> mergedLists = {};
-      final Map<String, ShoppingListModel> localListsMap = {for (var l in localLists) l.idListaCompra: l};
+      final Map<String, ShoppingListModel> mergedLists = {for (var l in localLists) l.idListaCompra: l};
 
       for (var l in remoteLists) {
         final action = pendingListActions[l.idListaCompra];
         final wasDeletedLocally = action == 'DELETE' || isLocallyDeleted(l.idListaCompra, since: pullStartTime);
         if (wasDeletedLocally) {
+          mergedLists.remove(l.idListaCompra);
           continue; // No revivir lista borrada
         }
         if (action == 'UPDATE' || isLocallyModified(l.idListaCompra, since: pullStartTime)) {
-          final local = localListsMap[l.idListaCompra];
+          final local = mergedLists[l.idListaCompra];
           if (local != null) {
-            mergedLists[l.idListaCompra] = local;
             continue;
           }
         }
         mergedLists[l.idListaCompra] = l;
       }
-      for (var l in localLists) {
-        final action = pendingListActions[l.idListaCompra];
-        if (action != null && action != 'DELETE' && !mergedLists.containsKey(l.idListaCompra)) {
-          mergedLists[l.idListaCompra] = l;
-        }
-      }
       await _localDb.saveShoppingLists(mergedLists.values.toList(), famId: famId);
 
       // --- MERGE CATÁLOGO ---
       final localCatalog = await _localDb.getCatalogItems(famId);
-      final Map<String, ItemCatalogModel> mergedCatalog = {};
-      final Map<String, ItemCatalogModel> localCatalogMap = {for (var c in localCatalog) c.idArticulo: c};
+      final Map<String, ItemCatalogModel> mergedCatalog = {for (var c in localCatalog) c.idArticulo: c};
 
       for (var c in remoteCatalog) {
         final action = pendingCatalogActions[c.idArticulo];
         final wasDeletedLocally = action == 'DELETE' || isLocallyDeleted(c.idArticulo, since: pullStartTime);
         if (wasDeletedLocally) {
+          mergedCatalog.remove(c.idArticulo);
           continue; // No revivir artículo borrado
         }
         if (action == 'UPDATE' || isLocallyModified(c.idArticulo, since: pullStartTime)) {
-          final local = localCatalogMap[c.idArticulo];
+          final local = mergedCatalog[c.idArticulo];
           if (local != null) {
-            mergedCatalog[c.idArticulo] = local;
             continue;
           }
         }
         mergedCatalog[c.idArticulo] = c;
-      }
-      for (var c in localCatalog) {
-        final action = pendingCatalogActions[c.idArticulo];
-        if (action != null && action != 'DELETE' && !mergedCatalog.containsKey(c.idArticulo)) {
-          mergedCatalog[c.idArticulo] = c;
-        }
       }
       await _localDb.saveCatalogItems(mergedCatalog.values.toList(), famId: famId);
 
       // --- MERGE DETALLES DE PRODUCTOS (GRANULAR POR PRODUCTO) ---
       final activeListIds = mergedLists.values.map((l) => l.idListaCompra).toList();
       final localDetails = await _localDb.getAllListDetailsForFamily(activeListIds);
-      final Map<String, ListDetailItemModel> localDetailMap = {for (var d in localDetails) d.idDetalle: d};
-      final Map<String, ListDetailItemModel> mergedDetails = {};
+      final Map<String, ListDetailItemModel> mergedDetails = {for (var d in localDetails) d.idDetalle: d};
 
       for (var d in remoteDetails) {
         final action = pendingDetailActions[d.idDetalle];
         final wasDeletedLocally = action == 'DELETE' || isLocallyDeleted(d.idDetalle, since: pullStartTime);
 
         if (wasDeletedLocally) {
-          // 👉 EL PRODUCTO FUE BORRADO LOCALMENTE: Ignorar la respuesta vieja de Mongo
+          // 👉 EL PRODUCTO FUE BORRADO LOCALMENTE: Ignorar y quitar si existía
           debugPrint("[SYNC_SERVICE] Merge: Descartando producto '${d.nbArticulo}' (${d.idDetalle}) de Mongo porque fue eliminado localmente.");
+          mergedDetails.remove(d.idDetalle);
           continue;
         }
 
         final wasModifiedLocally = action == 'UPDATE' || isLocallyModified(d.idDetalle, since: pullStartTime);
         if (wasModifiedLocally) {
           // 👉 EL PRODUCTO FUE MODIFICADO LOCALMENTE: Preservar la versión de SQLite/RAM
-          final local = localDetailMap[d.idDetalle];
+          final local = mergedDetails[d.idDetalle];
           if (local != null) {
             mergedDetails[d.idDetalle] = (local.fechaAgrego == null && d.fechaAgrego != null)
                 ? local.copyWith(fechaAgrego: d.fechaAgrego)
@@ -410,15 +396,6 @@ class SyncService {
 
         // 👉 PRODUCTO NUEVO O NO TOCADO LOCALMENTE: Aceptar versión remota inmediatamente
         mergedDetails[d.idDetalle] = d;
-      }
-
-      // Preservar ítems nuevos creados localmente que aún están pendientes de subir a Mongo
-      for (var d in localDetails) {
-        final action = pendingDetailActions[d.idDetalle];
-        final wasDeletedLocally = action == 'DELETE' || isLocallyDeleted(d.idDetalle, since: pullStartTime);
-        if (!wasDeletedLocally && (action != null || isLocallyModified(d.idDetalle, since: pullStartTime)) && !mergedDetails.containsKey(d.idDetalle)) {
-          mergedDetails[d.idDetalle] = d;
-        }
       }
 
       await _localDb.saveListDetailItemsBatch(

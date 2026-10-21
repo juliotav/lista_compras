@@ -37,9 +37,11 @@ class ListDetailItemModel {
     bool clearDsDetalle = false,
     String? status,
     DateTime? fechaCompra,
+    bool clearFechaCompra = false,
     DateTime? fechaAgrego,
     bool clearFechaAgrego = false,
     String? idUsuarioFinalizo,
+    bool clearIdUsuarioFinalizo = false,
     String? idUsuarioAgrego,
     int? nuOrder,
   }) {
@@ -50,9 +52,9 @@ class ListDetailItemModel {
       nbArticulo: nbArticulo ?? this.nbArticulo,
       dsDetalle: clearDsDetalle ? null : (dsDetalle ?? this.dsDetalle),
       status: status ?? this.status,
-      fechaCompra: fechaCompra ?? this.fechaCompra,
+      fechaCompra: clearFechaCompra ? null : (fechaCompra ?? this.fechaCompra),
       fechaAgrego: clearFechaAgrego ? null : (fechaAgrego ?? this.fechaAgrego),
-      idUsuarioFinalizo: idUsuarioFinalizo ?? this.idUsuarioFinalizo,
+      idUsuarioFinalizo: clearIdUsuarioFinalizo ? null : (idUsuarioFinalizo ?? this.idUsuarioFinalizo),
       idUsuarioAgrego: idUsuarioAgrego ?? this.idUsuarioAgrego,
       nuOrder: nuOrder ?? this.nuOrder,
     );

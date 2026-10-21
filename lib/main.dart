@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
@@ -12,12 +13,16 @@ import 'screens/intro_slides_screen.dart';
 import 'screens/update_required_screen.dart';
 import 'services/database_service.dart';
 import 'services/locale_provider.dart';
-import 'services/mongo_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   // Capturar errores no manejados de sockets asíncronos cuando Android suspende la app en segundo plano
   PlatformDispatcher.instance.onError = (error, stack) {
@@ -90,11 +95,6 @@ class _ShoppingListAppState extends State<ShoppingListApp> with WidgetsBindingOb
       unawaited(PushNotificationService.clearBadge());
       final db = Provider.of<DatabaseService>(context, listen: false);
       db.onAppResume();
-    } else if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.hidden) {
-      debugPrint("[APP_LIFECYCLE] App minimizada / en segundo plano. Cerrando sockets inactivos para ahorrar batería...");
-      unawaited(MongoService.close());
     }
   }
 

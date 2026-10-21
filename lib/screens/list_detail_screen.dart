@@ -11,6 +11,7 @@ import '../services/push_notification_service.dart';
 import '../services/connectivity_service.dart';
 import '../widgets/ad_banner_widget.dart';
 import '../widgets/sync_indicator_widget.dart';
+import '../utils/undo_helper.dart';
 
 enum PendingItemsSortOption {
   manual,
@@ -133,11 +134,8 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
-      debugPrint("[LIST_DETAIL LOG] App reanudada desde segundo plano. Cargando SQLite de inmediato...");
+      debugPrint("[LIST_DETAIL LOG] App reanudada desde segundo plano. Reiniciando timer de sincronización...");
       unawaited(PushNotificationService.clearBadge());
-      final db = context.read<DatabaseService>();
-      db.loadLocalDataOnly();
-      db.onAppResume();
       _startSyncTimer();
     } else if ((state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) && mounted) {
       debugPrint("[LIST_DETAIL LOG] App en segundo plano. Deteniendo timer de sincronización...");
@@ -756,7 +754,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                                   );
                                 });
                               },
-                          itemBuilder: (context, index) {
+                          itemBuilder: (itemCtx, index) {
                             final item = pendingItems[index];
                             return Column(
                               key: Key(item.idDetalle),
@@ -845,7 +843,21 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                                   onDismissed: (direction) {
                                     _runWithPausedSyncTimer(() async {
                                       if (direction == DismissDirection.startToEnd) {
+                                        final undoMessage = l10n.itemMarkedPurchased(item.nbArticulo);
+                                        final undoLabel = l10n.btnUndo;
+                                        final messenger = ScaffoldMessenger.of(context);
                                         await db.markItemAsCompleted(item.idDetalle);
+                                        if (messenger.mounted) {
+                                          UndoHelper.show(
+                                            messenger: messenger,
+                                            message: undoMessage,
+                                            actionLabel: undoLabel,
+                                            duration: const Duration(seconds: 5),
+                                            onUndo: () async {
+                                              await db.unmarkItemAsCompleted(item.idDetalle);
+                                            },
+                                          );
+                                        }
                                       } else if (direction == DismissDirection.endToStart) {
                                         await db.removeListDetailItem(item.idDetalle);
                                       }
