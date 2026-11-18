@@ -2,7 +2,7 @@ name: lista_compras
 description: "Lista de Compras"
 publish_to: 'none'
 
-version: 1.0.32+33
+version: 1.0.31+32
 
 environment:
   sdk: ^3.11.1
@@ -29,6 +29,8 @@ dependencies:
   url_launcher: ^6.3.2
   package_info_plus: ^10.2.1
   connectivity_plus: ^7.3.2
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^6.0.6
 
 dev_dependencies:
   flutter_test:

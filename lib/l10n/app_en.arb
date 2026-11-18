@@ -41,7 +41,7 @@
   "btnCreateFamily": "Create Family",
   "btnCreateFamilyDesc": "Create a family group and invite your members.",
   "btnJoinFamily": "Join Family",
-  "btnJoinFamilyDesc": "Enter a 6-character code provided by your family.",
+  "btnJoinFamilyDesc": "Enter a code provided by your family or scan their QR code.",
   
   "createFamilyTitle": "Create New Family",
   "familyNameLabel": "Family Name",
@@ -304,5 +304,20 @@
   "confirmClearCompletedTitle": "Clear Purchased Items",
   "confirmClearCompletedMsg": "Are you sure you want to delete all purchased items from this list?",
   "btnConfirmClear": "Yes, clear",
-  "clearCompletedSuccess": "Purchased items were removed from the list."
+  "clearCompletedSuccess": "Purchased items were removed from the list.",
+  "showQrCodeTooltip": "Show QR code",
+  "familyQrTitle": "Family QR Code",
+  "familyQrSubtitle": "Ask another member to scan this QR code from the 'Join Family' option to join this group.",
+  "btnCopyCode": "Copy code",
+  "btnClose": "Close",
+  "btnScanQr": "Scan QR code",
+  "orEnterCodeManually": "Or enter the code manually",
+  "scanQrTitle": "Scan QR Code",
+  "scanQrInstruction": "Point the camera at the family QR code to join automatically.",
+  "invalidQrCodeErr": "The scanned QR code does not correspond to a valid family.",
+  "cameraPermissionErr": "Could not access the camera. Please check the app permissions.",
+  "toggleFlashTooltip": "Toggle flashlight",
+  "switchCameraTooltip": "Switch camera",
+  "joiningFamilyMsg": "Joining family...",
+  "joinedFamilySuccess": "You have successfully joined the family!"
 }

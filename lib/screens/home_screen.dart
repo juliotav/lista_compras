@@ -15,6 +15,7 @@ import '../widgets/ad_banner_widget.dart';
 import '../services/ad_interstitial_service.dart';
 import '../services/connectivity_service.dart';
 import '../widgets/sync_indicator_widget.dart';
+import '../widgets/family_qr_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -544,33 +545,59 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     const SizedBox(height: 10),
                     if (family != null)
-                      InkWell(
-                        onTap: () {
-                          Clipboard.setData(ClipboardData(text: family.clFamilia));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l10n.copiedCode)),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: theme.cardColor,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: family.clFamilia));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(l10n.copiedCode)),
+                              );
+                            },
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                "${l10n.familyCodeBadge} ${family.clFamilia}",
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: theme.cardColor,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
                               ),
-                              const SizedBox(width: 6),
-                              const Icon(Icons.copy_rounded, size: 16, color: Colors.grey),
-                            ],
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    "${l10n.familyCodeBadge} ${family.clFamilia}",
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Icon(Icons.copy_rounded, size: 16, color: Colors.grey),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          Tooltip(
+                            message: l10n.showQrCodeTooltip,
+                            child: InkWell(
+                              onTap: () => showFamilyQrDialog(context, family),
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: theme.cardColor,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                                ),
+                                child: Icon(
+                                  Icons.qr_code_2_rounded,
+                                  size: 20,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                   ],
                 ),

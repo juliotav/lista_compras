@@ -323,7 +323,7 @@ abstract class AppLocalizations {
   /// No description provided for @btnJoinFamilyDesc.
   ///
   /// In es, this message translates to:
-  /// **'Ingresa un código de 6 caracteres suministrado por tu familia.'**
+  /// **'Ingresa un código suministrado por tu familia o escanea su código QR.'**
   String get btnJoinFamilyDesc;
 
   /// No description provided for @createFamilyTitle.
@@ -1411,6 +1411,96 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Se eliminaron los artículos comprados de la lista.'**
   String get clearCompletedSuccess;
+
+  /// No description provided for @showQrCodeTooltip.
+  ///
+  /// In es, this message translates to:
+  /// **'Mostrar código QR'**
+  String get showQrCodeTooltip;
+
+  /// No description provided for @familyQrTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Código QR Familiar'**
+  String get familyQrTitle;
+
+  /// No description provided for @familyQrSubtitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Pide a otro integrante que escanee este código QR desde la opción \'Unirse a Familia\' para integrarse a este grupo.'**
+  String get familyQrSubtitle;
+
+  /// No description provided for @btnCopyCode.
+  ///
+  /// In es, this message translates to:
+  /// **'Copiar código'**
+  String get btnCopyCode;
+
+  /// No description provided for @btnClose.
+  ///
+  /// In es, this message translates to:
+  /// **'Cerrar'**
+  String get btnClose;
+
+  /// No description provided for @btnScanQr.
+  ///
+  /// In es, this message translates to:
+  /// **'Escanear código QR'**
+  String get btnScanQr;
+
+  /// No description provided for @orEnterCodeManually.
+  ///
+  /// In es, this message translates to:
+  /// **'O ingresa el código manualmente'**
+  String get orEnterCodeManually;
+
+  /// No description provided for @scanQrTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Escanear Código QR'**
+  String get scanQrTitle;
+
+  /// No description provided for @scanQrInstruction.
+  ///
+  /// In es, this message translates to:
+  /// **'Apunta la cámara al código QR de la familia para unirte automáticamente.'**
+  String get scanQrInstruction;
+
+  /// No description provided for @invalidQrCodeErr.
+  ///
+  /// In es, this message translates to:
+  /// **'El código QR escaneado no corresponde a una familia válida.'**
+  String get invalidQrCodeErr;
+
+  /// No description provided for @cameraPermissionErr.
+  ///
+  /// In es, this message translates to:
+  /// **'No se pudo acceder a la cámara. Verifica los permisos de la aplicación.'**
+  String get cameraPermissionErr;
+
+  /// No description provided for @toggleFlashTooltip.
+  ///
+  /// In es, this message translates to:
+  /// **'Alternar linterna'**
+  String get toggleFlashTooltip;
+
+  /// No description provided for @switchCameraTooltip.
+  ///
+  /// In es, this message translates to:
+  /// **'Cambiar cámara'**
+  String get switchCameraTooltip;
+
+  /// No description provided for @joiningFamilyMsg.
+  ///
+  /// In es, this message translates to:
+  /// **'Uniéndose a la familia...'**
+  String get joiningFamilyMsg;
+
+  /// No description provided for @joinedFamilySuccess.
+  ///
+  /// In es, this message translates to:
+  /// **'¡Te has unido a la familia exitosamente!'**
+  String get joinedFamilySuccess;
 }
 
 class _AppLocalizationsDelegate

@@ -22,3 +22,7 @@ El guardado en local (RAM + SQLite) y la sincronización delta en segundo plano 
 ### 4. Comportamiento de listas de compras
 - El botón de completar en `ListDetailScreen` (`finishAndCompleteEntireList`) marca todos los artículos pendientes como comprados sin cerrar ni concluir la lista (`isCompleted` se mantiene `false`) y permanece en la pantalla.
 - En `HomeScreen`, cada tarjeta de lista muestra en la esquina superior derecha el contador de artículos pendientes (`getPendingItemsCount`, leyenda `{count} por comprar` / `{count} to buy`), obtenido en tiempo real desde la colección `detalle_lista` sincronizada en SQLite y RAM.
+
+### 5. Unión a familias por código o QR
+- Las familias pueden compartirse mediante su código `cl_familia` (`FAM-XXXXX`) o su código QR (`LISTALISTA:FAM-XXXXX`) generado localmente con `qr_flutter` (`FamilyQrDialog` en `HomeScreen`, `FamilyMembersScreen` y `FamilySetupScreen`).
+- En `FamilySetupScreen`, el diálogo de unirse permite tanto escribir el código manualmente como escanear el QR con la cámara (`QrScannerScreen` con `mobile_scanner`), reutilizando `DatabaseService.joinFamily`.

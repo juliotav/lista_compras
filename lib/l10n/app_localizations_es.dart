@@ -127,7 +127,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get btnJoinFamilyDesc =>
-      'Ingresa un código de 6 caracteres suministrado por tu familia.';
+      'Ingresa un código suministrado por tu familia o escanea su código QR.';
 
   @override
   String get createFamilyTitle => 'Crear Nueva Familia';
@@ -752,4 +752,53 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get clearCompletedSuccess =>
       'Se eliminaron los artículos comprados de la lista.';
+
+  @override
+  String get showQrCodeTooltip => 'Mostrar código QR';
+
+  @override
+  String get familyQrTitle => 'Código QR Familiar';
+
+  @override
+  String get familyQrSubtitle =>
+      'Pide a otro integrante que escanee este código QR desde la opción \'Unirse a Familia\' para integrarse a este grupo.';
+
+  @override
+  String get btnCopyCode => 'Copiar código';
+
+  @override
+  String get btnClose => 'Cerrar';
+
+  @override
+  String get btnScanQr => 'Escanear código QR';
+
+  @override
+  String get orEnterCodeManually => 'O ingresa el código manualmente';
+
+  @override
+  String get scanQrTitle => 'Escanear Código QR';
+
+  @override
+  String get scanQrInstruction =>
+      'Apunta la cámara al código QR de la familia para unirte automáticamente.';
+
+  @override
+  String get invalidQrCodeErr =>
+      'El código QR escaneado no corresponde a una familia válida.';
+
+  @override
+  String get cameraPermissionErr =>
+      'No se pudo acceder a la cámara. Verifica los permisos de la aplicación.';
+
+  @override
+  String get toggleFlashTooltip => 'Alternar linterna';
+
+  @override
+  String get switchCameraTooltip => 'Cambiar cámara';
+
+  @override
+  String get joiningFamilyMsg => 'Uniéndose a la familia...';
+
+  @override
+  String get joinedFamilySuccess => '¡Te has unido a la familia exitosamente!';
 }

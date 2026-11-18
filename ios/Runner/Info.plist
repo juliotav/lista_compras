@@ -75,5 +75,7 @@
 		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Necesitamos acceso a la cámara para escanear el código QR e integrarte a un grupo familiar.</string>
 </dict>
 </plist>

@@ -5,6 +5,9 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:lista_compras/services/security_service.dart';
 import 'package:lista_compras/services/database_service.dart';
 import 'package:lista_compras/utils/undo_helper.dart';
+import 'package:lista_compras/widgets/family_qr_dialog.dart';
+import 'package:lista_compras/models/family_model.dart';
+import 'package:lista_compras/l10n/app_localizations.dart';
 import 'package:uuid/uuid.dart';
 
 void main() {
@@ -315,6 +318,55 @@ void main() {
 
       await tester.pump(const Duration(seconds: 6));
       await tester.pumpAndSettle();
+    });
+  });
+
+  group('FamilyQrHelper Tests', () {
+    test('buildQrPayload and extractFamilyCode handle prefixed and direct codes', () {
+      final payload = FamilyQrHelper.buildQrPayload('fam-8x92k');
+      expect(payload, equals('LISTALISTA:FAM-8X92K'));
+
+      expect(FamilyQrHelper.extractFamilyCode(payload), equals('FAM-8X92K'));
+      expect(FamilyQrHelper.extractFamilyCode('FAM-AB123'), equals('FAM-AB123'));
+      expect(FamilyQrHelper.extractFamilyCode('  listalista:fam-z9y8x  '), equals('FAM-Z9Y8X'));
+      expect(FamilyQrHelper.extractFamilyCode('https://example.com'), isNull);
+      expect(FamilyQrHelper.extractFamilyCode('INVALID-CODE'), isNull);
+      expect(FamilyQrHelper.extractFamilyCode(''), isNull);
+      expect(FamilyQrHelper.extractFamilyCode(null), isNull);
+    });
+
+    testWidgets('showFamilyQrDialog renders QR dialog without layout or intrinsic exceptions', (tester) async {
+      final family = FamilyModel(
+        idFamilia: 'fam_1',
+        idCreador: 'usr_1',
+        nbFamilia: 'Familia Pérez',
+        clFamilia: 'FAM-8X92K',
+        fechaCreacion: DateTime(2026, 1, 1),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('es'),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                return ElevatedButton(
+                  onPressed: () => showFamilyQrDialog(context, family),
+                  child: const Text('Mostrar QR'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Mostrar QR'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Familia Pérez'), findsOneWidget);
+      expect(find.text('FAM-8X92K'), findsOneWidget);
     });
   });
 }

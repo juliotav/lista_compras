@@ -41,7 +41,7 @@
   "btnCreateFamily": "Crear Familia",
   "btnCreateFamilyDesc": "Crea un grupo familiar e invita a tus miembros.",
   "btnJoinFamily": "Unirse a Familia",
-  "btnJoinFamilyDesc": "Ingresa un código de 6 caracteres suministrado por tu familia.",
+  "btnJoinFamilyDesc": "Ingresa un código suministrado por tu familia o escanea su código QR.",
   
   "createFamilyTitle": "Crear Nueva Familia",
   "familyNameLabel": "Nombre de la Familia",
@@ -304,5 +304,20 @@
   "confirmClearCompletedTitle": "Limpiar artículos comprados",
   "confirmClearCompletedMsg": "¿Estás seguro de que deseas eliminar todos los artículos comprados de esta lista?",
   "btnConfirmClear": "Sí, limpiar",
-  "clearCompletedSuccess": "Se eliminaron los artículos comprados de la lista."
+  "clearCompletedSuccess": "Se eliminaron los artículos comprados de la lista.",
+  "showQrCodeTooltip": "Mostrar código QR",
+  "familyQrTitle": "Código QR Familiar",
+  "familyQrSubtitle": "Pide a otro integrante que escanee este código QR desde la opción 'Unirse a Familia' para integrarse a este grupo.",
+  "btnCopyCode": "Copiar código",
+  "btnClose": "Cerrar",
+  "btnScanQr": "Escanear código QR",
+  "orEnterCodeManually": "O ingresa el código manualmente",
+  "scanQrTitle": "Escanear Código QR",
+  "scanQrInstruction": "Apunta la cámara al código QR de la familia para unirte automáticamente.",
+  "invalidQrCodeErr": "El código QR escaneado no corresponde a una familia válida.",
+  "cameraPermissionErr": "No se pudo acceder a la cámara. Verifica los permisos de la aplicación.",
+  "toggleFlashTooltip": "Alternar linterna",
+  "switchCameraTooltip": "Cambiar cámara",
+  "joiningFamilyMsg": "Uniéndose a la familia...",
+  "joinedFamilySuccess": "¡Te has unido a la familia exitosamente!"
 }

@@ -8,7 +8,9 @@ import '../widgets/ad_banner_widget.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'about_privacy_screen.dart';
+import 'qr_scanner_screen.dart';
 import '../widgets/sync_indicator_widget.dart';
+import '../widgets/family_qr_dialog.dart';
 
 class FamilySetupScreen extends StatefulWidget {
   const FamilySetupScreen({super.key});
@@ -144,6 +146,44 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
     final formKey = GlobalKey<FormState>();
     bool isSubmitting = false;
 
+    Future<void> submitJoinCode(
+      String rawCode,
+      StateSetter setDialogState,
+      BuildContext dialogContext,
+    ) async {
+      setDialogState(() => isSubmitting = true);
+      final db = dialogContext.read<DatabaseService>();
+      final messenger = ScaffoldMessenger.of(context);
+      final navigator = Navigator.of(context);
+      final dialogNav = Navigator.of(dialogContext);
+
+      final result = await db.joinFamily(rawCode.trim());
+
+      if (!mounted) return;
+
+      if (result == 'success') {
+        dialogNav.pop();
+        navigator.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
+      } else {
+        setDialogState(() => isSubmitting = false);
+        String errorMsg = l10n.invalidFamilyCode;
+        if (result == 'already_creator') {
+          errorMsg = l10n.alreadyFamilyCreatorMsg;
+        } else if (result == 'already_member') {
+          errorMsg = l10n.alreadyFamilyMemberMsg;
+        }
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: Colors.orange[900],
+          ),
+        );
+      }
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -155,21 +195,74 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
               title: Text(l10n.btnJoinFamily),
               content: Form(
                 key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextFormField(
-                      controller: codeController,
-                      enabled: !isSubmitting,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: InputDecoration(
-                        labelText: l10n.familyCodeLabel,
-                        hintText: l10n.familyCodeHint,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.teal,
+                          side: const BorderSide(color: Colors.teal, width: 1.5),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.qr_code_scanner_rounded, size: 22),
+                        label: Text(
+                          l10n.btnScanQr,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                final scannedCode = await Navigator.push<String>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const QrScannerScreen(),
+                                  ),
+                                );
+                                if (scannedCode != null &&
+                                    scannedCode.trim().isNotEmpty &&
+                                    dialogContext.mounted) {
+                                  codeController.text = scannedCode.trim();
+                                  await submitJoinCode(
+                                    scannedCode,
+                                    setDialogState,
+                                    dialogContext,
+                                  );
+                                }
+                              },
                       ),
-                      validator: (v) => v == null || v.trim().isEmpty ? l10n.familyCodeLabel : null,
-                    ),
-                  ],
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            child: Text(
+                              l10n.orEnterCodeManually,
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            ),
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: codeController,
+                        enabled: !isSubmitting,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: InputDecoration(
+                          labelText: l10n.familyCodeLabel,
+                          hintText: l10n.familyCodeHint,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        validator: (v) => v == null || v.trim().isEmpty ? l10n.familyCodeLabel : null,
+                      ),
+                    ],
+                  ),
                 ),
               ),
               actions: [
@@ -185,37 +278,11 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
                       ? null
                       : () async {
                           if (formKey.currentState!.validate()) {
-                            setDialogState(() => isSubmitting = true);
-                            final db = dialogContext.read<DatabaseService>();
-                            final messenger = ScaffoldMessenger.of(context);
-                            final navigator = Navigator.of(context);
-                            final dialogNav = Navigator.of(dialogContext);
-
-                            final result = await db.joinFamily(codeController.text.trim());
-
-                            if (!mounted) return;
-
-                            if (result == 'success') {
-                              dialogNav.pop();
-                              navigator.pushAndRemoveUntil(
-                                MaterialPageRoute(builder: (_) => const HomeScreen()),
-                                (route) => false,
-                              );
-                            } else {
-                              setDialogState(() => isSubmitting = false);
-                              String errorMsg = l10n.invalidFamilyCode;
-                              if (result == 'already_creator') {
-                                errorMsg = l10n.alreadyFamilyCreatorMsg;
-                              } else if (result == 'already_member') {
-                                errorMsg = l10n.alreadyFamilyMemberMsg;
-                              }
-                              messenger.showSnackBar(
-                                SnackBar(
-                                  content: Text(errorMsg),
-                                  backgroundColor: Colors.orange[900],
-                                ),
-                              );
-                            }
+                            await submitJoinCode(
+                              codeController.text,
+                              setDialogState,
+                              dialogContext,
+                            );
                           }
                         },
                   child: isSubmitting
@@ -556,30 +623,37 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: isCreator ? Colors.deepPurple.withValues(alpha: 0.1) : Colors.teal.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  isCreator ? l10n.creatorBadge : l10n.memberBadge,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: isCreator ? Colors.deepPurple : Colors.teal,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: isCreator ? Colors.deepPurple.withValues(alpha: 0.1) : Colors.teal.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    isCreator ? l10n.creatorBadge : l10n.memberBadge,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: isCreator ? Colors.deepPurple : Colors.teal,
+                                    ),
                                   ),
                                 ),
-                              ),
-
-                              if (isCreator) ...[
                                 const SizedBox(width: 4),
                                 IconButton(
-                                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                                  tooltip: l10n.deleteFamilyTitle,
-                                  onPressed: () => _confirmDeleteFamily(context, fam),
+                                  icon: Icon(
+                                    Icons.qr_code_2_rounded,
+                                    color: isCreator ? Colors.deepPurple : Colors.teal,
+                                  ),
+                                  tooltip: l10n.showQrCodeTooltip,
+                                  onPressed: () => showFamilyQrDialog(context, fam),
                                 ),
-                              ],
+                                if (isCreator) ...[
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                                    tooltip: l10n.deleteFamilyTitle,
+                                    onPressed: () => _confirmDeleteFamily(context, fam),
+                                  ),
+                                ],
                             ],
                           ),
                         ),

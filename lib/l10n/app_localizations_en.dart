@@ -126,7 +126,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get btnJoinFamilyDesc =>
-      'Enter a 6-character code provided by your family.';
+      'Enter a code provided by your family or scan their QR code.';
 
   @override
   String get createFamilyTitle => 'Create New Family';
@@ -744,4 +744,53 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get clearCompletedSuccess =>
       'Purchased items were removed from the list.';
+
+  @override
+  String get showQrCodeTooltip => 'Show QR code';
+
+  @override
+  String get familyQrTitle => 'Family QR Code';
+
+  @override
+  String get familyQrSubtitle =>
+      'Ask another member to scan this QR code from the \'Join Family\' option to join this group.';
+
+  @override
+  String get btnCopyCode => 'Copy code';
+
+  @override
+  String get btnClose => 'Close';
+
+  @override
+  String get btnScanQr => 'Scan QR code';
+
+  @override
+  String get orEnterCodeManually => 'Or enter the code manually';
+
+  @override
+  String get scanQrTitle => 'Scan QR Code';
+
+  @override
+  String get scanQrInstruction =>
+      'Point the camera at the family QR code to join automatically.';
+
+  @override
+  String get invalidQrCodeErr =>
+      'The scanned QR code does not correspond to a valid family.';
+
+  @override
+  String get cameraPermissionErr =>
+      'Could not access the camera. Please check the app permissions.';
+
+  @override
+  String get toggleFlashTooltip => 'Toggle flashlight';
+
+  @override
+  String get switchCameraTooltip => 'Switch camera';
+
+  @override
+  String get joiningFamilyMsg => 'Joining family...';
+
+  @override
+  String get joinedFamilySuccess => 'You have successfully joined the family!';
 }
