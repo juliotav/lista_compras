@@ -47,8 +47,10 @@ class SyncQueueItem {
       collectionName: map['collection_name'] as String,
       action: map['action'] as String,
       entityId: map['entity_id'] as String,
-      payload: jsonDecode(map['payload_json'] as String) as Map<String, dynamic>,
-      createdAt: DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now(),
+      payload:
+          jsonDecode(map['payload_json'] as String) as Map<String, dynamic>,
+      createdAt:
+          DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now(),
       retryCount: map['retry_count'] as int? ?? 0,
     );
   }
@@ -84,16 +86,24 @@ class LocalDbService {
           await db.execute('ALTER TABLE users ADD COLUMN ds_version_app TEXT;');
         } catch (_) {}
         try {
-          await db.execute('ALTER TABLE shopping_lists ADD COLUMN fe_ultima_notificacion_compra TEXT;');
+          await db.execute(
+            'ALTER TABLE shopping_lists ADD COLUMN fe_ultima_notificacion_compra TEXT;',
+          );
         } catch (_) {}
         try {
-          await db.execute('ALTER TABLE list_detail_items ADD COLUMN nu_order INTEGER NOT NULL DEFAULT 0;');
+          await db.execute(
+            'ALTER TABLE list_detail_items ADD COLUMN nu_order INTEGER NOT NULL DEFAULT 0;',
+          );
         } catch (_) {}
         try {
-          await db.execute('ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT "active";');
+          await db.execute(
+            'ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT "active";',
+          );
         } catch (_) {}
         try {
-          await db.execute('ALTER TABLE list_detail_items ADD COLUMN fecha_agrego TEXT;');
+          await db.execute(
+            'ALTER TABLE list_detail_items ADD COLUMN fecha_agrego TEXT;',
+          );
         } catch (_) {}
       },
     );
@@ -188,9 +198,15 @@ class LocalDbService {
     ''');
 
     // Índices para búsquedas eficientes
-    await db.execute('CREATE INDEX idx_lists_fam ON shopping_lists (id_familia);');
-    await db.execute('CREATE INDEX idx_details_list ON list_detail_items (id_lista_compra);');
-    await db.execute('CREATE INDEX idx_catalog_fam ON item_catalog (id_familia);');
+    await db.execute(
+      'CREATE INDEX idx_lists_fam ON shopping_lists (id_familia);',
+    );
+    await db.execute(
+      'CREATE INDEX idx_details_list ON list_detail_items (id_lista_compra);',
+    );
+    await db.execute(
+      'CREATE INDEX idx_catalog_fam ON item_catalog (id_familia);',
+    );
     await db.execute('CREATE INDEX idx_queue_id ON sync_queue (id);');
 
     debugPrint("[LOCAL_DB] Tablas de SQLite creadas exitosamente.");
@@ -199,11 +215,10 @@ class LocalDbService {
   // --- SESIÓN Y USUARIO ---
   Future<void> saveSessionUserId(String userId) async {
     final database = await db;
-    await database.insert(
-      'session',
-      {'key': 'current_user_id', 'value': userId},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await database.insert('session', {
+      'key': 'current_user_id',
+      'value': userId,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('session_user_id', userId);
@@ -236,7 +251,11 @@ class LocalDbService {
 
   Future<void> clearSession() async {
     final database = await db;
-    await database.delete('session', where: 'key = ?', whereArgs: ['current_user_id']);
+    await database.delete(
+      'session',
+      where: 'key = ?',
+      whereArgs: ['current_user_id'],
+    );
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('session_user_id');
@@ -254,7 +273,10 @@ class LocalDbService {
   }
 
   /// Sella la bandera de precarga única de todas las familias a SQLite
-  Future<void> setOfflineCacheWarmUpDone(String userId, {bool done = true}) async {
+  Future<void> setOfflineCacheWarmUpDone(
+    String userId, {
+    bool done = true,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('offline_cache_v1_$userId', done);
@@ -276,6 +298,13 @@ class LocalDbService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('session_user_id');
       await prefs.remove('saved_user_id');
+      final keysToRemove = prefs
+          .getKeys()
+          .where((k) => k.startsWith('offline_cache_v1_'))
+          .toList();
+      for (final k in keysToRemove) {
+        await prefs.remove(k);
+      }
     } catch (_) {}
   }
 
@@ -290,7 +319,11 @@ class LocalDbService {
 
   Future<UserModel?> getUser(String userId) async {
     final database = await db;
-    final res = await database.query('users', where: 'id_usuario = ?', whereArgs: [userId]);
+    final res = await database.query(
+      'users',
+      where: 'id_usuario = ?',
+      whereArgs: [userId],
+    );
     if (res.isNotEmpty) {
       return UserModel.fromMap(res.first);
     }
@@ -299,7 +332,11 @@ class LocalDbService {
 
   Future<void> deleteUser(String userId) async {
     final database = await db;
-    await database.delete('users', where: 'id_usuario = ?', whereArgs: [userId]);
+    await database.delete(
+      'users',
+      where: 'id_usuario = ?',
+      whereArgs: [userId],
+    );
   }
 
   Future<void> deleteUserByEmail(String email) async {
@@ -328,27 +365,96 @@ class LocalDbService {
   }
 
   Future<void> saveFamilies(List<FamilyModel> families) async {
-    if (families.isEmpty) return;
     final database = await db;
     final batch = database.batch();
-    for (var f in families) {
-      batch.insert('families', f.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    if (families.isEmpty) {
+      batch.delete('families');
+    } else {
+      final famIds = families.map((f) => f.idFamilia).toList();
+      final placeholders = List.filled(famIds.length, '?').join(',');
+      batch.delete(
+        'families',
+        where: 'id_familia NOT IN ($placeholders)',
+        whereArgs: famIds,
+      );
+      for (var f in families) {
+        batch.insert(
+          'families',
+          f.toMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
     }
     await batch.commit(noResult: true);
   }
 
   Future<void> deleteFamilyLocally(String famId) async {
     final database = await db;
-    await database.delete('families', where: 'id_familia = ?', whereArgs: [famId]);
-    await database.delete('shopping_lists', where: 'id_familia = ?', whereArgs: [famId]);
-    await database.delete('item_catalog', where: 'id_familia = ?', whereArgs: [famId]);
-    final listRes = await database.query('shopping_lists', columns: ['id_lista_compra'], where: 'id_familia = ?', whereArgs: [famId]);
+    final listRes = await database.query(
+      'shopping_lists',
+      columns: ['id_lista_compra'],
+      where: 'id_familia = ?',
+      whereArgs: [famId],
+    );
     for (var row in listRes) {
       final listId = row['id_lista_compra'] as String?;
       if (listId != null && listId.isNotEmpty) {
-        await database.delete('list_detail_items', where: 'id_lista_compra = ?', whereArgs: [listId]);
+        await database.delete(
+          'list_detail_items',
+          where: 'id_lista_compra = ?',
+          whereArgs: [listId],
+        );
       }
     }
+    await database.delete(
+      'shopping_lists',
+      where: 'id_familia = ?',
+      whereArgs: [famId],
+    );
+    await database.delete(
+      'item_catalog',
+      where: 'id_familia = ?',
+      whereArgs: [famId],
+    );
+    await database.delete(
+      'families',
+      where: 'id_familia = ?',
+      whereArgs: [famId],
+    );
+  }
+
+  /// Purga de SQLite cualquier familia, lista, producto o catálogo que no pertenezca a las familias activas del usuario actual
+  Future<void> purgeDataOutsideFamilies(Set<String> validFamIds) async {
+    final database = await db;
+    await database.transaction((txn) async {
+      if (validFamIds.isEmpty) {
+        await txn.delete('families');
+        await txn.delete('shopping_lists');
+        await txn.delete('item_catalog');
+        await txn.delete('list_detail_items');
+      } else {
+        final famList = validFamIds.toList();
+        final placeholders = List.filled(famList.length, '?').join(',');
+        await txn.delete(
+          'families',
+          where: 'id_familia NOT IN ($placeholders)',
+          whereArgs: famList,
+        );
+        await txn.delete(
+          'shopping_lists',
+          where: 'id_familia NOT IN ($placeholders)',
+          whereArgs: famList,
+        );
+        await txn.delete(
+          'item_catalog',
+          where: 'id_familia NOT IN ($placeholders)',
+          whereArgs: famList,
+        );
+        await txn.rawDelete(
+          'DELETE FROM list_detail_items WHERE id_lista_compra NOT IN (SELECT id_lista_compra FROM shopping_lists)',
+        );
+      }
+    });
   }
 
   Future<List<FamilyModel>> getFamilies() async {
@@ -383,11 +489,58 @@ class LocalDbService {
     }).toList();
   }
 
-  Future<void> saveShoppingList(ShoppingListModel list, {String syncStatus = 'synced'}) async {
+  Future<void> saveShoppingList(
+    ShoppingListModel list, {
+    String syncStatus = 'synced',
+  }) async {
     final database = await db;
-    await database.insert(
-      'shopping_lists',
-      {
+    await database.insert('shopping_lists', {
+      'id_lista_compra': list.idListaCompra,
+      'id_familia': list.idFamilia,
+      'nb_lista': list.nbLista,
+      'is_default': list.isDefault ? 1 : 0,
+      'is_active': list.isActive ? 1 : 0,
+      'is_completed': list.isCompleted ? 1 : 0,
+      'fe_ultima_notificacion': list.feUltimaNotificacion?.toIso8601String(),
+      'fe_ultima_notificacion_compra': list.feUltimaNotificacionCompra
+          ?.toIso8601String(),
+      'sync_status': syncStatus,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> saveShoppingLists(
+    List<ShoppingListModel> lists, {
+    String famId = '',
+    Set<String>? pendingEntityIds,
+  }) async {
+    if (lists.isEmpty && famId.isEmpty) return;
+    final database = await db;
+    final batch = database.batch();
+    if (famId.isNotEmpty) {
+      if (lists.isEmpty) {
+        batch.delete(
+          'shopping_lists',
+          where: 'id_familia = ? AND sync_status = ?',
+          whereArgs: [famId, 'synced'],
+        );
+      } else {
+        final listIds = lists.map((l) => l.idListaCompra).toList();
+        final placeholders = List.filled(listIds.length, '?').join(',');
+        batch.delete(
+          'shopping_lists',
+          where:
+              'id_familia = ? AND sync_status = ? AND id_lista_compra NOT IN ($placeholders)',
+          whereArgs: [famId, 'synced', ...listIds],
+        );
+      }
+    }
+    for (var list in lists) {
+      final status =
+          (pendingEntityIds != null &&
+              pendingEntityIds.contains(list.idListaCompra))
+          ? 'pending'
+          : 'synced';
+      batch.insert('shopping_lists', {
         'id_lista_compra': list.idListaCompra,
         'id_familia': list.idFamilia,
         'nb_lista': list.nbLista,
@@ -395,41 +548,26 @@ class LocalDbService {
         'is_active': list.isActive ? 1 : 0,
         'is_completed': list.isCompleted ? 1 : 0,
         'fe_ultima_notificacion': list.feUltimaNotificacion?.toIso8601String(),
-        'fe_ultima_notificacion_compra': list.feUltimaNotificacionCompra?.toIso8601String(),
-        'sync_status': syncStatus,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  Future<void> saveShoppingLists(List<ShoppingListModel> lists, {String famId = ''}) async {
-    if (lists.isEmpty) return;
-    final database = await db;
-    final batch = database.batch();
-    for (var list in lists) {
-      batch.insert(
-        'shopping_lists',
-        {
-          'id_lista_compra': list.idListaCompra,
-          'id_familia': list.idFamilia,
-          'nb_lista': list.nbLista,
-          'is_default': list.isDefault ? 1 : 0,
-          'is_active': list.isActive ? 1 : 0,
-          'is_completed': list.isCompleted ? 1 : 0,
-          'fe_ultima_notificacion': list.feUltimaNotificacion?.toIso8601String(),
-          'fe_ultima_notificacion_compra': list.feUltimaNotificacionCompra?.toIso8601String(),
-          'sync_status': 'synced',
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+        'fe_ultima_notificacion_compra': list.feUltimaNotificacionCompra
+            ?.toIso8601String(),
+        'sync_status': status,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
   }
 
   Future<void> deleteShoppingListLocally(String listId) async {
     final database = await db;
-    await database.delete('shopping_lists', where: 'id_lista_compra = ?', whereArgs: [listId]);
-    await database.delete('list_detail_items', where: 'id_lista_compra = ?', whereArgs: [listId]);
+    await database.delete(
+      'shopping_lists',
+      where: 'id_lista_compra = ?',
+      whereArgs: [listId],
+    );
+    await database.delete(
+      'list_detail_items',
+      where: 'id_lista_compra = ?',
+      whereArgs: [listId],
+    );
   }
 
   // --- DETALLES / ARTÍCULOS DE LISTA ---
@@ -448,8 +586,12 @@ class LocalDbService {
         nbArticulo: m['nb_articulo'] as String,
         dsDetalle: m['ds_detalle'] as String?,
         status: m['status'] as String? ?? 'pending',
-        fechaCompra: m['fecha_compra'] != null ? DateTime.tryParse(m['fecha_compra'].toString()) : null,
-        fechaAgrego: m['fecha_agrego'] != null ? DateTime.tryParse(m['fecha_agrego'].toString()) : null,
+        fechaCompra: m['fecha_compra'] != null
+            ? DateTime.tryParse(m['fecha_compra'].toString())
+            : null,
+        fechaAgrego: m['fecha_agrego'] != null
+            ? DateTime.tryParse(m['fecha_agrego'].toString())
+            : null,
         idUsuarioFinalizo: m['id_usuario_finalizo'] as String?,
         idUsuarioAgrego: m['id_usuario_agrego'] as String?,
         nuOrder: m['nu_order'] as int? ?? 0,
@@ -457,7 +599,9 @@ class LocalDbService {
     }).toList();
   }
 
-  Future<List<ListDetailItemModel>> getAllListDetailsForFamily(List<String> listIds) async {
+  Future<List<ListDetailItemModel>> getAllListDetailsForFamily(
+    List<String> listIds,
+  ) async {
     if (listIds.isEmpty) return [];
     final database = await db;
     final placeholders = List.filled(listIds.length, '?').join(',');
@@ -474,8 +618,12 @@ class LocalDbService {
         nbArticulo: m['nb_articulo'] as String,
         dsDetalle: m['ds_detalle'] as String?,
         status: m['status'] as String? ?? 'pending',
-        fechaCompra: m['fecha_compra'] != null ? DateTime.tryParse(m['fecha_compra'].toString()) : null,
-        fechaAgrego: m['fecha_agrego'] != null ? DateTime.tryParse(m['fecha_agrego'].toString()) : null,
+        fechaCompra: m['fecha_compra'] != null
+            ? DateTime.tryParse(m['fecha_compra'].toString())
+            : null,
+        fechaAgrego: m['fecha_agrego'] != null
+            ? DateTime.tryParse(m['fecha_agrego'].toString())
+            : null,
         idUsuarioFinalizo: m['id_usuario_finalizo'] as String?,
         idUsuarioAgrego: m['id_usuario_agrego'] as String?,
         nuOrder: m['nu_order'] as int? ?? 0,
@@ -483,7 +631,10 @@ class LocalDbService {
     }).toList();
   }
 
-  Future<void> saveListDetailItem(ListDetailItemModel item, {String syncStatus = 'synced'}) async {
+  Future<void> saveListDetailItem(
+    ListDetailItemModel item, {
+    String syncStatus = 'synced',
+  }) async {
     final database = await db;
     final data = {
       'id_detalle': item.idDetalle,
@@ -516,36 +667,77 @@ class LocalDbService {
     }
   }
 
-  Future<void> saveListDetailItemsBatch(List<ListDetailItemModel> items, {List<String>? activeListIds}) async {
-    if (items.isEmpty) return;
+  Future<void> saveListDetailItemsBatch(
+    List<ListDetailItemModel> items, {
+    List<String>? activeListIds,
+    Set<String>? pendingEntityIds,
+    String defaultSyncStatus = 'synced',
+  }) async {
+    if (items.isEmpty && (activeListIds == null || activeListIds.isEmpty))
+      return;
     final database = await db;
     final batch = database.batch();
+    if (activeListIds != null && activeListIds.isNotEmpty) {
+      final listPlaceholders = List.filled(activeListIds.length, '?').join(',');
+      if (items.isEmpty) {
+        batch.delete(
+          'list_detail_items',
+          where: 'id_lista_compra IN ($listPlaceholders) AND sync_status = ?',
+          whereArgs: [...activeListIds, 'synced'],
+        );
+      } else {
+        final itemIds = items.map((i) => i.idDetalle).toList();
+        final itemPlaceholders = List.filled(itemIds.length, '?').join(',');
+        batch.delete(
+          'list_detail_items',
+          where:
+              'id_lista_compra IN ($listPlaceholders) AND sync_status = ? AND id_detalle NOT IN ($itemPlaceholders)',
+          whereArgs: [...activeListIds, 'synced', ...itemIds],
+        );
+      }
+    }
     for (var item in items) {
-      batch.insert(
-        'list_detail_items',
-        {
-          'id_detalle': item.idDetalle,
-          'id_lista_compra': item.idListaCompra,
-          'id_articulo': item.idArticulo,
-          'nb_articulo': item.nbArticulo,
-          'ds_detalle': item.dsDetalle,
-          'status': item.status,
-          'fecha_compra': item.fechaCompra?.toIso8601String(),
-          'fecha_agrego': item.fechaAgrego?.toIso8601String(),
-          'id_usuario_finalizo': item.idUsuarioFinalizo,
-          'id_usuario_agrego': item.idUsuarioAgrego,
-          'nu_order': item.nuOrder,
-          'sync_status': 'synced',
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      final status =
+          (pendingEntityIds != null &&
+              pendingEntityIds.contains(item.idDetalle))
+          ? 'pending'
+          : defaultSyncStatus;
+      batch.insert('list_detail_items', {
+        'id_detalle': item.idDetalle,
+        'id_lista_compra': item.idListaCompra,
+        'id_articulo': item.idArticulo,
+        'nb_articulo': item.nbArticulo,
+        'ds_detalle': item.dsDetalle,
+        'status': item.status,
+        'fecha_compra': item.fechaCompra?.toIso8601String(),
+        'fecha_agrego': item.fechaAgrego?.toIso8601String(),
+        'id_usuario_finalizo': item.idUsuarioFinalizo,
+        'id_usuario_agrego': item.idUsuarioAgrego,
+        'nu_order': item.nuOrder,
+        'sync_status': status,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
   }
 
   Future<void> deleteListDetailItemLocally(String detailId) async {
     final database = await db;
-    await database.delete('list_detail_items', where: 'id_detalle = ?', whereArgs: [detailId]);
+    await database.delete(
+      'list_detail_items',
+      where: 'id_detalle = ?',
+      whereArgs: [detailId],
+    );
+  }
+
+  Future<void> deleteListDetailItemsBatchLocally(List<String> detailIds) async {
+    if (detailIds.isEmpty) return;
+    final database = await db;
+    final placeholders = List.filled(detailIds.length, '?').join(',');
+    await database.delete(
+      'list_detail_items',
+      where: 'id_detalle IN ($placeholders)',
+      whereArgs: detailIds,
+    );
   }
 
   // --- CATÁLOGO DE ARTÍCULOS ---
@@ -559,41 +751,39 @@ class LocalDbService {
     return res.map((m) => ItemCatalogModel.fromMap(m)).toList();
   }
 
-  Future<void> saveCatalogItems(List<ItemCatalogModel> items, {String famId = ''}) async {
+  Future<void> saveCatalogItems(
+    List<ItemCatalogModel> items, {
+    String famId = '',
+  }) async {
     if (items.isEmpty) return;
     final database = await db;
     final batch = database.batch();
     for (var item in items) {
-      batch.insert(
-        'item_catalog',
-        {
-          'id_articulo': item.idArticulo,
-          'id_familia': item.idFamilia,
-          'nb_articulo_es': item.nbArticuloEs,
-          'nb_articulo_en': item.nbArticuloEn,
-          'nu_uso': item.nuUso,
-          'sync_status': 'synced',
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-    }
-    await batch.commit(noResult: true);
-  }
-
-  Future<void> saveCatalogItem(ItemCatalogModel item, {String syncStatus = 'synced'}) async {
-    final database = await db;
-    await database.insert(
-      'item_catalog',
-      {
+      batch.insert('item_catalog', {
         'id_articulo': item.idArticulo,
         'id_familia': item.idFamilia,
         'nb_articulo_es': item.nbArticuloEs,
         'nb_articulo_en': item.nbArticuloEn,
         'nu_uso': item.nuUso,
-        'sync_status': syncStatus,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+        'sync_status': 'synced',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+    await batch.commit(noResult: true);
+  }
+
+  Future<void> saveCatalogItem(
+    ItemCatalogModel item, {
+    String syncStatus = 'synced',
+  }) async {
+    final database = await db;
+    await database.insert('item_catalog', {
+      'id_articulo': item.idArticulo,
+      'id_familia': item.idFamilia,
+      'nb_articulo_es': item.nbArticuloEs,
+      'nb_articulo_en': item.nbArticuloEn,
+      'nu_uso': item.nuUso,
+      'sync_status': syncStatus,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   // --- COLA DE SINCRONIZACIÓN (SYNC QUEUE) ---
@@ -611,7 +801,9 @@ class LocalDbService {
       payload: payload,
     );
     final id = await database.insert('sync_queue', item.toMap());
-    debugPrint("[LOCAL_DB] Encolado cambio en sync_queue: #$id [$action] $collectionName ($entityId)");
+    debugPrint(
+      "[LOCAL_DB] Encolado cambio en sync_queue: #$id [$action] $collectionName ($entityId)",
+    );
     return id;
   }
 
@@ -659,7 +851,9 @@ class LocalDbService {
 
   Future<int> getPendingSyncCount() async {
     final database = await db;
-    final res = await database.rawQuery('SELECT COUNT(*) as count FROM sync_queue');
+    final res = await database.rawQuery(
+      'SELECT COUNT(*) as count FROM sync_queue',
+    );
     return Sqflite.firstIntValue(res) ?? 0;
   }
 
@@ -674,7 +868,9 @@ class LocalDbService {
     return res.map((r) => r['entity_id'] as String).toSet();
   }
 
-  Future<Map<String, String>> getPendingSyncActions(String collectionName) async {
+  Future<Map<String, String>> getPendingSyncActions(
+    String collectionName,
+  ) async {
     final database = await db;
     final res = await database.query(
       'sync_queue',

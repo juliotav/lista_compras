@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
@@ -140,6 +141,13 @@ class _ShoppingListAppState extends State<ShoppingListApp> with WidgetsBindingOb
           backgroundColor: Colors.transparent,
           surfaceTintColor: Colors.transparent,
           centerTitle: true,
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+            systemNavigationBarColor: Color(0xFFF8F9FE),
+            systemNavigationBarIconBrightness: Brightness.dark,
+          ),
           titleTextStyle: TextStyle(
             color: Colors.black87,
             fontSize: 20,
@@ -166,6 +174,13 @@ class _ShoppingListAppState extends State<ShoppingListApp> with WidgetsBindingOb
           backgroundColor: Colors.transparent,
           surfaceTintColor: Colors.transparent,
           centerTitle: true,
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+            systemNavigationBarColor: Color(0xFF12121E),
+            systemNavigationBarIconBrightness: Brightness.light,
+          ),
           titleTextStyle: TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -173,6 +188,29 @@ class _ShoppingListAppState extends State<ShoppingListApp> with WidgetsBindingOb
           ),
         ),
       ),
+      builder: (context, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final overlayStyle = isDark
+            ? const SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.light,
+                statusBarBrightness: Brightness.dark,
+                systemNavigationBarColor: Color(0xFF12121E),
+                systemNavigationBarIconBrightness: Brightness.light,
+              )
+            : const SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.dark,
+                statusBarBrightness: Brightness.light,
+                systemNavigationBarColor: Color(0xFFF8F9FE),
+                systemNavigationBarIconBrightness: Brightness.dark,
+              );
+        SystemChrome.setSystemUIOverlayStyle(overlayStyle);
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: overlayStyle,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: const RootSessionDecider(),
     );
   }

@@ -237,23 +237,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String get btnAdd => 'Agregar';
 
   @override
-  String get finishListTooltip => 'Marcar toda la lista como hecha';
+  String get finishListTooltip => 'Marcar todos como comprados';
 
   @override
   String get cannotFinishPendingItemsErr =>
       'No se puede finalizar la lista si aún tiene artículos por comprar.';
 
   @override
-  String get listFinishedSuccess => '¡Lista completada exitosamente!';
+  String get listFinishedSuccess =>
+      '¡Todos los artículos pendientes fueron marcados como comprados!';
 
   @override
-  String get confirmFinishListTitle => 'Finalizar Lista';
+  String get confirmFinishListTitle => 'Completar Artículos';
 
   @override
-  String get confirmFinishListMsg => '¿Desea finalizar toda la lista?';
+  String get confirmFinishListMsg =>
+      '¿Desea marcar todos los artículos pendientes por comprar como comprados?';
 
   @override
-  String get btnFinish => 'Finalizar';
+  String get btnFinish => 'Completar';
 
   @override
   String get noPendingItemsMsg =>
@@ -711,4 +713,43 @@ class AppLocalizationsEs extends AppLocalizations {
   String itemMarkedPurchased(String name) {
     return '\"$name\" marcado como comprado';
   }
+
+  @override
+  String get restoreCompletedTooltip => 'Agregar todos a por comprar';
+
+  @override
+  String get confirmRestoreCompletedTitle => 'Restaurar artículos comprados';
+
+  @override
+  String get confirmRestoreCompletedMsg =>
+      '¿Deseas agregar todos los artículos comprados de nuevo a artículos por comprar?';
+
+  @override
+  String get btnConfirmRestore => 'Sí, agregar';
+
+  @override
+  String get restoreCompletedSuccess =>
+      'Todos los artículos comprados se agregaron a por comprar.';
+
+  @override
+  String pendingItemsBadge(int count) {
+    return '$count por comprar';
+  }
+
+  @override
+  String get clearCompletedTooltip => 'Limpiar artículos comprados';
+
+  @override
+  String get confirmClearCompletedTitle => 'Limpiar artículos comprados';
+
+  @override
+  String get confirmClearCompletedMsg =>
+      '¿Estás seguro de que deseas eliminar todos los artículos comprados de esta lista?';
+
+  @override
+  String get btnConfirmClear => 'Sí, limpiar';
+
+  @override
+  String get clearCompletedSuccess =>
+      'Se eliminaron los artículos comprados de la lista.';
 }

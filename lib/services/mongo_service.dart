@@ -9,7 +9,8 @@ class MongoService {
   static Future<Db?>? _connectingFuture;
 
   static Future<Db?> _getDb() async {
-    if (MongoConfig.mongoUri == "TU_MONGODB_URI_AQUI" || MongoConfig.mongoUri.isEmpty) {
+    if (MongoConfig.mongoUri == "TU_MONGODB_URI_AQUI" ||
+        MongoConfig.mongoUri.isEmpty) {
       debugPrint("[MONGO SERVICE] ERROR: URI de MongoDB no está configurado.");
       return null;
     }
@@ -44,7 +45,9 @@ class MongoService {
         debugPrint("[MONGO SERVICE] ¡Conexión exitosa a MongoDB!");
         return _db;
       } catch (e) {
-        debugPrint("[MONGO SERVICE] Error de conexión a MongoDB (se reintentará automáticamente): $e");
+        debugPrint(
+          "[MONGO SERVICE] Error de conexión a MongoDB (se reintentará automáticamente): $e",
+        );
         ConnectivityService().reportNetworkFailure();
         try {
           await dbInstance?.close();
@@ -72,7 +75,9 @@ class MongoService {
       if (db == null) return null;
 
       final collection = db.collection(collectionName);
-      final res = await collection.findOne(filter).timeout(const Duration(seconds: 8));
+      final res = await collection
+          .findOne(filter)
+          .timeout(const Duration(seconds: 8));
       return res;
     } catch (e) {
       debugPrint("[MONGO SERVICE] findOne ERROR en $collectionName: $e");
@@ -89,12 +94,29 @@ class MongoService {
     required String collectionName,
     required Map<String, dynamic> filter,
   }) async {
+    final res = await findOrNull(
+      collectionName: collectionName,
+      filter: filter,
+    );
+    return res ?? [];
+  }
+
+  /// Busca múltiples documentos en MongoDB Cloud.
+  /// Retorna null si no hay conexión o si ocurre un error de red/consulta,
+  /// permitiendo distinguir una respuesta vacía legítima ([]) de un fallo de conexión (null).
+  static Future<List<Map<String, dynamic>>?> findOrNull({
+    required String collectionName,
+    required Map<String, dynamic> filter,
+  }) async {
     final db = await _getDb();
-    if (db == null) return [];
+    if (db == null) return null;
 
     try {
       final collection = db.collection(collectionName);
-      final res = await collection.find(filter).toList().timeout(const Duration(seconds: 8));
+      final res = await collection
+          .find(filter)
+          .toList()
+          .timeout(const Duration(seconds: 8));
       return res;
     } catch (e) {
       debugPrint("[MONGO SERVICE] find ERROR en $collectionName: $e");
@@ -102,7 +124,7 @@ class MongoService {
         ConnectivityService().reportNetworkFailure();
       }
       _db = null;
-      return [];
+      return null;
     }
   }
 
@@ -116,7 +138,9 @@ class MongoService {
 
     try {
       final collection = db.collection(collectionName);
-      final res = await collection.insertOne(document).timeout(const Duration(seconds: 8));
+      final res = await collection
+          .insertOne(document)
+          .timeout(const Duration(seconds: 8));
       return res.isSuccess || res.document != null;
     } catch (e) {
       debugPrint("[MONGO SERVICE] insertOne ERROR en $collectionName: $e");
@@ -139,8 +163,12 @@ class MongoService {
 
     try {
       final collection = db.collection(collectionName);
-      final res = await collection.insertMany(documents).timeout(const Duration(seconds: 8));
-      debugPrint("[MONGO SERVICE] insertMany exitoso de ${documents.length} documentos en $collectionName");
+      final res = await collection
+          .insertMany(documents)
+          .timeout(const Duration(seconds: 8));
+      debugPrint(
+        "[MONGO SERVICE] insertMany exitoso de ${documents.length} documentos en $collectionName",
+      );
       return res.isSuccess;
     } catch (e) {
       debugPrint("[MONGO SERVICE] insertMany ERROR en $collectionName: $e");
@@ -157,14 +185,16 @@ class MongoService {
     required String collectionName,
     required Map<String, dynamic> filter,
     required Map<String, dynamic> update,
-    bool upsert = true,
+    bool upsert = false,
   }) async {
     final db = await _getDb();
     if (db == null) return false;
 
     try {
       final collection = db.collection(collectionName);
-      final res = await collection.updateOne(filter, update, upsert: upsert).timeout(const Duration(seconds: 8));
+      final res = await collection
+          .updateOne(filter, update, upsert: upsert)
+          .timeout(const Duration(seconds: 8));
       return res.isSuccess || res.writeError == null;
     } catch (e) {
       debugPrint("[MONGO SERVICE] updateOne ERROR en $collectionName: $e");
@@ -186,7 +216,9 @@ class MongoService {
 
     try {
       final collection = db.collection(collectionName);
-      final res = await collection.deleteOne(filter).timeout(const Duration(seconds: 8));
+      final res = await collection
+          .deleteOne(filter)
+          .timeout(const Duration(seconds: 8));
       return res.isSuccess;
     } catch (e) {
       debugPrint("[MONGO SERVICE] deleteOne ERROR en $collectionName: $e");
@@ -208,7 +240,9 @@ class MongoService {
 
     try {
       final collection = db.collection(collectionName);
-      final res = await collection.deleteMany(filter).timeout(const Duration(seconds: 8));
+      final res = await collection
+          .deleteMany(filter)
+          .timeout(const Duration(seconds: 8));
       debugPrint("[MONGO SERVICE] deleteMany exitoso en $collectionName");
       return res.isSuccess;
     } catch (e) {
@@ -232,8 +266,12 @@ class MongoService {
 
     try {
       final collection = db.collection(collectionName);
-      final res = await collection.bulkWrite(statements).timeout(const Duration(seconds: 10));
-      debugPrint("[MONGO SERVICE] bulkWrite exitoso de ${statements.length} operaciones en $collectionName");
+      final res = await collection
+          .bulkWrite(statements)
+          .timeout(const Duration(seconds: 10));
+      debugPrint(
+        "[MONGO SERVICE] bulkWrite exitoso de ${statements.length} operaciones en $collectionName",
+      );
       return res.isSuccess || res.writeErrors.isEmpty;
     } catch (e) {
       debugPrint("[MONGO SERVICE] bulkWrite ERROR en $collectionName: $e");
@@ -249,7 +287,9 @@ class MongoService {
   static Future<void> close() async {
     if (_db != null) {
       try {
-        debugPrint("[MONGO SERVICE] Cerrando conexión de MongoDB por paso a segundo plano...");
+        debugPrint(
+          "[MONGO SERVICE] Cerrando conexión de MongoDB por paso a segundo plano...",
+        );
         await _db?.close();
       } catch (e) {
         debugPrint("[MONGO SERVICE] Error cerrando conexión de MongoDB: $e");

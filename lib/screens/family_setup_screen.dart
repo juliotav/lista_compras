@@ -342,8 +342,9 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
           IconButton(
             icon: const Icon(Icons.logout_rounded),
             tooltip: l10n.menuLogout,
-            onPressed: () {
-              db.logout();
+            onPressed: () async {
+              await db.logout();
+              if (!context.mounted) return;
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (_) => const LoginScreen()),

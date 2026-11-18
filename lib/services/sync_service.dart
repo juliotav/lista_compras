@@ -86,6 +86,13 @@ class SyncService {
     _debounceTimer = null;
   }
 
+  /// Limpia todo el estado en memoria de mutaciones y tombstones al cerrar o cambiar de sesión
+  void resetState() {
+    cancelDebounce();
+    _recentMutations.clear();
+    _tombstones.clear();
+  }
+
   /// Dispara la sincronización inmediata sin debounce y espera a que el envío a backend termine
   Future<void> syncNow() async {
     cancelDebounce();
@@ -111,127 +118,164 @@ class SyncService {
       if (_syncCompleter != null) {
         await _syncCompleter!.future;
       }
+      final remaining = await _localDb.getPendingSyncQueue();
+      if (remaining.any((i) => i.retryCount <= 10) && !ConnectivityService().isOffline) {
+        return processSyncQueue();
+      }
       return;
     }
     _isProcessing = true;
     _syncCompleter = Completer<void>();
 
     try {
-      final queue = await _localDb.getPendingSyncQueue();
-      if (queue.isEmpty) {
-        return;
-      }
+      while (!ConnectivityService().isOffline) {
+        final queue = await _localDb.getPendingSyncQueue();
+        if (queue.isEmpty) {
+          break;
+        }
 
-      final validQueue = queue.where((i) => i.retryCount <= 10).toList();
-      if (validQueue.isEmpty) return;
+        final validQueue = queue.where((i) => i.retryCount <= 10).toList();
+        if (validQueue.isEmpty) break;
 
-      debugPrint("[SYNC_SERVICE] Procesando cola de sincronización (${validQueue.length} elementos pendientes)...");
+        debugPrint("[SYNC_SERVICE] Procesando cola de sincronización (${validQueue.length} elementos pendientes)...");
 
-      // Agrupar elementos por colección para enviarlos en lotes (bulkWrite)
-      final Map<String, List<SyncQueueItem>> groupedByCollection = {};
-      for (var item in validQueue) {
-        groupedByCollection.putIfAbsent(item.collectionName, () => []).add(item);
-      }
+        // Agrupar elementos por colección para enviarlos en lotes (bulkWrite)
+        final Map<String, List<SyncQueueItem>> groupedByCollection = {};
+        for (var item in validQueue) {
+          groupedByCollection.putIfAbsent(item.collectionName, () => []).add(item);
+        }
 
-      for (var entry in groupedByCollection.entries) {
-        final collectionName = entry.key;
-        final itemsBatch = entry.value;
-        final primaryKeyField = _getPrimaryKeyField(collectionName);
+        bool anyBatchFailed = false;
 
-        if (itemsBatch.length == 1) {
-          final item = itemsBatch.first;
-          bool success = false;
-          try {
-            if (item.action == 'INSERT' || item.action == 'UPDATE') {
-              success = await MongoService.updateOne(
-                collectionName: collectionName,
-                filter: {primaryKeyField: item.entityId},
-                update: {'\$set': item.payload},
-                upsert: true,
-              );
-            } else if (item.action == 'DELETE') {
-              success = await MongoService.deleteOne(
-                collectionName: collectionName,
-                filter: {primaryKeyField: item.entityId},
-              );
-            }
-          } catch (e) {
-            debugPrint("[SYNC_SERVICE] Error procesando #${item.id}: $e");
-            success = false;
-          }
+        for (var entry in groupedByCollection.entries) {
+          final collectionName = entry.key;
+          final itemsBatch = entry.value;
+          final primaryKeyField = _getPrimaryKeyField(collectionName);
 
-          if (success) {
-            if (item.id != null) {
-              await _localDb.removeSyncQueueItem(item.id!);
-            }
-            clearLocalMutation(item.entityId);
-            debugPrint("[SYNC_SERVICE] ¡Elemento #${item.id} sincronizado exitosamente con MongoDB Atlas!");
-          } else {
-            if (ConnectivityService().isOffline) {
-              debugPrint("[SYNC_SERVICE] Pérdida de conexión detectada. Se conserva el ítem #${item.id} en cola sin penalizar reintentos.");
-              break;
-            }
-            if (item.id != null) {
-              await _localDb.updateSyncQueueRetry(item.id!, item.retryCount);
-            }
-            break;
-          }
-        } else {
-          // LOTE DE MÚLTIPLES ELEMENTOS (bulkWrite) en 1 sola llamada de red
-          debugPrint("[SYNC_SERVICE] Sincronizando LOTE de ${itemsBatch.length} elementos en '$collectionName' con MongoDB Atlas en 1 sola llamada...");
-
-          final List<Map<String, Object>> statements = [];
-          final List<int> processedIds = [];
-
-          for (var item in itemsBatch) {
-            if (item.id != null) processedIds.add(item.id!);
-            if (item.action == 'INSERT' || item.action == 'UPDATE') {
-              statements.add({
-                'updateOne': {
-                  'filter': {primaryKeyField: item.entityId},
-                  'update': {'\$set': item.payload},
-                  'upsert': true,
+          if (itemsBatch.length == 1) {
+            final item = itemsBatch.first;
+            bool success = false;
+            try {
+              if (item.action == 'INSERT' || item.action == 'UPDATE') {
+                success = await MongoService.updateOne(
+                  collectionName: collectionName,
+                  filter: {primaryKeyField: item.entityId},
+                  update: {'\$set': item.payload},
+                  upsert: true,
+                );
+              } else if (item.action == 'DELETE') {
+                if (collectionName == MongoConfig.colDetalleLista) {
+                  success = await MongoService.updateOne(
+                    collectionName: collectionName,
+                    filter: {primaryKeyField: item.entityId},
+                    update: {
+                      '\$set': {'status': 'deleted'},
+                    },
+                    upsert: false,
+                  );
+                } else {
+                  success = await MongoService.deleteOne(
+                    collectionName: collectionName,
+                    filter: {primaryKeyField: item.entityId},
+                  );
                 }
-              });
-            } else if (item.action == 'DELETE') {
-              statements.add({
-                'deleteOne': {
-                  'filter': {primaryKeyField: item.entityId},
-                }
-              });
+              }
+            } catch (e) {
+              debugPrint("[SYNC_SERVICE] Error procesando #${item.id}: $e");
+              success = false;
             }
-          }
 
-          bool success = false;
-          try {
-            success = await MongoService.bulkWrite(
-              collectionName: collectionName,
-              statements: statements,
-            );
-          } catch (e) {
-            debugPrint("[SYNC_SERVICE] Error en lote bulkWrite para $collectionName: $e");
-            success = false;
-          }
-
-          if (success) {
-            await _localDb.removeSyncQueueItemsBatch(processedIds);
-            for (var item in itemsBatch) {
+            if (success) {
+              if (item.id != null) {
+                await _localDb.removeSyncQueueItem(item.id!);
+              }
               clearLocalMutation(item.entityId);
-            }
-            debugPrint("[SYNC_SERVICE] ¡LOTE de ${itemsBatch.length} elementos (#${processedIds.first}-#${processedIds.last}) sincronizado exitosamente en MongoDB Atlas en 1 sola petición!");
-          } else {
-            debugPrint("[SYNC_SERVICE] Error enviando lote a Mongo. Se reintentará en el próximo ciclo.");
-            if (ConnectivityService().isOffline) {
-              debugPrint("[SYNC_SERVICE] Pérdida de conexión detectada. Se conserva el lote en cola sin penalizar reintentos.");
-              break;
-            }
-            for (var item in itemsBatch) {
+              debugPrint("[SYNC_SERVICE] ¡Elemento #${item.id} sincronizado exitosamente con MongoDB Atlas!");
+            } else {
+              anyBatchFailed = true;
+              if (ConnectivityService().isOffline) {
+                debugPrint("[SYNC_SERVICE] Pérdida de conexión detectada. Se conserva el ítem #${item.id} en cola sin penalizar reintentos.");
+                break;
+              }
               if (item.id != null) {
                 await _localDb.updateSyncQueueRetry(item.id!, item.retryCount);
               }
+              break;
             }
-            break;
+          } else {
+            // LOTE DE MÚLTIPLES ELEMENTOS (bulkWrite) en 1 sola llamada de red
+            debugPrint("[SYNC_SERVICE] Sincronizando LOTE de ${itemsBatch.length} elementos en '$collectionName' con MongoDB Atlas en 1 sola llamada...");
+
+            final List<Map<String, Object>> statements = [];
+            final List<int> processedIds = [];
+
+            for (var item in itemsBatch) {
+              if (item.id != null) processedIds.add(item.id!);
+              if (item.action == 'INSERT' || item.action == 'UPDATE') {
+                statements.add({
+                  'updateOne': {
+                    'filter': {primaryKeyField: item.entityId},
+                    'update': {'\$set': item.payload},
+                    'upsert': true,
+                  }
+                });
+              } else if (item.action == 'DELETE') {
+                if (collectionName == MongoConfig.colDetalleLista) {
+                  statements.add({
+                    'updateOne': {
+                      'filter': {primaryKeyField: item.entityId},
+                      'update': {
+                        '\$set': {'status': 'deleted'},
+                      },
+                      'upsert': false,
+                    }
+                  });
+                } else {
+                  statements.add({
+                    'deleteOne': {
+                      'filter': {primaryKeyField: item.entityId},
+                    }
+                  });
+                }
+              }
+            }
+
+            bool success = false;
+            try {
+              success = await MongoService.bulkWrite(
+                collectionName: collectionName,
+                statements: statements,
+              );
+            } catch (e) {
+              debugPrint("[SYNC_SERVICE] Error en lote bulkWrite para $collectionName: $e");
+              success = false;
+            }
+
+            if (success) {
+              await _localDb.removeSyncQueueItemsBatch(processedIds);
+              for (var item in itemsBatch) {
+                clearLocalMutation(item.entityId);
+              }
+              debugPrint("[SYNC_SERVICE] ¡LOTE de ${itemsBatch.length} elementos (#${processedIds.first}-#${processedIds.last}) sincronizado exitosamente en MongoDB Atlas en 1 sola petición!");
+            } else {
+              anyBatchFailed = true;
+              debugPrint("[SYNC_SERVICE] Error enviando lote a Mongo. Se reintentará en el próximo ciclo.");
+              if (ConnectivityService().isOffline) {
+                debugPrint("[SYNC_SERVICE] Pérdida de conexión detectada. Se conserva el lote en cola sin penalizar reintentos.");
+                break;
+              }
+              for (var item in itemsBatch) {
+                if (item.id != null) {
+                  await _localDb.updateSyncQueueRetry(item.id!, item.retryCount);
+                }
+              }
+              break;
+            }
           }
+        }
+
+        if (anyBatchFailed) {
+          break;
         }
       }
     } catch (e) {
@@ -271,18 +315,26 @@ class SyncService {
       // 1. Primero vaciar la cola de cambios locales pendientes si los hay
       await processSyncQueue();
 
-      // 2. Descargar listas remotas
-      final remoteListDocs = await MongoService.find(
+      // 2. Descargar listas remotas (si ocurre error de red retorna null y abortamos para proteger caché local)
+      final remoteListDocs = await MongoService.findOrNull(
         collectionName: MongoConfig.colListasCompra,
         filter: {'id_familia': famId},
       );
+      if (remoteListDocs == null) {
+        debugPrint("[SYNC_SERVICE] Fallo de red al consultar listas en pullDeltaSync. Abortando sin alterar SQLite.");
+        return false;
+      }
       final remoteLists = remoteListDocs.map((doc) => ShoppingListModel.fromMap(doc)).toList();
 
       // 3. Descargar catálogo de artículos
-      final remoteCatalogDocs = await MongoService.find(
+      final remoteCatalogDocs = await MongoService.findOrNull(
         collectionName: MongoConfig.colCArticulo,
         filter: {'id_familia': famId},
       );
+      if (remoteCatalogDocs == null) {
+        debugPrint("[SYNC_SERVICE] Fallo de red al consultar catálogo en pullDeltaSync. Abortando sin alterar SQLite.");
+        return false;
+      }
       final remoteCatalog = remoteCatalogDocs.map((doc) => ItemCatalogModel.fromMap(doc)).toList();
 
       // 4. Descargar detalles/productos de todas las listas activas
@@ -294,12 +346,16 @@ class SyncService {
 
       final List<ListDetailItemModel> remoteDetails = [];
       if (allListIds.isNotEmpty) {
-        final detailDocs = await MongoService.find(
+        final detailDocs = await MongoService.findOrNull(
           collectionName: MongoConfig.colDetalleLista,
           filter: {
             'id_lista_compra': {'\$in': allListIds},
           },
         );
+        if (detailDocs == null) {
+          debugPrint("[SYNC_SERVICE] Fallo de red al consultar detalles en pullDeltaSync. Abortando sin alterar SQLite.");
+          return false;
+        }
         for (var doc in detailDocs) {
           final item = ListDetailItemModel.fromMap(doc);
           remoteDetails.add(item);
@@ -326,24 +382,40 @@ class SyncService {
       final pendingDetailActions = await _localDb.getPendingSyncActions(MongoConfig.colDetalleLista);
 
       // --- MERGE LISTAS ---
-      final Map<String, ShoppingListModel> mergedLists = {for (var l in localLists) l.idListaCompra: l};
+      final Map<String, ShoppingListModel> localListsMap = {for (var l in localLists) l.idListaCompra: l};
+      final Map<String, ShoppingListModel> mergedLists = {};
 
       for (var l in remoteLists) {
         final action = pendingListActions[l.idListaCompra];
         final wasDeletedLocally = action == 'DELETE' || isLocallyDeleted(l.idListaCompra, since: pullStartTime);
         if (wasDeletedLocally) {
-          mergedLists.remove(l.idListaCompra);
           continue; // No revivir lista borrada
         }
-        if (action == 'UPDATE' || isLocallyModified(l.idListaCompra, since: pullStartTime)) {
-          final local = mergedLists[l.idListaCompra];
+        if (action == 'UPDATE' || action == 'INSERT' || isLocallyModified(l.idListaCompra, since: pullStartTime)) {
+          final local = localListsMap[l.idListaCompra];
           if (local != null) {
+            mergedLists[l.idListaCompra] = local;
             continue;
           }
         }
         mergedLists[l.idListaCompra] = l;
       }
-      await _localDb.saveShoppingLists(mergedLists.values.toList(), famId: famId);
+
+      // Preservar listas creadas o modificadas localmente que aún no han subido a MongoDB
+      for (var l in localLists) {
+        if (!mergedLists.containsKey(l.idListaCompra)) {
+          final action = pendingListActions[l.idListaCompra];
+          final wasDeletedLocally = action == 'DELETE' || isLocallyDeleted(l.idListaCompra, since: pullStartTime);
+          if (!wasDeletedLocally && (action != null || isLocallyModified(l.idListaCompra, since: pullStartTime))) {
+            mergedLists[l.idListaCompra] = l;
+          }
+        }
+      }
+      await _localDb.saveShoppingLists(
+        mergedLists.values.toList(),
+        famId: famId,
+        pendingEntityIds: pendingListActions.keys.toSet(),
+      );
 
       // --- MERGE CATÁLOGO ---
       final localCatalog = await _localDb.getCatalogItems(famId);
@@ -369,23 +441,28 @@ class SyncService {
       // --- MERGE DETALLES DE PRODUCTOS (GRANULAR POR PRODUCTO) ---
       final activeListIds = mergedLists.values.map((l) => l.idListaCompra).toList();
       final localDetails = await _localDb.getAllListDetailsForFamily(activeListIds);
-      final Map<String, ListDetailItemModel> mergedDetails = {for (var d in localDetails) d.idDetalle: d};
+      final Map<String, ListDetailItemModel> localDetailMap = {for (var d in localDetails) d.idDetalle: d};
+      final Map<String, ListDetailItemModel> mergedDetails = {};
 
       for (var d in remoteDetails) {
+        if (d.status == 'deleted') {
+          debugPrint("[SYNC_SERVICE] Merge: Descartando producto '${d.nbArticulo}' (${d.idDetalle}) con status 'deleted' en Mongo.");
+          continue;
+        }
+
         final action = pendingDetailActions[d.idDetalle];
         final wasDeletedLocally = action == 'DELETE' || isLocallyDeleted(d.idDetalle, since: pullStartTime);
 
         if (wasDeletedLocally) {
           // 👉 EL PRODUCTO FUE BORRADO LOCALMENTE: Ignorar y quitar si existía
           debugPrint("[SYNC_SERVICE] Merge: Descartando producto '${d.nbArticulo}' (${d.idDetalle}) de Mongo porque fue eliminado localmente.");
-          mergedDetails.remove(d.idDetalle);
           continue;
         }
 
-        final wasModifiedLocally = action == 'UPDATE' || isLocallyModified(d.idDetalle, since: pullStartTime);
+        final wasModifiedLocally = action == 'UPDATE' || action == 'INSERT' || isLocallyModified(d.idDetalle, since: pullStartTime);
         if (wasModifiedLocally) {
           // 👉 EL PRODUCTO FUE MODIFICADO LOCALMENTE: Preservar la versión de SQLite/RAM
-          final local = mergedDetails[d.idDetalle];
+          final local = localDetailMap[d.idDetalle];
           if (local != null) {
             mergedDetails[d.idDetalle] = (local.fechaAgrego == null && d.fechaAgrego != null)
                 ? local.copyWith(fechaAgrego: d.fechaAgrego)
@@ -398,9 +475,25 @@ class SyncService {
         mergedDetails[d.idDetalle] = d;
       }
 
+      // Preservar productos creados o modificados localmente que aún están en cola por subir a MongoDB.
+      // Cualquier producto que estaba en SQLite como 'synced' (sin mutación local pendiente) y ya no viene en remoteDetails
+      // fue eliminado por otro integrante de la familia y se descarta para que también desaparezca en este dispositivo.
+      for (var d in localDetails) {
+        if (!mergedDetails.containsKey(d.idDetalle)) {
+          final action = pendingDetailActions[d.idDetalle];
+          final wasDeletedLocally = action == 'DELETE' || isLocallyDeleted(d.idDetalle, since: pullStartTime);
+          if (!wasDeletedLocally && (action != null || isLocallyModified(d.idDetalle, since: pullStartTime))) {
+            mergedDetails[d.idDetalle] = d;
+          } else {
+            debugPrint("[SYNC_SERVICE] Merge: Producto '${d.nbArticulo}' (${d.idDetalle}) eliminado remotamente por otro integrante; removiendo de caché local.");
+          }
+        }
+      }
+
       await _localDb.saveListDetailItemsBatch(
         mergedDetails.values.toList(),
         activeListIds: activeListIds,
+        pendingEntityIds: pendingDetailActions.keys.toSet(),
       );
 
       hasChanges = true;

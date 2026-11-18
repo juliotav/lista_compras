@@ -123,14 +123,18 @@ class DatabaseService extends ChangeNotifier {
   /// - Si isAppOpen es true (al abrir la app o reanudarla), sincroniza con MongoDB para obtener la última versión.
   Future<void> onInternetRestored({bool isAppOpen = false}) async {
     if (isOffline) {
-      debugPrint("[DB_SERVICE] Dispositivo sin conexión (offline). Sincronización omitida.");
+      debugPrint(
+        "[DB_SERVICE] Dispositivo sin conexión (offline). Sincronización omitida.",
+      );
       return;
     }
     if (_isReconnectingSync) return;
 
     final pendingCount = await _localDb.getPendingSyncCount();
     if (!isAppOpen && pendingCount == 0) {
-      debugPrint("[DB_SERVICE] Cola de sincronización en 0 y no es apertura de app. Sincronización omitida.");
+      debugPrint(
+        "[DB_SERVICE] Cola de sincronización en 0 y no es apertura de app. Sincronización omitida.",
+      );
       return;
     }
 
@@ -141,14 +145,20 @@ class DatabaseService extends ChangeNotifier {
         "[DB_SERVICE] --- INICIO DE SINCRONIZACIÓN (${isAppOpen ? 'APERTURA DE APP' : 'PUSH DE $pendingCount CAMBIOS'}) ---",
       );
       if (pendingCount > 0) {
-        debugPrint("[DB_SERVICE] 1/3: Reiniciando contadores de reintento en sync_queue...");
+        debugPrint(
+          "[DB_SERVICE] 1/3: Reiniciando contadores de reintento en sync_queue...",
+        );
         await _localDb.resetSyncQueueRetries();
 
-        debugPrint("[DB_SERVICE] 2/3: Subiendo mutaciones locales pendientes a MongoDB en bulk...");
+        debugPrint(
+          "[DB_SERVICE] 2/3: Subiendo mutaciones locales pendientes a MongoDB en bulk...",
+        );
         await _syncService.syncNow();
       }
 
-      debugPrint("[DB_SERVICE] 3/3: Descargando y fusionando delta remota de todas las listas y familias...");
+      debugPrint(
+        "[DB_SERVICE] 3/3: Descargando y fusionando delta remota de todas las listas y familias...",
+      );
       await fetchFamilyData(isSilentPeriodic: false);
 
       unawaited(checkAppVersion());
@@ -271,18 +281,22 @@ class DatabaseService extends ChangeNotifier {
               filter: {'id_usuario': savedUserId},
             );
             if (remoteUser != null) {
-              _currentUser = UserModel.fromMap(remoteUser);
-              await _localDb.saveUser(_currentUser!);
-              final uIdx = _users.indexWhere(
-                (u) => u.idUsuario == _currentUser!.idUsuario,
-              );
-              if (uIdx != -1) {
-                _users[uIdx] = _currentUser!;
-              } else {
-                _users.add(_currentUser!);
-              }
-              if (_currentUser != null) {
-                _checkAndUpdateUserAppVersion(_currentUser!);
+              final loaded = UserModel.fromMap(remoteUser);
+              if (loaded.nbEmail.trim().isNotEmpty ||
+                  loaded.nbCompleto.trim().isNotEmpty) {
+                _currentUser = loaded;
+                await _localDb.saveUser(_currentUser!);
+                final uIdx = _users.indexWhere(
+                  (u) => u.idUsuario == _currentUser!.idUsuario,
+                );
+                if (uIdx != -1) {
+                  _users[uIdx] = _currentUser!;
+                } else {
+                  _users.add(_currentUser!);
+                }
+                if (_currentUser != null) {
+                  _checkAndUpdateUserAppVersion(_currentUser!);
+                }
               }
             }
             if (_currentUser != null) {
@@ -366,7 +380,8 @@ class DatabaseService extends ChangeNotifier {
           if (envs is Map) {
             final envData = envs[env] ?? envs[env.toLowerCase()];
             if (envData is Map) {
-              final platVer = envData[platform] ?? envData[platform.toLowerCase()];
+              final platVer =
+                  envData[platform] ?? envData[platform.toLowerCase()];
               if (platVer != null) {
                 remoteVer = platVer.toString().trim();
               }
@@ -399,7 +414,9 @@ class DatabaseService extends ChangeNotifier {
           }
         }
       } else {
-        debugPrint("[VERSION CHECK LOG] No se encontró ningún documento en app_version.");
+        debugPrint(
+          "[VERSION CHECK LOG] No se encontró ningún documento en app_version.",
+        );
       }
       _isUpdateRequired = false;
       notifyListeners();
@@ -485,7 +502,9 @@ class DatabaseService extends ChangeNotifier {
   Future<void> _loadFromLocalDb(String famId) async {
     try {
       final localLists = await _localDb.getShoppingLists(famId);
-      final currentFamLists = _shoppingLists.where((l) => l.idFamilia == famId).toList();
+      final currentFamLists = _shoppingLists
+          .where((l) => l.idFamilia == famId)
+          .toList();
       bool listsChanged = false;
       if (localLists.isNotEmpty || currentFamLists.isEmpty) {
         listsChanged = !_areListsEqual(currentFamLists, localLists);
@@ -496,7 +515,9 @@ class DatabaseService extends ChangeNotifier {
       }
 
       final localCatalog = await _localDb.getCatalogItems(famId);
-      final currentFamCatalog = _catalogItems.where((c) => c.idFamilia == famId).toList();
+      final currentFamCatalog = _catalogItems
+          .where((c) => c.idFamilia == famId)
+          .toList();
       bool catalogChanged = false;
       if (localCatalog.isNotEmpty || currentFamCatalog.isEmpty) {
         catalogChanged = !_areCatalogEqual(currentFamCatalog, localCatalog);
@@ -506,21 +527,26 @@ class DatabaseService extends ChangeNotifier {
         }
       }
 
-      final activeListIds = (localLists.isNotEmpty ? localLists : currentFamLists)
-          .map((l) => l.idListaCompra)
-          .toList();
+      final activeListIds =
+          (localLists.isNotEmpty ? localLists : currentFamLists)
+              .map((l) => l.idListaCompra)
+              .toList();
       final localDetails = await _localDb.getAllListDetailsForFamily(
         activeListIds,
       );
 
-      final currentDetails = _listDetailItems.where((d) => activeListIds.contains(d.idListaCompra)).toList();
-      bool detailsChanged = false;
-      if (localDetails.isNotEmpty || currentDetails.isEmpty) {
-        detailsChanged = !_areDetailsEqual(currentDetails, localDetails);
-        if (detailsChanged) {
-          _listDetailItems.removeWhere((d) => activeListIds.contains(d.idListaCompra));
-          _listDetailItems.addAll(localDetails);
-        }
+      final currentDetails = _listDetailItems
+          .where((d) => activeListIds.contains(d.idListaCompra))
+          .toList();
+      final bool detailsChanged = !_areDetailsEqual(
+        currentDetails,
+        localDetails,
+      );
+      if (detailsChanged) {
+        _listDetailItems.removeWhere(
+          (d) => activeListIds.contains(d.idListaCompra),
+        );
+        _listDetailItems.addAll(localDetails);
       }
 
       final localFamilies = await _localDb.getFamilies();
@@ -601,13 +627,16 @@ class DatabaseService extends ChangeNotifier {
     if (userId == null) return;
 
     try {
-      var userFamDocs = await MongoService.find(
+      final userFamDocs = await MongoService.findOrNull(
         collectionName: MongoConfig.colUsuarioFamilia,
         filter: {
           'id_usuario': userId,
           'status': {'\$ne': 'inactive'},
         },
       );
+
+      // Si ocurrió un error de red (null), no alterar las familias locales
+      if (userFamDocs == null) return;
 
       final Set<String> knownFamIds = userFamDocs
           .map((doc) => doc['id_familia'] as String?)
@@ -617,29 +646,49 @@ class DatabaseService extends ChangeNotifier {
 
       final List<FamilyModel> loadedFamilies = [];
       if (knownFamIds.isNotEmpty) {
-        final famDocs = await MongoService.find(
+        final famDocs = await MongoService.findOrNull(
           collectionName: MongoConfig.colFamilia,
           filter: {
             'id_familia': {'\$in': knownFamIds.toList()},
           },
         );
+        if (famDocs == null) return;
         for (var doc in famDocs) {
           loadedFamilies.add(FamilyModel.fromMap(doc));
         }
       }
 
-      // Solo actualizamos familias si obtuvimos resultados válidos del servidor
-      if (loadedFamilies.isNotEmpty) {
-        _userFamilies.clear();
-        _userFamilies.addAll(loadedFamilies);
-        await _localDb.saveFamilies(loadedFamilies);
-        PushNotificationService.syncFamilySubscriptions(
-          _userFamilies.map((f) => f.idFamilia).toList(),
-        );
+      final Set<String> validFamIds = loadedFamilies
+          .map((f) => f.idFamilia)
+          .toSet();
 
+      // Purgar de SQLite y memoria cualquier familia, lista, producto o catálogo residual que no pertenezca a este usuario
+      await _localDb.purgeDataOutsideFamilies(validFamIds);
+      _families.clear();
+      _families.addAll(loadedFamilies);
+      _userFamilies.clear();
+      _userFamilies.addAll(loadedFamilies);
+
+      final removedListIds = _shoppingLists
+          .where((l) => !validFamIds.contains(l.idFamilia))
+          .map((l) => l.idListaCompra)
+          .toSet();
+      _shoppingLists.removeWhere((l) => !validFamIds.contains(l.idFamilia));
+      if (removedListIds.isNotEmpty) {
+        _listDetailItems.removeWhere(
+          (d) => removedListIds.contains(d.idListaCompra),
+        );
+      }
+      _catalogItems.removeWhere((c) => !validFamIds.contains(c.idFamilia));
+
+      await _localDb.saveFamilies(loadedFamilies);
+      PushNotificationService.syncFamilySubscriptions(validFamIds.toList());
+
+      if (loadedFamilies.isNotEmpty) {
         final oldFamId = _currentUser?.idFamilia;
         final isOldFamActive =
-            oldFamId != null && _userFamilies.any((f) => f.idFamilia == oldFamId);
+            oldFamId != null &&
+            _userFamilies.any((f) => f.idFamilia == oldFamId);
 
         if (!isOldFamActive) {
           final activeFamId = _userFamilies.first.idFamilia;
@@ -658,6 +707,18 @@ class DatabaseService extends ChangeNotifier {
           PushNotificationService.subscribeToFamily(activeFamId);
           notifyListeners();
         }
+      } else {
+        // El usuario no pertenece a ninguna familia activa en el servidor
+        _shoppingLists.clear();
+        _listDetailItems.clear();
+        _catalogItems.clear();
+        if (_currentUser?.idFamilia != null) {
+          _currentUser = _currentUser!.copyWith(clearFamilia: true);
+          if (_currentUser != null) {
+            await _localDb.saveUser(_currentUser!);
+          }
+        }
+        notifyListeners();
       }
     } catch (e) {
       debugPrint("[DB_SERVICE LOG] Error en fetchUserFamilies: $e");
@@ -708,7 +769,9 @@ class DatabaseService extends ChangeNotifier {
         "[DB_SERVICE LOG] Dispositivo sin conexión (offline). Omitiendo peticiones de red en fetchFamilyData.",
       );
       final initialFamId = _currentUser?.idFamilia;
-      if (initialFamId != null && initialFamId.isNotEmpty && _listDetailItems.isEmpty) {
+      if (initialFamId != null &&
+          initialFamId.isNotEmpty &&
+          _listDetailItems.isEmpty) {
         await _loadFromLocalDb(initialFamId);
       }
       return;
@@ -716,7 +779,9 @@ class DatabaseService extends ChangeNotifier {
 
     // Si hay una reconexión en curso y esta llamada proviene de un timer periódico, ignorar para evitar colisiones
     if (_isReconnectingSync && isSilentPeriodic) {
-      debugPrint("[DB_SERVICE LOG] Sincronización periódica omitida: reconexión activa.");
+      debugPrint(
+        "[DB_SERVICE LOG] Sincronización periódica omitida: reconexión activa.",
+      );
       return;
     }
 
@@ -730,7 +795,9 @@ class DatabaseService extends ChangeNotifier {
     try {
       // 1. Cargar estado de SQLite de inmediato solo si la memoria RAM no está poblada aún (0ms delay UI)
       final initialFamId = _currentUser?.idFamilia;
-      if (initialFamId != null && initialFamId.isNotEmpty && _listDetailItems.isEmpty) {
+      if (initialFamId != null &&
+          initialFamId.isNotEmpty &&
+          _listDetailItems.isEmpty) {
         await _loadFromLocalDb(initialFamId);
       }
 
@@ -791,6 +858,17 @@ class DatabaseService extends ChangeNotifier {
           );
           for (var userDoc in userDocs) {
             final user = UserModel.fromMap(userDoc).copyWith(idFamilia: famId);
+            if (user.nbEmail.trim().isEmpty && user.nbCompleto.trim().isEmpty) {
+              if (userDoc['_id'] != null) {
+                unawaited(
+                  MongoService.deleteOne(
+                    collectionName: MongoConfig.colUsuario,
+                    filter: {'_id': userDoc['_id']},
+                  ),
+                );
+              }
+              continue;
+            }
             await _localDb.saveUser(user);
             final idx = _users.indexWhere((u) => u.idUsuario == user.idUsuario);
             if (idx == -1) {
@@ -798,13 +876,25 @@ class DatabaseService extends ChangeNotifier {
             } else {
               _users[idx] = user;
             }
+            if (_currentUser != null &&
+                _currentUser!.idUsuario == user.idUsuario &&
+                _currentUser!.nbCompleto.trim().isEmpty) {
+              _currentUser = _currentUser!.copyWith(
+                nbCompleto: user.nbCompleto,
+                nbUsuario: user.nbUsuario,
+                nbEmail: user.nbEmail,
+              );
+              await _localDb.saveUser(_currentUser!);
+            }
           }
         }
 
         // Limpiar de _users y _localDb cualquier usuario que ya no pertenezca a la familia
         for (int i = _users.length - 1; i >= 0; i--) {
           final u = _users[i];
-          if (u.idFamilia == famId && !validMemberIds.contains(u.idUsuario) && u.idUsuario != fam?.idCreador) {
+          if (u.idFamilia == famId &&
+              !validMemberIds.contains(u.idUsuario) &&
+              u.idUsuario != fam?.idCreador) {
             final updated = u.copyWith(clearFamilia: true);
             await _localDb.saveUser(updated);
             _users.removeAt(i);
@@ -824,8 +914,12 @@ class DatabaseService extends ChangeNotifier {
         },
       );
 
-      // 4. Precarga única offline de todas las familias si aún no se ha sellado
-      unawaited(warmUpOfflineCacheForAllFamilies(userId));
+      // 4. Sincronizar el caché offline del resto de familias/grupos a los que pertenece el usuario
+      if (!isSilentPeriodic) {
+        await warmUpOfflineCacheForAllFamilies(userId, forceRefresh: true);
+      } else {
+        await warmUpOfflineCacheForAllFamilies(userId);
+      }
     } catch (e) {
       debugPrint("[DB_SERVICE LOG] Error en fetchFamilyData: $e");
     } finally {
@@ -834,67 +928,56 @@ class DatabaseService extends ChangeNotifier {
     }
   }
 
-  /// Realiza la precarga/migración única de todas las familias del usuario a SQLite
-  /// para garantizar que, si el usuario se queda sin conexión y cambia de familia,
-  /// toda la información de listas, catálogos y productos ya esté disponible en local.
-  /// Una vez completada, se sella con la bandera `offline_cache_v1_userId` y no vuelve a ejecutarse.
-  Future<void> warmUpOfflineCacheForAllFamilies(String userId) async {
+  /// Sincroniza y precarga en SQLite + RAM todas las familias/grupos del usuario
+  /// para garantizar que, al iniciar sesión o quedarse sin conexión y cambiar de grupo,
+  /// todas sus listas nuevas, catálogos y productos estén actualizados en local.
+  Future<void> warmUpOfflineCacheForAllFamilies(
+    String userId, {
+    bool forceRefresh = false,
+  }) async {
     if (isOffline) return;
     final isDone = await _localDb.isOfflineCacheWarmUpDone(userId);
-    if (isDone) return;
+    if (isDone && !forceRefresh) return;
 
     try {
-      debugPrint("[DB_SERVICE] --- INICIANDO PRECARGA ÚNICA OFFLINE PARA TODAS LAS FAMILIAS ($userId) ---");
-      // 1. Obtener todas las familias del usuario
-      final allFamIds = _userFamilies.map((f) => f.idFamilia).where((id) => id.isNotEmpty).toList();
+      final activeFamId = _currentUser?.idFamilia;
+      final allFamIds = _userFamilies
+          .map((f) => f.idFamilia)
+          .where((id) => id.isNotEmpty)
+          .toList();
       if (allFamIds.isEmpty) return;
 
-      // 2. Descargar en lote todas las listas de todas las familias en 1 sola consulta
-      final listDocs = await MongoService.find(
-        collectionName: MongoConfig.colListasCompra,
-        filter: {
-          'id_familia': {'\$in': allFamIds},
-        },
-      );
-      final allLists = listDocs.map((doc) => ShoppingListModel.fromMap(doc)).toList();
+      // Las familias secundarias (la activa ya fue sincronizada por pullDeltaSync)
+      final targetFamIds = isDone
+          ? allFamIds.where((id) => id != activeFamId).toList()
+          : allFamIds;
 
-      // Guardar listas en SQLite por familia
-      for (var fId in allFamIds) {
-        final famLists = allLists.where((l) => l.idFamilia == fId).toList();
-        await _localDb.saveShoppingLists(famLists, famId: fId);
+      if (targetFamIds.isEmpty) {
+        if (!isDone) {
+          await _localDb.setOfflineCacheWarmUpDone(userId, done: true);
+        }
+        return;
       }
 
-      // 3. Descargar en lote el catálogo de todas las familias en 1 sola consulta
-      final catalogDocs = await MongoService.find(
-        collectionName: MongoConfig.colCArticulo,
-        filter: {
-          'id_familia': {'\$in': allFamIds},
-        },
+      debugPrint(
+        "[DB_SERVICE] --- SINCRONIZANDO CACHÉ OFFLINE DE GRUPOS/FAMILIAS (${targetFamIds.length} grupos para $userId) ---",
       );
-      final allCatalog = catalogDocs.map((doc) => ItemCatalogModel.fromMap(doc)).toList();
-      for (var fId in allFamIds) {
-        final famCatalog = allCatalog.where((c) => c.idFamilia == fId).toList();
-        await _localDb.saveCatalogItems(famCatalog, famId: fId);
-      }
 
-      // 4. Descargar en lote todos los detalles/productos de todas las listas en 1 sola consulta
-      final allListIds = allLists.map((l) => l.idListaCompra).toList();
-      if (allListIds.isNotEmpty) {
-        final detailDocs = await MongoService.find(
-          collectionName: MongoConfig.colDetalleLista,
-          filter: {
-            'id_lista_compra': {'\$in': allListIds},
+      for (final fId in targetFamIds) {
+        await _syncService.pullDeltaSync(
+          famId: fId,
+          onDataUpdated: () async {
+            await _loadFromLocalDb(fId);
           },
         );
-        final allDetails = detailDocs.map((doc) => ListDetailItemModel.fromMap(doc)).toList();
-        await _localDb.saveListDetailItemsBatch(allDetails, activeListIds: allListIds);
       }
 
-      // 5. Sellar la migración en SharedPreferences para que jamás vuelva a correr
       await _localDb.setOfflineCacheWarmUpDone(userId, done: true);
-      debugPrint("[DB_SERVICE] --- ¡PRECARGA ÚNICA OFFLINE SELLADA CON ÉXITO PARA $userId! ---");
+      debugPrint(
+        "[DB_SERVICE] --- ¡CACHÉ OFFLINE DE TODOS LOS GRUPOS ACTUALIZADO CON ÉXITO PARA $userId! ---",
+      );
     } catch (e) {
-      debugPrint("[DB_SERVICE] Error en precarga única offline: $e");
+      debugPrint("[DB_SERVICE] Error en sincronización offline de grupos: $e");
     }
   }
 
@@ -921,9 +1004,15 @@ class DatabaseService extends ChangeNotifier {
       throw Exception("El correo electrónico ya está registrado.");
     }
 
-    // Asegurar que no quede ningún residuo local (en memoria ni en SQLite) para este correo
-    _users.removeWhere((u) => u.nbEmail.toLowerCase() == cleanEmail);
-    await _localDb.deleteUserByEmail(cleanEmail);
+    // Limpiar por completo cualquier dato residual en memoria y SQLite de sesiones previas
+    _syncService.resetState();
+    _users.clear();
+    _userFamilies.clear();
+    _families.clear();
+    _shoppingLists.clear();
+    _listDetailItems.clear();
+    _catalogItems.clear();
+    await _localDb.clearAllData();
 
     final passHash = SecurityService.hashPassword(cleanPass);
     final rnd = Random();
@@ -1000,7 +1089,9 @@ class DatabaseService extends ChangeNotifier {
 
     // 1. Validar si hay un bloqueo de 10 minutos activo
     if (userDoc['fh_bloqueo_activacion'] != null) {
-      final blockedUntil = DateTime.tryParse(userDoc['fh_bloqueo_activacion'].toString());
+      final blockedUntil = DateTime.tryParse(
+        userDoc['fh_bloqueo_activacion'].toString(),
+      );
       if (blockedUntil != null && now.isBefore(blockedUntil)) {
         final remainingSeconds = blockedUntil.difference(now).inSeconds;
         final remainingMinutes = (remainingSeconds / 60).ceil();
@@ -1017,9 +1108,13 @@ class DatabaseService extends ChangeNotifier {
     int sendCount = (userDoc['nu_envios_activacion'] as num?)?.toInt() ?? 0;
     DateTime? firstSentInWindow;
     if (userDoc['fh_primer_envio_ventana'] != null) {
-      firstSentInWindow = DateTime.tryParse(userDoc['fh_primer_envio_ventana'].toString());
+      firstSentInWindow = DateTime.tryParse(
+        userDoc['fh_primer_envio_ventana'].toString(),
+      );
     } else if (userDoc['fh_ultimo_envio_activacion'] != null) {
-      firstSentInWindow = DateTime.tryParse(userDoc['fh_ultimo_envio_activacion'].toString());
+      firstSentInWindow = DateTime.tryParse(
+        userDoc['fh_ultimo_envio_activacion'].toString(),
+      );
     }
 
     DateTime windowStart = firstSentInWindow ?? now;
@@ -1030,7 +1125,8 @@ class DatabaseService extends ChangeNotifier {
 
     if (sendCount >= 5) {
       final blockUntil = (userDoc['fh_bloqueo_activacion'] != null)
-          ? DateTime.tryParse(userDoc['fh_bloqueo_activacion'].toString()) ?? windowStart.add(const Duration(minutes: 10))
+          ? DateTime.tryParse(userDoc['fh_bloqueo_activacion'].toString()) ??
+                windowStart.add(const Duration(minutes: 10))
           : windowStart.add(const Duration(minutes: 10));
       final remainingSeconds = max(1, blockUntil.difference(now).inSeconds);
       final remainingMinutes = (remainingSeconds / 60).ceil();
@@ -1076,7 +1172,8 @@ class DatabaseService extends ChangeNotifier {
 
     // 4. Enviar correo
     final targetEmail = userDoc['nb_email'] as String? ?? _currentUser!.nbEmail;
-    final targetName = userDoc['nb_completo'] as String? ?? _currentUser!.nbCompleto;
+    final targetName =
+        userDoc['nb_completo'] as String? ?? _currentUser!.nbCompleto;
 
     final sent = await EmailService.sendActivationCodeEmail(
       toEmail: targetEmail,
@@ -1191,7 +1288,9 @@ class DatabaseService extends ChangeNotifier {
 
     int remainingBlockSeconds = 0;
     if (userDoc['fh_bloqueo_activacion'] != null) {
-      final blockedUntil = DateTime.tryParse(userDoc['fh_bloqueo_activacion'].toString());
+      final blockedUntil = DateTime.tryParse(
+        userDoc['fh_bloqueo_activacion'].toString(),
+      );
       if (blockedUntil != null && now.isBefore(blockedUntil)) {
         remainingBlockSeconds = blockedUntil.difference(now).inSeconds;
       }
@@ -1200,7 +1299,9 @@ class DatabaseService extends ChangeNotifier {
     int sendCount = (userDoc['nu_envios_activacion'] as num?)?.toInt() ?? 1;
     DateTime? windowStart;
     if (userDoc['fh_primer_envio_ventana'] != null) {
-      windowStart = DateTime.tryParse(userDoc['fh_primer_envio_ventana'].toString());
+      windowStart = DateTime.tryParse(
+        userDoc['fh_primer_envio_ventana'].toString(),
+      );
     }
     if (windowStart != null && now.difference(windowStart).inMinutes >= 10) {
       sendCount = 0;
@@ -1208,7 +1309,9 @@ class DatabaseService extends ChangeNotifier {
 
     int remainingPinSeconds = 0;
     if (userDoc['fh_activacion_expires'] != null) {
-      final expiresAt = DateTime.tryParse(userDoc['fh_activacion_expires'].toString());
+      final expiresAt = DateTime.tryParse(
+        userDoc['fh_activacion_expires'].toString(),
+      );
       if (expiresAt != null && now.isBefore(expiresAt)) {
         remainingPinSeconds = expiresAt.difference(now).inSeconds;
       }
@@ -1249,7 +1352,19 @@ class DatabaseService extends ChangeNotifier {
     if (remoteUserMap != null) {
       final storedPass = remoteUserMap['cl_pass'] as String?;
       if (storedPass == passHash) {
-        _currentUser = UserModel.fromMap(remoteUserMap);
+        final loggedInUser = UserModel.fromMap(remoteUserMap);
+        // Limpiar cualquier dato residual en memoria y SQLite de un usuario anterior antes de iniciar la nueva sesión
+        _syncService.resetState();
+        _users.clear();
+        _userFamilies.clear();
+        _families.clear();
+        _shoppingLists.clear();
+        _listDetailItems.clear();
+        _catalogItems.clear();
+        await _localDb.clearAllData();
+
+        _currentUser = loggedInUser;
+        _users.add(loggedInUser);
         await _localDb.saveUser(_currentUser!);
         await _localDb.saveSessionUserId(_currentUser!.idUsuario);
         await _checkAndUpdateUserAppVersion(_currentUser!);
@@ -1272,7 +1387,17 @@ class DatabaseService extends ChangeNotifier {
                     u.nbUsuario!.toLowerCase() == cleanInput)) &&
             u.clPass == passHash,
       );
+      _syncService.resetState();
+      _users.clear();
+      _userFamilies.clear();
+      _families.clear();
+      _shoppingLists.clear();
+      _listDetailItems.clear();
+      _catalogItems.clear();
+      await _localDb.clearAllData();
+
       _currentUser = user;
+      _users.add(user);
       await _localDb.saveUser(user);
       await _localDb.saveSessionUserId(user.idUsuario);
       await _checkAndUpdateUserAppVersion(_currentUser!);
@@ -1288,17 +1413,32 @@ class DatabaseService extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    _syncService.cancelDebounce();
+    _backgroundSyncTimeoutTimer?.cancel();
+    _backgroundSyncTimeoutTimer = null;
+    _isBackgroundSyncing = false;
+    _isFetchingFamilyData = false;
+    _isReconnectingSync = false;
+
+    // Si hay conexión, intentar vaciar cambios pendientes en cola antes de limpiar la sesión local
+    if (isOnline) {
+      try {
+        await _syncService.syncNow();
+      } catch (_) {}
+    }
+
+    _syncService.resetState();
     _currentUser = null;
     _users.clear();
     _userFamilies.clear();
     _families.clear();
-    await _localDb.clearSession();
     _shoppingLists.clear();
     _listDetailItems.clear();
     _catalogItems.clear();
-    await PushNotificationService.unsubscribeAllFamilies();
+    _initSeedData();
     notifyListeners();
+
+    await _localDb.clearAllData();
+    await PushNotificationService.unsubscribeAllFamilies();
   }
 
   /// Elimina de forma permanente la cuenta del usuario y sus datos de MongoDB y del almacenamiento local.
@@ -1310,7 +1450,8 @@ class DatabaseService extends ChangeNotifier {
       return {'success': false, 'error': 'no_user'};
     }
 
-    if (!isPendingActivation || (password != null && password.trim().isNotEmpty)) {
+    if (!isPendingActivation ||
+        (password != null && password.trim().isNotEmpty)) {
       final cleanPass = (password ?? '').trim();
       final passHash = SecurityService.hashPassword(cleanPass);
       if (_currentUser!.clPass != passHash) {
@@ -1333,7 +1474,8 @@ class DatabaseService extends ChangeNotifier {
           .cast<String>()
           .toSet();
 
-      if (_currentUser?.idFamilia != null && _currentUser!.idFamilia!.isNotEmpty) {
+      if (_currentUser?.idFamilia != null &&
+          _currentUser!.idFamilia!.isNotEmpty) {
         familyIds.add(_currentUser!.idFamilia!);
       }
 
@@ -1397,7 +1539,8 @@ class DatabaseService extends ChangeNotifier {
             filter: {'id_familia': famId},
           );
           if (famDoc != null && famDoc['id_creador'] == userId) {
-            final newCreatorId = otherActiveMembers.first['id_usuario'] as String;
+            final newCreatorId =
+                otherActiveMembers.first['id_usuario'] as String;
             await MongoService.updateOne(
               collectionName: MongoConfig.colFamilia,
               filter: {'id_familia': famId},
@@ -2086,7 +2229,10 @@ class DatabaseService extends ChangeNotifier {
     );
 
     // 1. Guardar en SQLite localmente de inmediato (0ms UI feedback)
-    _syncService.recordLocalMutation(entityId: newList.idListaCompra, action: 'INSERT');
+    _syncService.recordLocalMutation(
+      entityId: newList.idListaCompra,
+      action: 'INSERT',
+    );
     await _localDb.saveShoppingList(newList, syncStatus: 'pending');
     _shoppingLists.add(newList);
     notifyListeners();
@@ -2107,6 +2253,13 @@ class DatabaseService extends ChangeNotifier {
     );
   }
 
+  /// Retorna la cantidad de artículos pendientes por comprar en una lista
+  int getPendingItemsCount(String idListaCompra) {
+    return _listDetailItems
+        .where((item) => item.idListaCompra == idListaCompra && item.isPending)
+        .length;
+  }
+
   Future<void> softDeleteShoppingList(String idListaCompra) async {
     final idx = _shoppingLists.indexWhere(
       (l) => l.idListaCompra == idListaCompra,
@@ -2117,7 +2270,10 @@ class DatabaseService extends ChangeNotifier {
       final updatedList = target.copyWith(isActive: false);
       _shoppingLists[idx] = updatedList;
 
-      _syncService.recordLocalMutation(entityId: idListaCompra, action: 'DELETE');
+      _syncService.recordLocalMutation(
+        entityId: idListaCompra,
+        action: 'DELETE',
+      );
       await _localDb.saveShoppingList(updatedList, syncStatus: 'pending');
       notifyListeners();
 
@@ -2131,24 +2287,31 @@ class DatabaseService extends ChangeNotifier {
     }
   }
 
-  /// Finaliza toda la lista: marca todos los elementos como comprados y la lista como hecha
+  /// Marca todos los elementos pendientes de la lista como comprados sin cerrar ni concluir la lista
   Future<void> finishAndCompleteEntireList(String idListaCompra) async {
-    final nowIso = DateTime.now().toIso8601String();
+    final now = DateTime.now();
+    final nowIso = now.toIso8601String();
     final userId = _currentUser?.idUsuario;
+    bool anyUpdated = false;
 
     for (int i = 0; i < _listDetailItems.length; i++) {
       if (_listDetailItems[i].idListaCompra == idListaCompra &&
           _listDetailItems[i].isPending) {
+        anyUpdated = true;
         _incrementCatalogUsage(
           _listDetailItems[i].idArticulo,
           _listDetailItems[i].nbArticulo,
         );
         final updatedItem = _listDetailItems[i].copyWith(
           status: 'completed',
-          fechaCompra: DateTime.now(),
+          fechaCompra: now,
           idUsuarioFinalizo: userId,
         );
         _listDetailItems[i] = updatedItem;
+        _syncService.recordLocalMutation(
+          entityId: updatedItem.idDetalle,
+          action: 'UPDATE',
+        );
         await _localDb.saveListDetailItem(updatedItem, syncStatus: 'pending');
 
         await _localDb.enqueueSyncItem(
@@ -2164,25 +2327,11 @@ class DatabaseService extends ChangeNotifier {
       }
     }
 
-    final idx = _shoppingLists.indexWhere(
-      (l) => l.idListaCompra == idListaCompra,
-    );
-    if (idx != -1) {
-      final updatedList = _shoppingLists[idx].copyWith(isCompleted: true);
-      _shoppingLists[idx] = updatedList;
-      await _localDb.saveShoppingList(updatedList, syncStatus: 'pending');
-
-      await _localDb.enqueueSyncItem(
-        collectionName: MongoConfig.colListasCompra,
-        action: 'UPDATE',
-        entityId: idListaCompra,
-        payload: {'is_completed': true},
-      );
-    }
+    if (!anyUpdated) return;
 
     notifyListeners();
     _checkAndTriggerPurchaseNotification(idListaCompra);
-    _syncService.triggerSync();
+    _syncService.triggerSync(delay: Duration.zero);
   }
 
   Future<bool> markListAsCompleted(String idListaCompra) async {
@@ -2263,9 +2412,14 @@ class DatabaseService extends ChangeNotifier {
 
     for (int i = 0; i < _listDetailItems.length; i++) {
       if (_listDetailItems[i].idArticulo == idArticulo) {
-        final updatedDetail = _listDetailItems[i].copyWith(nbArticulo: cleanName);
+        final updatedDetail = _listDetailItems[i].copyWith(
+          nbArticulo: cleanName,
+        );
         _listDetailItems[i] = updatedDetail;
-        _syncService.recordLocalMutation(entityId: updatedDetail.idDetalle, action: 'UPDATE');
+        _syncService.recordLocalMutation(
+          entityId: updatedDetail.idDetalle,
+          action: 'UPDATE',
+        );
         await _localDb.saveListDetailItem(updatedDetail, syncStatus: 'pending');
         await _localDb.enqueueSyncItem(
           collectionName: MongoConfig.colDetalleLista,
@@ -2282,10 +2436,7 @@ class DatabaseService extends ChangeNotifier {
       collectionName: MongoConfig.colCArticulo,
       action: 'UPDATE',
       entityId: idArticulo,
-      payload: {
-        'nb_articulo_es': cleanName,
-        'nb_articulo_en': cleanName,
-      },
+      payload: {'nb_articulo_es': cleanName, 'nb_articulo_en': cleanName},
     );
 
     await _syncService.syncNow();
@@ -2315,7 +2466,10 @@ class DatabaseService extends ChangeNotifier {
       final target = _catalogItems[idx];
       final updatedCatalog = target.copyWith(nuUso: target.nuUso + 1);
       _catalogItems[idx] = updatedCatalog;
-      _syncService.recordLocalMutation(entityId: target.idArticulo, action: 'UPDATE');
+      _syncService.recordLocalMutation(
+        entityId: target.idArticulo,
+        action: 'UPDATE',
+      );
       _localDb.saveCatalogItem(updatedCatalog, syncStatus: 'pending');
 
       _localDb.enqueueSyncItem(
@@ -2408,7 +2562,10 @@ class DatabaseService extends ChangeNotifier {
 
       _listDetailItems.removeAt(completedExistingIdx);
       _listDetailItems.add(reactivatedItem);
-      _syncService.recordLocalMutation(entityId: reactivatedItem.idDetalle, action: 'UPDATE');
+      _syncService.recordLocalMutation(
+        entityId: reactivatedItem.idDetalle,
+        action: 'UPDATE',
+      );
       await _localDb.saveListDetailItem(reactivatedItem, syncStatus: 'pending');
       notifyListeners();
 
@@ -2449,7 +2606,10 @@ class DatabaseService extends ChangeNotifier {
 
     // Agregar DE INMEDIATO en SQLite y en memoria local (0ms UI latency)
     _listDetailItems.add(newItem);
-    _syncService.recordLocalMutation(entityId: newItem.idDetalle, action: 'INSERT');
+    _syncService.recordLocalMutation(
+      entityId: newItem.idDetalle,
+      action: 'INSERT',
+    );
     await _localDb.saveListDetailItem(newItem, syncStatus: 'pending');
     notifyListeners();
 
@@ -2743,6 +2903,96 @@ class DatabaseService extends ChangeNotifier {
     }
   }
 
+  /// Restaura todos los artículos comprados de una lista de nuevo a pendientes (0ms UI latency)
+  Future<int> restoreAllCompletedItems(String idListaCompra) async {
+    int nextOrder = _listDetailItems
+        .where((i) => i.idListaCompra == idListaCompra && i.isPending)
+        .length;
+
+    final now = DateTime.now();
+    final userId = _currentUser?.idUsuario;
+    final List<ListDetailItemModel> updatedItems = [];
+
+    for (int i = 0; i < _listDetailItems.length; i++) {
+      final item = _listDetailItems[i];
+      if (item.idListaCompra == idListaCompra && item.isCompleted) {
+        final updated = item.copyWith(
+          status: 'pending',
+          clearFechaCompra: true,
+          clearIdUsuarioFinalizo: true,
+          fechaAgrego: now,
+          idUsuarioAgrego: userId,
+          nuOrder: nextOrder++,
+        );
+        _listDetailItems[i] = updated;
+        updatedItems.add(updated);
+        _syncService.recordLocalMutation(
+          entityId: updated.idDetalle,
+          action: 'UPDATE',
+        );
+      }
+    }
+
+    if (updatedItems.isEmpty) return 0;
+
+    await _localDb.saveListDetailItemsBatch(
+      updatedItems,
+      defaultSyncStatus: 'pending',
+    );
+    notifyListeners();
+
+    for (final updated in updatedItems) {
+      await _localDb.enqueueSyncItem(
+        collectionName: MongoConfig.colDetalleLista,
+        action: 'UPDATE',
+        entityId: updated.idDetalle,
+        payload: {
+          'status': 'pending',
+          'fecha_compra': null,
+          'id_usuario_finalizo': null,
+          'fecha_agrego': updated.fechaAgrego?.toIso8601String(),
+          'id_usuario_agrego': updated.idUsuarioAgrego,
+          'nu_order': updated.nuOrder,
+        },
+      );
+    }
+
+    _checkAndTriggerListNotification(idListaCompra);
+    _syncService.triggerSync(delay: Duration.zero);
+    return updatedItems.length;
+  }
+
+  /// Elimina físicamente todos los artículos comprados de una lista (0ms UI latency)
+  Future<int> clearAllCompletedItems(String idListaCompra) async {
+    final List<String> idsToDelete = _listDetailItems
+        .where((i) => i.idListaCompra == idListaCompra && i.isCompleted)
+        .map((i) => i.idDetalle)
+        .toList();
+
+    if (idsToDelete.isEmpty) return 0;
+
+    for (final idDetalle in idsToDelete) {
+      _syncService.recordLocalMutation(entityId: idDetalle, action: 'DELETE');
+    }
+
+    final idsSet = idsToDelete.toSet();
+    _listDetailItems.removeWhere((item) => idsSet.contains(item.idDetalle));
+    await _localDb.deleteListDetailItemsBatchLocally(idsToDelete);
+    notifyListeners();
+
+    for (final idDetalle in idsToDelete) {
+      await _localDb.enqueueSyncItem(
+        collectionName: MongoConfig.colDetalleLista,
+        action: 'DELETE',
+        entityId: idDetalle,
+        payload: {'id_detalle': idDetalle},
+      );
+    }
+
+    _syncService.triggerSync(delay: Duration.zero);
+    return idsToDelete.length;
+  }
+
   Future<void> reorderPendingItems(
     String idListaCompra,
     int oldIndex,
@@ -2768,12 +3018,18 @@ class DatabaseService extends ChangeNotifier {
       if (idxInMemory != -1) {
         _listDetailItems[idxInMemory] = updatedItem;
       }
-      _syncService.recordLocalMutation(entityId: updatedItem.idDetalle, action: 'UPDATE');
+      _syncService.recordLocalMutation(
+        entityId: updatedItem.idDetalle,
+        action: 'UPDATE',
+      );
     }
 
     notifyListeners();
 
-    await _localDb.saveListDetailItemsBatch(updatedItems);
+    await _localDb.saveListDetailItemsBatch(
+      updatedItems,
+      defaultSyncStatus: 'pending',
+    );
 
     for (var updated in updatedItems) {
       await _localDb.enqueueSyncItem(
@@ -2796,7 +3052,9 @@ class DatabaseService extends ChangeNotifier {
     if (pendingList.isEmpty) return;
 
     pendingList.sort((a, b) {
-      final cmp = a.nbArticulo.toLowerCase().compareTo(b.nbArticulo.toLowerCase());
+      final cmp = a.nbArticulo.toLowerCase().compareTo(
+        b.nbArticulo.toLowerCase(),
+      );
       return ascending ? cmp : -cmp;
     });
 
@@ -2813,7 +3071,10 @@ class DatabaseService extends ChangeNotifier {
         if (idxInMemory != -1) {
           _listDetailItems[idxInMemory] = updatedItem;
         }
-        _syncService.recordLocalMutation(entityId: updatedItem.idDetalle, action: 'UPDATE');
+        _syncService.recordLocalMutation(
+          entityId: updatedItem.idDetalle,
+          action: 'UPDATE',
+        );
       }
     }
 
@@ -2821,7 +3082,10 @@ class DatabaseService extends ChangeNotifier {
 
     notifyListeners();
 
-    await _localDb.saveListDetailItemsBatch(updatedItems);
+    await _localDb.saveListDetailItemsBatch(
+      updatedItems,
+      defaultSyncStatus: 'pending',
+    );
 
     for (var updated in updatedItems) {
       await _localDb.enqueueSyncItem(

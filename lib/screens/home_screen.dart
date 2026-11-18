@@ -385,8 +385,9 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ListTile(
                 leading: const Icon(Icons.logout_rounded, color: Colors.red),
                 title: Text(l10n.menuLogout, style: const TextStyle(color: Colors.red)),
-                onTap: () {
-                  db.logout();
+                onTap: () async {
+                  await db.logout();
+                  if (!context.mounted) return;
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -605,54 +606,127 @@ class _HomeScreenState extends State<HomeScreen> {
                         itemCount: shoppingLists.length,
                         itemBuilder: (context, index) {
                           final list = shoppingLists[index];
+                          final pendingCount = db.getPendingItemsCount(list.idListaCompra);
+                          final isDark = theme.brightness == Brightness.dark;
 
                           final cardChild = Card(
                             elevation: list.isDefault ? 3 : 1,
                             margin: const EdgeInsets.symmetric(vertical: 6),
+                            clipBehavior: Clip.antiAlias,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                               side: list.isDefault
                                   ? BorderSide(color: theme.colorScheme.primary, width: 2)
                                   : BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
                             ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                                leading: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: list.isDefault
-                                        ? theme.colorScheme.primary.withValues(alpha: 0.15)
-                                        : theme.colorScheme.onSurface.withValues(alpha: 0.08),
-                                    shape: BoxShape.circle,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ListDetailScreen(shoppingList: list),
                                   ),
-                                  child: Icon(
-                                    list.isDefault ? Icons.star_rounded : Icons.shopping_bag_rounded,
-                                    color: list.isDefault ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                  ),
-                                ),
-                                title: Text(
-                                  list.nbLista,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    color: list.isDefault ? theme.colorScheme.primary : theme.colorScheme.onSurface,
-                                  ),
-                                ),
-                                subtitle: list.isDefault
-                                    ? Text(l10n.primaryFixedListTag, style: const TextStyle(fontSize: 12, color: Colors.grey))
-                                    : Text(l10n.swipeToDeleteHint, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                                trailing: const Icon(Icons.chevron_right_rounded, size: 28),
-                                onTap: () async {
-                                  await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ListDetailScreen(shoppingList: list),
+                                );
+                                _refreshData();
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 10, 12, 12),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: list.isDefault
+                                            ? theme.colorScheme.primary.withValues(alpha: 0.15)
+                                            : theme.colorScheme.onSurface.withValues(alpha: 0.08),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        list.isDefault ? Icons.star_rounded : Icons.shopping_bag_rounded,
+                                        color: list.isDefault
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                      ),
                                     ),
-                                  );
-                                  _refreshData();
-                                },
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                child: Padding(
+                                                  padding: const EdgeInsets.only(top: 2),
+                                                  child: Text(
+                                                    list.nbLista,
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 18,
+                                                      color: list.isDefault
+                                                          ? theme.colorScheme.primary
+                                                          : theme.colorScheme.onSurface,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: pendingCount > 0
+                                                      ? theme.colorScheme.primary.withValues(alpha: isDark ? 0.22 : 0.12)
+                                                      : theme.colorScheme.onSurface.withValues(alpha: 0.06),
+                                                  borderRadius: BorderRadius.circular(10),
+                                                  border: Border.all(
+                                                    color: pendingCount > 0
+                                                        ? theme.colorScheme.primary.withValues(alpha: 0.35)
+                                                        : theme.dividerColor.withValues(alpha: 0.3),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  l10n.pendingItemsBadge(pendingCount),
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: pendingCount > 0
+                                                        ? theme.colorScheme.primary
+                                                        : theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: list.isDefault
+                                                    ? Text(
+                                                        l10n.primaryFixedListTag,
+                                                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                                      )
+                                                    : Text(
+                                                        l10n.swipeToDeleteHint,
+                                                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                                      ),
+                                              ),
+                                              Icon(
+                                                Icons.chevron_right_rounded,
+                                                size: 24,
+                                                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           );

@@ -539,7 +539,7 @@ abstract class AppLocalizations {
   /// No description provided for @finishListTooltip.
   ///
   /// In es, this message translates to:
-  /// **'Marcar toda la lista como hecha'**
+  /// **'Marcar todos como comprados'**
   String get finishListTooltip;
 
   /// No description provided for @cannotFinishPendingItemsErr.
@@ -551,25 +551,25 @@ abstract class AppLocalizations {
   /// No description provided for @listFinishedSuccess.
   ///
   /// In es, this message translates to:
-  /// **'¡Lista completada exitosamente!'**
+  /// **'¡Todos los artículos pendientes fueron marcados como comprados!'**
   String get listFinishedSuccess;
 
   /// No description provided for @confirmFinishListTitle.
   ///
   /// In es, this message translates to:
-  /// **'Finalizar Lista'**
+  /// **'Completar Artículos'**
   String get confirmFinishListTitle;
 
   /// No description provided for @confirmFinishListMsg.
   ///
   /// In es, this message translates to:
-  /// **'¿Desea finalizar toda la lista?'**
+  /// **'¿Desea marcar todos los artículos pendientes por comprar como comprados?'**
   String get confirmFinishListMsg;
 
   /// No description provided for @btnFinish.
   ///
   /// In es, this message translates to:
-  /// **'Finalizar'**
+  /// **'Completar'**
   String get btnFinish;
 
   /// No description provided for @noPendingItemsMsg.
@@ -1345,6 +1345,72 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'\"{name}\" marcado como comprado'**
   String itemMarkedPurchased(String name);
+
+  /// No description provided for @restoreCompletedTooltip.
+  ///
+  /// In es, this message translates to:
+  /// **'Agregar todos a por comprar'**
+  String get restoreCompletedTooltip;
+
+  /// No description provided for @confirmRestoreCompletedTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Restaurar artículos comprados'**
+  String get confirmRestoreCompletedTitle;
+
+  /// No description provided for @confirmRestoreCompletedMsg.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Deseas agregar todos los artículos comprados de nuevo a artículos por comprar?'**
+  String get confirmRestoreCompletedMsg;
+
+  /// No description provided for @btnConfirmRestore.
+  ///
+  /// In es, this message translates to:
+  /// **'Sí, agregar'**
+  String get btnConfirmRestore;
+
+  /// No description provided for @restoreCompletedSuccess.
+  ///
+  /// In es, this message translates to:
+  /// **'Todos los artículos comprados se agregaron a por comprar.'**
+  String get restoreCompletedSuccess;
+
+  /// No description provided for @pendingItemsBadge.
+  ///
+  /// In es, this message translates to:
+  /// **'{count} por comprar'**
+  String pendingItemsBadge(int count);
+
+  /// No description provided for @clearCompletedTooltip.
+  ///
+  /// In es, this message translates to:
+  /// **'Limpiar artículos comprados'**
+  String get clearCompletedTooltip;
+
+  /// No description provided for @confirmClearCompletedTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Limpiar artículos comprados'**
+  String get confirmClearCompletedTitle;
+
+  /// No description provided for @confirmClearCompletedMsg.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Estás seguro de que deseas eliminar todos los artículos comprados de esta lista?'**
+  String get confirmClearCompletedMsg;
+
+  /// No description provided for @btnConfirmClear.
+  ///
+  /// In es, this message translates to:
+  /// **'Sí, limpiar'**
+  String get btnConfirmClear;
+
+  /// No description provided for @clearCompletedSuccess.
+  ///
+  /// In es, this message translates to:
+  /// **'Se eliminaron los artículos comprados de la lista.'**
+  String get clearCompletedSuccess;
 }
 
 class _AppLocalizationsDelegate

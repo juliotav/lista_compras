@@ -5,10 +5,8 @@
             "name": "lista_compras (Dev .env)",
             "request": "launch",
             "type": "dart",
+            "program": "lib/main.dart",
             "toolArgs": [
-                "--dart-define-from-file=.env"
-            ],
-            "args": [
                 "--dart-define-from-file=.env"
             ]
         },
@@ -16,11 +14,9 @@
             "name": "lista_compras (Samsung Físico)",
             "request": "launch",
             "type": "dart",
+            "program": "lib/main.dart",
             "deviceId": "R5CY90W0RVR",
             "toolArgs": [
-                "--dart-define-from-file=.env"
-            ],
-            "args": [
                 "--dart-define-from-file=.env"
             ]
         },
@@ -28,11 +24,9 @@
             "name": "lista_compras (Android Emulator)",
             "request": "launch",
             "type": "dart",
+            "program": "lib/main.dart",
             "deviceId": "emulator-5554",
             "toolArgs": [
-                "--dart-define-from-file=.env"
-            ],
-            "args": [
                 "--dart-define-from-file=.env"
             ]
         },
@@ -40,11 +34,9 @@
             "name": "lista_compras (iOS Simulator)",
             "request": "launch",
             "type": "dart",
+            "program": "lib/main.dart",
             "deviceId": "iPhone 17",
             "toolArgs": [
-                "--dart-define-from-file=.env"
-            ],
-            "args": [
                 "--dart-define-from-file=.env"
             ]
         },
@@ -52,11 +44,9 @@
             "name": "lista_compras (iPhone Físico)",
             "request": "launch",
             "type": "dart",
+            "program": "lib/main.dart",
             "deviceId": "00008130-000625A22411401C",
             "toolArgs": [
-                "--dart-define-from-file=.env"
-            ],
-            "args": [
                 "--dart-define-from-file=.env"
             ]
         },
@@ -64,11 +54,9 @@
             "name": "lista_compras (Chrome Web)",
             "request": "launch",
             "type": "dart",
+            "program": "lib/main.dart",
             "deviceId": "chrome",
             "toolArgs": [
-                "--dart-define-from-file=.env"
-            ],
-            "args": [
                 "--dart-define-from-file=.env"
             ]
         },
@@ -76,12 +64,9 @@
             "name": "lista_compras (Servidor Web para iPhone / Safari)",
             "request": "launch",
             "type": "dart",
+            "program": "lib/main.dart",
+            "deviceId": "web-server",
             "toolArgs": [
-                "--dart-define-from-file=.env"
-            ],
-            "args": [
-                "-d",
-                "web-server",
                 "--web-hostname",
                 "0.0.0.0",
                 "--web-port",

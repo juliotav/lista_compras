@@ -13,11 +13,7 @@ import '../widgets/ad_banner_widget.dart';
 import '../widgets/sync_indicator_widget.dart';
 import '../utils/undo_helper.dart';
 
-enum PendingItemsSortOption {
-  manual,
-  alphabeticalAsc,
-  alphabeticalDesc,
-}
+enum PendingItemsSortOption { manual, alphabeticalAsc, alphabeticalDesc }
 
 class ListDetailScreen extends StatefulWidget {
   final ShoppingListModel shoppingList;
@@ -28,7 +24,8 @@ class ListDetailScreen extends StatefulWidget {
   State<ListDetailScreen> createState() => _ListDetailScreenState();
 }
 
-class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBindingObserver {
+class _ListDetailScreenState extends State<ListDetailScreen>
+    with WidgetsBindingObserver {
   Timer? _syncTimer;
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -38,7 +35,8 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
 
   PendingItemsSortOption _pendingSortOption = PendingItemsSortOption.manual;
   bool _showPendingFilter = false;
-  final TextEditingController _pendingFilterController = TextEditingController();
+  final TextEditingController _pendingFilterController =
+      TextEditingController();
   String _pendingFilterQuery = "";
   Set<String>? _previousPendingItemIds;
 
@@ -55,7 +53,8 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
       Future.delayed(const Duration(milliseconds: 120), () {
         if (!mounted) return;
         if (_pendingScrollController.hasClients &&
-            _pendingScrollController.position.pixels < _pendingScrollController.position.maxScrollExtent) {
+            _pendingScrollController.position.pixels <
+                _pendingScrollController.position.maxScrollExtent) {
           _pendingScrollController.animateTo(
             _pendingScrollController.position.maxScrollExtent,
             duration: const Duration(milliseconds: 250),
@@ -97,11 +96,19 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     _syncTimer = Timer.periodic(const Duration(seconds: 6), (_) async {
       if (mounted) {
         // Omitir sincronización periódica si el usuario está buscando, filtrando o arrastrando elementos
-        if (_showPendingFilter || _pendingFilterQuery.isNotEmpty || _searchQuery.isNotEmpty || _isDraggingReorder) {
+        if (_showPendingFilter ||
+            _pendingFilterQuery.isNotEmpty ||
+            _searchQuery.isNotEmpty ||
+            _isDraggingReorder) {
           return;
         }
         final db = context.read<DatabaseService>();
-        if (db.isOffline || db.isFetchingFamilyData || db.isBackgroundSyncing || db.isReconnectingSync) return;
+        if (db.isOffline ||
+            db.isFetchingFamilyData ||
+            db.isBackgroundSyncing ||
+            db.isReconnectingSync) {
+          return;
+        }
         await db.fetchFamilyData(isSilentPeriodic: true);
       }
     });
@@ -115,7 +122,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
         await context.read<DatabaseService>().syncNow();
       }
     } catch (e) {
-      debugPrint("[LIST_DETAIL LOG] Error en acción manual con timer pausado: $e");
+      debugPrint(
+        "[LIST_DETAIL LOG] Error en acción manual con timer pausado: $e",
+      );
     } finally {
       if (mounted) {
         await Future.delayed(const Duration(milliseconds: 500));
@@ -134,11 +143,18 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && mounted) {
-      debugPrint("[LIST_DETAIL LOG] App reanudada desde segundo plano. Reiniciando timer de sincronización...");
+      debugPrint(
+        "[LIST_DETAIL LOG] App reanudada desde segundo plano. Reiniciando timer de sincronización...",
+      );
       unawaited(PushNotificationService.clearBadge());
       _startSyncTimer();
-    } else if ((state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) && mounted) {
-      debugPrint("[LIST_DETAIL LOG] App en segundo plano. Deteniendo timer de sincronización...");
+    } else if ((state == AppLifecycleState.paused ||
+            state == AppLifecycleState.inactive ||
+            state == AppLifecycleState.hidden) &&
+        mounted) {
+      debugPrint(
+        "[LIST_DETAIL LOG] App en segundo plano. Deteniendo timer de sincronización...",
+      );
       _stopSyncTimer();
     }
   }
@@ -156,18 +172,26 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
 
   bool _isDefaultSeedCatalogItem(ItemCatalogModel item) {
     const defaultSeedNames = {
-      'carne', 'meat',
-      'leche', 'milk',
+      'carne',
+      'meat',
+      'leche',
+      'milk',
       'cereal',
-      'queso', 'cheese',
-      'pan', 'bread',
-      'huevos', 'eggs',
-      'frutas', 'fruits',
-      'verduras', 'vegetables',
+      'queso',
+      'cheese',
+      'pan',
+      'bread',
+      'huevos',
+      'eggs',
+      'frutas',
+      'fruits',
+      'verduras',
+      'vegetables',
     };
     final esName = item.nbArticuloEs.trim().toLowerCase();
     final enName = item.nbArticuloEn.trim().toLowerCase();
-    return defaultSeedNames.contains(esName) || defaultSeedNames.contains(enName);
+    return defaultSeedNames.contains(esName) ||
+        defaultSeedNames.contains(enName);
   }
 
   void _showEditCatalogItemDialog(ItemCatalogModel catItem) {
@@ -194,7 +218,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(l10n.editCatalogItemTitle),
           content: Form(
             key: formKey,
@@ -205,9 +231,12 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
               decoration: InputDecoration(
                 labelText: l10n.itemNameLabel,
                 hintText: l10n.editCatalogItemHint,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              validator: (v) => v == null || v.trim().isEmpty ? l10n.itemNameLabel : null,
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? l10n.itemNameLabel : null,
             ),
           ),
           actions: [
@@ -217,7 +246,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: () async {
                 if (formKey.currentState!.validate()) {
@@ -280,7 +311,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(l10n.addCustomItemTitle),
           content: Form(
             key: formKey,
@@ -290,9 +323,12 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
               autofocus: true,
               decoration: InputDecoration(
                 labelText: l10n.itemNameLabel,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              validator: (v) => v == null || v.trim().isEmpty ? l10n.itemNameLabel : null,
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? l10n.itemNameLabel : null,
             ),
           ),
           actions: [
@@ -302,7 +338,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: () async {
                 if (formKey.currentState!.validate()) {
@@ -324,13 +362,24 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     final l10n = AppLocalizations.of(context)!;
     final db = context.read<DatabaseService>();
     final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
+
+    if (!db.hasPendingItems(widget.shoppingList.idListaCompra)) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l10n.noPendingItemsMsg),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(l10n.confirmFinishListTitle),
           content: Text(l10n.confirmFinishListMsg),
           actions: [
@@ -341,10 +390,15 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(l10n.btnFinish, style: const TextStyle(color: Colors.white)),
+              child: Text(
+                l10n.btnFinish,
+                style: const TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -352,14 +406,154 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     );
 
     if (confirm == true) {
-      await db.finishAndCompleteEntireList(widget.shoppingList.idListaCompra);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(l10n.listFinishedSuccess),
-          backgroundColor: Colors.green,
-        ),
-      );
-      navigator.pop();
+      await _runWithPausedSyncTimer(() async {
+        await db.finishAndCompleteEntireList(widget.shoppingList.idListaCompra);
+      });
+      if (messenger.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(l10n.listFinishedSuccess),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleRestoreAllCompletedItems() async {
+    final l10n = AppLocalizations.of(context)!;
+    final db = context.read<DatabaseService>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    final completed = db.getCompletedItems(widget.shoppingList.idListaCompra);
+    if (completed.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(l10n.confirmRestoreCompletedTitle),
+          content: Text(l10n.confirmRestoreCompletedMsg),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(l10n.btnCancel),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(dialogContext).colorScheme.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(
+                l10n.btnConfirmRestore,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true) {
+      await _runWithPausedSyncTimer(() async {
+        await db.restoreAllCompletedItems(widget.shoppingList.idListaCompra);
+      });
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      if (messenger.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(l10n.restoreCompletedSuccess),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleClearAllCompletedItems() async {
+    final l10n = AppLocalizations.of(context)!;
+    final db = context.read<DatabaseService>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    final completed = db.getCompletedItems(widget.shoppingList.idListaCompra);
+    if (completed.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.red[700],
+                size: 28,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.confirmClearCompletedTitle,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Text(l10n.confirmClearCompletedMsg),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(l10n.btnCancel),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(
+                l10n.btnConfirmClear,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true) {
+      await _runWithPausedSyncTimer(() async {
+        await db.clearAllCompletedItems(widget.shoppingList.idListaCompra);
+      });
+      if (messenger.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              l10n.clearCompletedSuccess,
+              style: const TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.orange[800],
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -370,7 +564,8 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     final db = context.watch<DatabaseService>();
     final currentUserFam = db.currentUser?.idFamilia;
 
-    if (currentUserFam == null || currentUserFam != widget.shoppingList.idFamilia) {
+    if (currentUserFam == null ||
+        currentUserFam != widget.shoppingList.idFamilia) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           Navigator.of(context).popUntil((route) => route.isFirst);
@@ -381,11 +576,15 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     final localeProvider = context.watch<LocaleProvider>();
     final currentLang = localeProvider.locale?.languageCode ?? 'es';
 
-    final List<ListDetailItemModel> rawPendingItems = db.getPendingItems(widget.shoppingList.idListaCompra);
+    final List<ListDetailItemModel> rawPendingItems = db.getPendingItems(
+      widget.shoppingList.idListaCompra,
+    );
     final currentPendingIds = rawPendingItems.map((i) => i.idDetalle).toSet();
 
     if (_previousPendingItemIds != null) {
-      final hasNewItems = currentPendingIds.difference(_previousPendingItemIds!).isNotEmpty;
+      final hasNewItems = currentPendingIds
+          .difference(_previousPendingItemIds!)
+          .isNotEmpty;
       if (hasNewItems && !_isDraggingReorder) {
         _scrollToBottomPendingItems();
       }
@@ -393,7 +592,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
     _previousPendingItemIds = currentPendingIds;
 
     List<ListDetailItemModel> pendingItems = List.from(rawPendingItems);
-    final completedItems = db.getCompletedItems(widget.shoppingList.idListaCompra);
+    final completedItems = db.getCompletedItems(
+      widget.shoppingList.idListaCompra,
+    );
     final catalogItems = db.getCatalogItems();
 
     // 1. Filtrar artículos por comprar si hay término de búsqueda activo en la sección
@@ -401,7 +602,8 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
       final qLower = _pendingFilterQuery.toLowerCase();
       pendingItems = pendingItems.where((item) {
         final nameMatch = item.nbArticulo.toLowerCase().contains(qLower);
-        final noteMatch = item.dsDetalle?.toLowerCase().contains(qLower) ?? false;
+        final noteMatch =
+            item.dsDetalle?.toLowerCase().contains(qLower) ?? false;
         return nameMatch || noteMatch;
       }).toList();
     }
@@ -411,10 +613,16 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
       case PendingItemsSortOption.manual:
         break;
       case PendingItemsSortOption.alphabeticalAsc:
-        pendingItems.sort((a, b) => a.nbArticulo.toLowerCase().compareTo(b.nbArticulo.toLowerCase()));
+        pendingItems.sort(
+          (a, b) =>
+              a.nbArticulo.toLowerCase().compareTo(b.nbArticulo.toLowerCase()),
+        );
         break;
       case PendingItemsSortOption.alphabeticalDesc:
-        pendingItems.sort((a, b) => b.nbArticulo.toLowerCase().compareTo(a.nbArticulo.toLowerCase()));
+        pendingItems.sort(
+          (a, b) =>
+              b.nbArticulo.toLowerCase().compareTo(a.nbArticulo.toLowerCase()),
+        );
         break;
     }
 
@@ -426,7 +634,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
 
     // Verificar si el texto escrito existe exactamente en el catálogo de esta familia
     final hasExactMatch = catalogItems.any(
-      (c) => c.getLocalizedName(currentLang).toLowerCase() == _searchQuery.toLowerCase(),
+      (c) =>
+          c.getLocalizedName(currentLang).toLowerCase() ==
+          _searchQuery.toLowerCase(),
     );
 
     return Scaffold(
@@ -439,13 +649,18 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
             tooltip: l10n.syncTooltip,
             onPressed: () async {
               if (db.isOffline) {
-                final restored = await ConnectivityService().checkConnectivity();
+                final restored = await ConnectivityService()
+                    .checkConnectivity();
                 if (!restored && context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Row(
                         children: [
-                          const Icon(Icons.cloud_off_rounded, color: Colors.white, size: 20),
+                          const Icon(
+                            Icons.cloud_off_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -491,7 +706,10 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
               // --- SECCIÓN 1: ARTÍCULOS POR COMPRAR ---
               Row(
                 children: [
-                  Icon(Icons.list_alt_rounded, color: theme.colorScheme.primary),
+                  Icon(
+                    Icons.list_alt_rounded,
+                    color: theme.colorScheme.primary,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     l10n.pendingItemsHeader,
@@ -502,7 +720,10 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
@@ -520,8 +741,11 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                   // Icono para desplegar/ocultar barra de búsqueda de por comprar
                   IconButton(
                     icon: Icon(
-                      _showPendingFilter ? Icons.filter_alt_off_rounded : Icons.search_rounded,
-                      color: _showPendingFilter || _pendingFilterQuery.isNotEmpty
+                      _showPendingFilter
+                          ? Icons.filter_alt_off_rounded
+                          : Icons.search_rounded,
+                      color:
+                          _showPendingFilter || _pendingFilterQuery.isNotEmpty
                           ? theme.colorScheme.primary
                           : Colors.grey[700],
                       size: 22,
@@ -558,83 +782,101 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                           final db = context.read<DatabaseService>();
                           await db.saveAlphabeticalOrder(
                             widget.shoppingList.idListaCompra,
-                            ascending: option == PendingItemsSortOption.alphabeticalAsc,
+                            ascending:
+                                option ==
+                                PendingItemsSortOption.alphabeticalAsc,
                           );
                         }
                       });
                     },
-                    itemBuilder: (BuildContext context) => <PopupMenuEntry<PendingItemsSortOption>>[
-                      PopupMenuItem<PendingItemsSortOption>(
-                        value: PendingItemsSortOption.manual,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.drag_indicator_rounded,
-                              size: 18,
-                              color: _pendingSortOption == PendingItemsSortOption.manual
-                                  ? theme.colorScheme.primary
-                                  : Colors.grey[600],
+                    itemBuilder: (BuildContext context) =>
+                        <PopupMenuEntry<PendingItemsSortOption>>[
+                          PopupMenuItem<PendingItemsSortOption>(
+                            value: PendingItemsSortOption.manual,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.drag_indicator_rounded,
+                                  size: 18,
+                                  color:
+                                      _pendingSortOption ==
+                                          PendingItemsSortOption.manual
+                                      ? theme.colorScheme.primary
+                                      : Colors.grey[600],
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  l10n.sortOptionManual,
+                                  style: TextStyle(
+                                    fontWeight:
+                                        _pendingSortOption ==
+                                            PendingItemsSortOption.manual
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              l10n.sortOptionManual,
-                              style: TextStyle(
-                                fontWeight: _pendingSortOption == PendingItemsSortOption.manual
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
+                          ),
+                          const PopupMenuDivider(),
+                          PopupMenuItem<PendingItemsSortOption>(
+                            value: PendingItemsSortOption.alphabeticalAsc,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.sort_by_alpha_rounded,
+                                  size: 18,
+                                  color:
+                                      _pendingSortOption ==
+                                          PendingItemsSortOption.alphabeticalAsc
+                                      ? theme.colorScheme.primary
+                                      : Colors.grey[600],
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  l10n.sortOptionAlphabeticalAsc,
+                                  style: TextStyle(
+                                    fontWeight:
+                                        _pendingSortOption ==
+                                            PendingItemsSortOption
+                                                .alphabeticalAsc
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuDivider(),
-                      PopupMenuItem<PendingItemsSortOption>(
-                        value: PendingItemsSortOption.alphabeticalAsc,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.sort_by_alpha_rounded,
-                              size: 18,
-                              color: _pendingSortOption == PendingItemsSortOption.alphabeticalAsc
-                                  ? theme.colorScheme.primary
-                                  : Colors.grey[600],
+                          ),
+                          PopupMenuItem<PendingItemsSortOption>(
+                            value: PendingItemsSortOption.alphabeticalDesc,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.sort_by_alpha_rounded,
+                                  size: 18,
+                                  color:
+                                      _pendingSortOption ==
+                                          PendingItemsSortOption
+                                              .alphabeticalDesc
+                                      ? theme.colorScheme.primary
+                                      : Colors.grey[600],
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  l10n.sortOptionAlphabeticalDesc,
+                                  style: TextStyle(
+                                    fontWeight:
+                                        _pendingSortOption ==
+                                            PendingItemsSortOption
+                                                .alphabeticalDesc
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              l10n.sortOptionAlphabeticalAsc,
-                              style: TextStyle(
-                                fontWeight: _pendingSortOption == PendingItemsSortOption.alphabeticalAsc
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem<PendingItemsSortOption>(
-                        value: PendingItemsSortOption.alphabeticalDesc,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.sort_by_alpha_rounded,
-                              size: 18,
-                              color: _pendingSortOption == PendingItemsSortOption.alphabeticalDesc
-                                  ? theme.colorScheme.primary
-                                  : Colors.grey[600],
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              l10n.sortOptionAlphabeticalDesc,
-                              style: TextStyle(
-                                fontWeight: _pendingSortOption == PendingItemsSortOption.alphabeticalDesc
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                          ),
+                        ],
                   ),
                 ],
               ),
@@ -647,26 +889,42 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
                     hintText: l10n.filterPendingItemsHint,
-                    prefixIcon: Icon(Icons.filter_list_rounded, color: theme.colorScheme.primary, size: 20),
+                    prefixIcon: Icon(
+                      Icons.filter_list_rounded,
+                      color: theme.colorScheme.primary,
+                      size: 20,
+                    ),
                     suffixIcon: _pendingFilterQuery.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear_rounded, color: Colors.grey, size: 18),
+                            icon: const Icon(
+                              Icons.clear_rounded,
+                              color: Colors.grey,
+                              size: 18,
+                            ),
                             onPressed: () {
                               _pendingFilterController.clear();
                             },
                           )
                         : null,
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     filled: true,
                     fillColor: theme.cardColor,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                      borderSide: BorderSide(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                      borderSide: BorderSide(
+                        color: theme.colorScheme.primary,
+                        width: 2,
+                      ),
                     ),
                   ),
                 ),
@@ -681,7 +939,10 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 120, maxHeight: 280),
+                  constraints: const BoxConstraints(
+                    minHeight: 120,
+                    maxHeight: 280,
+                  ),
                   child: pendingItems.isEmpty
                       ? Center(
                           child: Padding(
@@ -698,26 +959,40 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                           child: Listener(
                             onPointerMove: (event) {
                               if (!_isDraggingReorder) return;
-                              final screenHeight = MediaQuery.of(context).size.height;
+                              final screenHeight = MediaQuery.of(
+                                context,
+                              ).size.height;
                               final dy = event.position.dy;
 
                               const edgeThreshold = 160.0;
                               if (dy < edgeThreshold) {
-                                final double scrollOffset = (edgeThreshold - dy) / edgeThreshold * 18;
+                                final double scrollOffset =
+                                    (edgeThreshold - dy) / edgeThreshold * 18;
                                 if (_scrollController.hasClients) {
-                                  final newOffset = (_scrollController.offset - scrollOffset).clamp(
-                                    0.0,
-                                    _scrollController.position.maxScrollExtent,
-                                  );
+                                  final newOffset =
+                                      (_scrollController.offset - scrollOffset)
+                                          .clamp(
+                                            0.0,
+                                            _scrollController
+                                                .position
+                                                .maxScrollExtent,
+                                          );
                                   _scrollController.jumpTo(newOffset);
                                 }
                               } else if (dy > screenHeight - edgeThreshold) {
-                                final double scrollOffset = (dy - (screenHeight - edgeThreshold)) / edgeThreshold * 18;
+                                final double scrollOffset =
+                                    (dy - (screenHeight - edgeThreshold)) /
+                                    edgeThreshold *
+                                    18;
                                 if (_scrollController.hasClients) {
-                                  final newOffset = (_scrollController.offset + scrollOffset).clamp(
-                                    0.0,
-                                    _scrollController.position.maxScrollExtent,
-                                  );
+                                  final newOffset =
+                                      (_scrollController.offset + scrollOffset)
+                                          .clamp(
+                                            0.0,
+                                            _scrollController
+                                                .position
+                                                .maxScrollExtent,
+                                          );
                                   _scrollController.jumpTo(newOffset);
                                 }
                               }
@@ -732,14 +1007,19 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                               scrollController: _pendingScrollController,
                               shrinkWrap: true,
                               physics: const ClampingScrollPhysics(),
-                              buildDefaultDragHandles: _pendingSortOption == PendingItemsSortOption.manual && _pendingFilterQuery.isEmpty,
+                              buildDefaultDragHandles:
+                                  _pendingSortOption ==
+                                      PendingItemsSortOption.manual &&
+                                  _pendingFilterQuery.isEmpty,
                               itemCount: pendingItems.length,
                               onReorderStart: (index) {
                                 _isDraggingReorder = true;
                                 _stopSyncTimer();
                               },
                               onReorder: (oldIndex, newIndex) {
-                                if (_pendingSortOption != PendingItemsSortOption.manual || _pendingFilterQuery.isNotEmpty) {
+                                if (_pendingSortOption !=
+                                        PendingItemsSortOption.manual ||
+                                    _pendingFilterQuery.isNotEmpty) {
                                   return;
                                 }
                                 _isDraggingReorder = false;
@@ -754,130 +1034,210 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                                   );
                                 });
                               },
-                          itemBuilder: (itemCtx, index) {
-                            final item = pendingItems[index];
-                            return Column(
-                              key: Key(item.idDetalle),
-                              children: [
-                                if (index > 0) const Divider(height: 1),
-                                Dismissible(
-                                  key: Key("dismiss_${item.idDetalle}"),
-                                  direction: DismissDirection.horizontal,
-                                  background: Container(
-                                    alignment: Alignment.centerLeft,
-                                    padding: const EdgeInsets.only(left: 20),
-                                    color: Colors.green,
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.check_rounded, color: Colors.white, size: 28),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          l10n.statusPurchased,
-                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              itemBuilder: (itemCtx, index) {
+                                final item = pendingItems[index];
+                                return Column(
+                                  key: Key(item.idDetalle),
+                                  children: [
+                                    if (index > 0) const Divider(height: 1),
+                                    Dismissible(
+                                      key: Key("dismiss_${item.idDetalle}"),
+                                      direction: DismissDirection.horizontal,
+                                      background: Container(
+                                        alignment: Alignment.centerLeft,
+                                        padding: const EdgeInsets.only(
+                                          left: 20,
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                  secondaryBackground: Container(
-                                    alignment: Alignment.centerRight,
-                                    padding: const EdgeInsets.only(right: 20),
-                                    color: Colors.red,
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          l10n.actionDelete,
-                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                        color: Colors.green,
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.check_rounded,
+                                              color: Colors.white,
+                                              size: 28,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              l10n.statusPurchased,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(width: 8),
-                                        const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 28),
-                                      ],
-                                    ),
-                                  ),
-                                  confirmDismiss: (direction) async {
-                                    if (direction == DismissDirection.endToStart) {
-                                      final isEn = (context.read<LocaleProvider>().locale?.languageCode ?? 'es') == 'en';
-                                      final bool? confirm = await showDialog<bool>(
-                                        context: context,
-                                        builder: (dialogContext) {
-                                          return AlertDialog(
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                            title: Row(
-                                              children: [
-                                                Icon(Icons.warning_amber_rounded, color: Colors.red[700], size: 28),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    l10n.actionDelete,
-                                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                      secondaryBackground: Container(
+                                        alignment: Alignment.centerRight,
+                                        padding: const EdgeInsets.only(
+                                          right: 20,
+                                        ),
+                                        color: Colors.red,
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              l10n.actionDelete,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Icon(
+                                              Icons.delete_outline_rounded,
+                                              color: Colors.white,
+                                              size: 28,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      confirmDismiss: (direction) async {
+                                        if (direction ==
+                                            DismissDirection.endToStart) {
+                                          _stopSyncTimer();
+                                          final isEn =
+                                              (context
+                                                      .read<LocaleProvider>()
+                                                      .locale
+                                                      ?.languageCode ??
+                                                  'es') ==
+                                              'en';
+                                          final bool?
+                                          confirm = await showDialog<bool>(
+                                            context: context,
+                                            builder: (dialogContext) {
+                                              return AlertDialog(
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(20),
+                                                ),
+                                                title: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons
+                                                          .warning_amber_rounded,
+                                                      color: Colors.red[700],
+                                                      size: 28,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Expanded(
+                                                      child: Text(
+                                                        l10n.actionDelete,
+                                                        style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                content: Text(
+                                                  isEn
+                                                      ? 'Are you sure you want to delete "${item.nbArticulo}" from the list?'
+                                                      : '¿Estás seguro de que deseas eliminar "${item.nbArticulo}" de la lista?',
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                          dialogContext,
+                                                          false,
+                                                        ),
+                                                    child: Text(l10n.btnCancel),
                                                   ),
-                                                ),
-                                              ],
-                                            ),
-                                            content: Text(
-                                              isEn
-                                                  ? 'Are you sure you want to delete "${item.nbArticulo}" from the list?'
-                                                  : '¿Estás seguro de que deseas eliminar "${item.nbArticulo}" de la lista?',
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(dialogContext, false),
-                                                child: Text(l10n.btnCancel),
-                                              ),
-                                              ElevatedButton(
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.red,
-                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                ),
-                                                onPressed: () => Navigator.pop(dialogContext, true),
-                                                child: Text(l10n.btnDelete, style: const TextStyle(color: Colors.white)),
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      );
-                                      return confirm ?? false;
-                                    }
-                                    return true;
-                                  },
-                                  onDismissed: (direction) {
-                                    _runWithPausedSyncTimer(() async {
-                                      if (direction == DismissDirection.startToEnd) {
-                                        final undoMessage = l10n.itemMarkedPurchased(item.nbArticulo);
-                                        final undoLabel = l10n.btnUndo;
-                                        final messenger = ScaffoldMessenger.of(context);
-                                        await db.markItemAsCompleted(item.idDetalle);
-                                        if (messenger.mounted) {
-                                          UndoHelper.show(
-                                            messenger: messenger,
-                                            message: undoMessage,
-                                            actionLabel: undoLabel,
-                                            duration: const Duration(seconds: 5),
-                                            onUndo: () async {
-                                              await db.unmarkItemAsCompleted(item.idDetalle);
+                                                  ElevatedButton(
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                          dialogContext,
+                                                          true,
+                                                        ),
+                                                    child: Text(
+                                                      l10n.btnDelete,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
                                             },
                                           );
+                                          final shouldDelete = confirm ?? false;
+                                          if (!shouldDelete && mounted) {
+                                            _startSyncTimer();
+                                          }
+                                          return shouldDelete;
                                         }
-                                      } else if (direction == DismissDirection.endToStart) {
-                                        await db.removeListDetailItem(item.idDetalle);
-                                      }
-                                    });
-                                  },
-                                  child: PendingItemTile(
-                                    item: item,
-                                    onSaveNote: (newNote) {
-                                      _runWithPausedSyncTimer(() async {
-                                        await db.updateItemDetailNote(item.idDetalle, newNote);
-                                      });
-                                    },
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
+                                        return true;
+                                      },
+                                      onDismissed: (direction) {
+                                        _runWithPausedSyncTimer(() async {
+                                          if (direction ==
+                                              DismissDirection.startToEnd) {
+                                            final undoMessage = l10n
+                                                .itemMarkedPurchased(
+                                                  item.nbArticulo,
+                                                );
+                                            final undoLabel = l10n.btnUndo;
+                                            final messenger =
+                                                ScaffoldMessenger.of(context);
+                                            await db.markItemAsCompleted(
+                                              item.idDetalle,
+                                            );
+                                            if (messenger.mounted) {
+                                              UndoHelper.show(
+                                                messenger: messenger,
+                                                message: undoMessage,
+                                                actionLabel: undoLabel,
+                                                duration: const Duration(
+                                                  seconds: 5,
+                                                ),
+                                                onUndo: () async {
+                                                  await db
+                                                      .unmarkItemAsCompleted(
+                                                        item.idDetalle,
+                                                      );
+                                                },
+                                              );
+                                            }
+                                          } else if (direction ==
+                                              DismissDirection.endToStart) {
+                                            await db.removeListDetailItem(
+                                              item.idDetalle,
+                                            );
+                                          }
+                                        });
+                                      },
+                                      child: PendingItemTile(
+                                        item: item,
+                                        onSaveNote: (newNote) {
+                                          _runWithPausedSyncTimer(() async {
+                                            await db.updateItemDetailNote(
+                                              item.idDetalle,
+                                              newNote,
+                                            );
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
                 ),
               ),
 
@@ -901,7 +1261,11 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                     ],
                   ),
                   IconButton(
-                    icon: const Icon(Icons.add_circle_outline_rounded, color: Colors.blue, size: 28),
+                    icon: const Icon(
+                      Icons.add_circle_outline_rounded,
+                      color: Colors.blue,
+                      size: 28,
+                    ),
                     tooltip: l10n.addCustomItemTitle,
                     onPressed: _showAddCustomItemDialog,
                   ),
@@ -921,10 +1285,16 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                 },
                 decoration: InputDecoration(
                   hintText: l10n.searchOrTypeItemHint,
-                  prefixIcon: Icon(Icons.search_rounded, color: theme.colorScheme.primary),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: theme.colorScheme.primary,
+                  ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, color: Colors.grey),
+                          icon: const Icon(
+                            Icons.clear_rounded,
+                            color: Colors.grey,
+                          ),
                           onPressed: () {
                             _searchController.clear();
                           },
@@ -932,14 +1302,22 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                       : null,
                   filled: true,
                   fillColor: theme.cardColor,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
                 ),
               ),
@@ -961,12 +1339,20 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                         Material(
                           color: Colors.transparent,
                           child: ListTile(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            tileColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            tileColor: theme.colorScheme.primary.withValues(
+                              alpha: 0.1,
+                            ),
                             leading: CircleAvatar(
                               backgroundColor: theme.colorScheme.primary,
                               radius: 14,
-                              child: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                              child: const Icon(
+                                Icons.add_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
                             ),
                             title: Text(
                               l10n.addQueryToListOption(_searchQuery),
@@ -977,13 +1363,17 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                             ),
                             subtitle: Text(
                               l10n.addQueryToListSubtitle,
-                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
                             ),
                             onTap: () => _addCustomItem(_searchQuery),
                           ),
                         ),
 
-                      if (filteredCatalog.isEmpty && (_searchQuery.isEmpty || hasExactMatch))
+                      if (filteredCatalog.isEmpty &&
+                          (_searchQuery.isEmpty || hasExactMatch))
                         Expanded(
                           child: Center(
                             child: Padding(
@@ -998,36 +1388,51 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                             child: ListView.separated(
                               physics: const BouncingScrollPhysics(),
                               itemCount: filteredCatalog.length,
-                              separatorBuilder: (context, index) => const Divider(height: 1),
+                              separatorBuilder: (context, index) =>
+                                  const Divider(height: 1),
                               itemBuilder: (context, index) {
                                 final catItem = filteredCatalog[index];
-                                final name = catItem.getLocalizedName(currentLang);
+                                final name = catItem.getLocalizedName(
+                                  currentLang,
+                                );
 
                                 return Material(
                                   color: Colors.transparent,
                                   child: ListTile(
                                     dense: true,
-                                    onLongPress: () => _showEditCatalogItemDialog(catItem),
+                                    onLongPress: () =>
+                                        _showEditCatalogItemDialog(catItem),
                                     title: Row(
                                       children: [
                                         Expanded(
                                           child: Text(
                                             name,
-                                            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 15,
+                                            ),
                                             softWrap: true,
                                           ),
                                         ),
                                         if (catItem.nuUso > 0) ...[
                                           const SizedBox(width: 6),
-                                          const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 16),
+                                          const Icon(
+                                            Icons.local_fire_department_rounded,
+                                            color: Colors.orange,
+                                            size: 16,
+                                          ),
                                         ],
                                       ],
                                     ),
-                                    trailing: const Icon(Icons.add_rounded, color: Colors.blue),
+                                    trailing: const Icon(
+                                      Icons.add_rounded,
+                                      color: Colors.blue,
+                                    ),
                                     onTap: () {
                                       _runWithPausedSyncTimer(() async {
                                         final added = await db.addItemToList(
-                                          idListaCompra: widget.shoppingList.idListaCompra,
+                                          idListaCompra:
+                                              widget.shoppingList.idListaCompra,
                                           idArticulo: catItem.idArticulo,
                                           nbArticulo: name,
                                         );
@@ -1035,17 +1440,25 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                                         if (added) {
                                           _scrollToBottomPendingItems();
                                         } else if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
                                             SnackBar(
-                                              content: Text(l10n.itemAlreadyInList(name)),
-                                              backgroundColor: Colors.orange[800],
-                                              duration: const Duration(seconds: 2),
+                                              content: Text(
+                                                l10n.itemAlreadyInList(name),
+                                              ),
+                                              backgroundColor:
+                                                  Colors.orange[800],
+                                              duration: const Duration(
+                                                seconds: 2,
+                                              ),
                                             ),
                                           );
                                         }
 
                                         _searchController.clear();
-                                        FocusManager.instance.primaryFocus?.unfocus();
+                                        FocusManager.instance.primaryFocus
+                                            ?.unfocus();
                                       });
                                     },
                                   ),
@@ -1076,7 +1489,10 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.green.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -1089,6 +1505,25 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                         ),
                       ),
                     ),
+                    const Spacer(),
+                    IconButton(
+                      icon: Icon(
+                        Icons.restore_rounded,
+                        color: Colors.green[800],
+                        size: 26,
+                      ),
+                      tooltip: l10n.restoreCompletedTooltip,
+                      onPressed: _handleRestoreAllCompletedItems,
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.delete_sweep_rounded,
+                        color: Colors.red[700],
+                        size: 26,
+                      ),
+                      tooltip: l10n.clearCompletedTooltip,
+                      onPressed: _handleClearAllCompletedItems,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -1096,7 +1531,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                   color: Colors.green.withValues(alpha: 0.04),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(color: Colors.green.withValues(alpha: 0.2)),
+                    side: BorderSide(
+                      color: Colors.green.withValues(alpha: 0.2),
+                    ),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: ConstrainedBox(
@@ -1105,17 +1542,29 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                       child: ListView.separated(
                         shrinkWrap: true,
                         itemCount: completedItems.length,
-                        separatorBuilder: (context, index) => const Divider(height: 1),
+                        separatorBuilder: (context, index) =>
+                            const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final item = completedItems[index];
-                          final addedByName = db.getUserDisplayName(item.idUsuarioAgrego);
-                          final hasNote = item.dsDetalle != null && item.dsDetalle!.trim().isNotEmpty;
-                          final addedInfo = _buildAddedInfo(addedByName, item.fechaAgrego, context);
+                          final addedByName = db.getUserDisplayName(
+                            item.idUsuarioAgrego,
+                          );
+                          final hasNote =
+                              item.dsDetalle != null &&
+                              item.dsDetalle!.trim().isNotEmpty;
+                          final addedInfo = _buildAddedInfo(
+                            addedByName,
+                            item.fechaAgrego,
+                            context,
+                          );
                           return Material(
                             color: Colors.transparent,
                             child: ListTile(
                               dense: true,
-                              leading: const Icon(Icons.check_box_rounded, color: Colors.green),
+                              leading: const Icon(
+                                Icons.check_box_rounded,
+                                color: Colors.green,
+                              ),
                               title: Text(
                                 item.nbArticulo,
                                 style: TextStyle(
@@ -1125,14 +1574,16 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
                               ),
                               subtitle: (hasNote || addedInfo.isNotEmpty)
                                   ? Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         if (hasNote)
                                           Text(
                                             item.dsDetalle!,
                                             style: TextStyle(
-                                              decoration: TextDecoration.lineThrough,
+                                              decoration:
+                                                  TextDecoration.lineThrough,
                                               fontSize: 12,
                                               color: Colors.grey[600],
                                             ),
@@ -1164,9 +1615,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> with WidgetsBinding
           ),
         ),
       ),
-      bottomNavigationBar: const SafeArea(
-        child: AdBannerWidget(),
-      ),
+      bottomNavigationBar: const SafeArea(child: AdBannerWidget()),
     );
   }
 }
@@ -1175,14 +1624,43 @@ String _formatItemDate(DateTime? date, BuildContext context) {
   if (date == null) return '';
   final local = date.toLocal();
   final now = DateTime.now();
-  final isToday = local.year == now.year && local.month == now.month && local.day == now.day;
+  final isToday =
+      local.year == now.year &&
+      local.month == now.month &&
+      local.day == now.day;
   final hour = local.hour.toString().padLeft(2, '0');
   final minute = local.minute.toString().padLeft(2, '0');
   final timeStr = '$hour:$minute';
 
   final isEs = Localizations.localeOf(context).languageCode == 'es';
-  final monthsEs = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-  final monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  final monthsEs = [
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic',
+  ];
+  final monthsEn = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   final monthStr = (isEs ? monthsEs : monthsEn)[local.month - 1];
 
   if (isToday) {
@@ -1190,19 +1668,30 @@ String _formatItemDate(DateTime? date, BuildContext context) {
   }
 
   final yesterday = now.subtract(const Duration(days: 1));
-  final isYesterday = local.year == yesterday.year && local.month == yesterday.month && local.day == yesterday.day;
+  final isYesterday =
+      local.year == yesterday.year &&
+      local.month == yesterday.month &&
+      local.day == yesterday.day;
   if (isYesterday) {
     return isEs ? 'Ayer, $timeStr' : 'Yesterday, $timeStr';
   }
 
   if (local.year == now.year) {
-    return isEs ? '${local.day} $monthStr, $timeStr' : '$monthStr ${local.day}, $timeStr';
+    return isEs
+        ? '${local.day} $monthStr, $timeStr'
+        : '$monthStr ${local.day}, $timeStr';
   } else {
-    return isEs ? '${local.day} $monthStr ${local.year}' : '$monthStr ${local.day}, ${local.year}';
+    return isEs
+        ? '${local.day} $monthStr ${local.year}'
+        : '$monthStr ${local.day}, ${local.year}';
   }
 }
 
-String _buildAddedInfo(String addedByName, DateTime? date, BuildContext context) {
+String _buildAddedInfo(
+  String addedByName,
+  DateTime? date,
+  BuildContext context,
+) {
   final l10n = AppLocalizations.of(context)!;
   final dateText = _formatItemDate(date, context);
   if (addedByName.isNotEmpty && dateText.isNotEmpty) {
@@ -1210,7 +1699,9 @@ String _buildAddedInfo(String addedByName, DateTime? date, BuildContext context)
   } else if (addedByName.isNotEmpty) {
     return l10n.addedBy(addedByName);
   } else if (dateText.isNotEmpty) {
-    final prefix = Localizations.localeOf(context).languageCode == 'es' ? 'Agregado' : 'Added';
+    final prefix = Localizations.localeOf(context).languageCode == 'es'
+        ? 'Agregado'
+        : 'Added';
     return "$prefix: $dateText";
   }
   return '';
@@ -1284,7 +1775,11 @@ class _PendingItemTileState extends State<PendingItemTile> {
     final db = context.watch<DatabaseService>();
     final noteText = widget.item.dsDetalle?.trim() ?? "";
     final addedByName = db.getUserDisplayName(widget.item.idUsuarioAgrego);
-    final addedInfo = _buildAddedInfo(addedByName, widget.item.fechaAgrego, context);
+    final addedInfo = _buildAddedInfo(
+      addedByName,
+      widget.item.fechaAgrego,
+      context,
+    );
 
     return InkWell(
       onTap: () {
@@ -1306,7 +1801,10 @@ class _PendingItemTileState extends State<PendingItemTile> {
                     children: [
                       Text(
                         widget.item.nbArticulo,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
                       ),
                       const SizedBox(height: 4),
 
@@ -1315,21 +1813,36 @@ class _PendingItemTileState extends State<PendingItemTile> {
                           controller: _noteController,
                           focusNode: _focusNode,
                           textInputAction: TextInputAction.done,
-                          style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                           decoration: InputDecoration(
                             hintText: l10n.addDetailHint,
-                            hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
+                            hintStyle: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
                             isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
                             filled: true,
                             fillColor: Theme.of(context).cardColor,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.primary,
+                                width: 1.5,
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).colorScheme.primary,
+                                width: 2,
+                              ),
                             ),
                           ),
                           onSubmitted: (val) {
@@ -1344,11 +1857,17 @@ class _PendingItemTileState extends State<PendingItemTile> {
                         GestureDetector(
                           onTap: _startEditing,
                           child: Text(
-                            noteText.isNotEmpty ? noteText : l10n.tapToAddDetail,
+                            noteText.isNotEmpty
+                                ? noteText
+                                : l10n.tapToAddDetail,
                             style: TextStyle(
                               fontSize: 13,
-                              fontStyle: noteText.isEmpty ? FontStyle.italic : FontStyle.normal,
-                              color: noteText.isNotEmpty ? Theme.of(context).colorScheme.primary : Colors.grey[500],
+                              fontStyle: noteText.isEmpty
+                                  ? FontStyle.italic
+                                  : FontStyle.normal,
+                              color: noteText.isNotEmpty
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Colors.grey[500],
                             ),
                           ),
                         ),
@@ -1360,11 +1879,19 @@ class _PendingItemTileState extends State<PendingItemTile> {
                 const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.swipe_right_rounded, color: Colors.green, size: 16),
+                    Icon(
+                      Icons.swipe_right_rounded,
+                      color: Colors.green,
+                      size: 16,
+                    ),
                     SizedBox(width: 2),
                     Icon(Icons.swipe_left_rounded, color: Colors.red, size: 16),
                     SizedBox(width: 6),
-                    Icon(Icons.drag_handle_rounded, color: Colors.grey, size: 20),
+                    Icon(
+                      Icons.drag_handle_rounded,
+                      color: Colors.grey,
+                      size: 20,
+                    ),
                   ],
                 ),
               ],
@@ -1378,7 +1905,9 @@ class _PendingItemTileState extends State<PendingItemTile> {
                   style: TextStyle(
                     fontSize: 11,
                     fontStyle: FontStyle.italic,
-                    color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600],
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[400]
+                        : Colors.grey[600],
                   ),
                 ),
               ),

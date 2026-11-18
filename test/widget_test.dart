@@ -152,6 +152,43 @@ void main() {
       expect(restoredItem.isPending, isTrue);
       expect(restoredItem.fechaCompra, isNull);
     });
+
+    test('finishAndCompleteEntireList marks all pending items as completed without closing the list', () async {
+      final uniqueEmail = 'test_${uuid.v4().substring(0, 8)}@example.com';
+      await db.registerUser(
+        nbCompleto: 'Complete Items Test User',
+        nbEmail: uniqueEmail,
+        password: 'Password123!',
+      );
+      await db.createFamily('Familia Completar Test', null);
+
+      await db.createOrReactivateList('Despensa');
+      final targetList = db.getActiveShoppingLists().firstWhere((l) => l.nbLista == 'Despensa');
+
+      await db.addItemToList(
+        idListaCompra: targetList.idListaCompra,
+        idArticulo: 'art_1',
+        nbArticulo: 'Arroz',
+      );
+      await db.addItemToList(
+        idListaCompra: targetList.idListaCompra,
+        idArticulo: 'art_2',
+        nbArticulo: 'Frijoles',
+      );
+
+      expect(db.getPendingItems(targetList.idListaCompra).length, equals(2));
+      expect(db.getCompletedItems(targetList.idListaCompra).length, equals(0));
+
+      await db.finishAndCompleteEntireList(targetList.idListaCompra);
+
+      expect(db.getPendingItems(targetList.idListaCompra).length, equals(0));
+      expect(db.getCompletedItems(targetList.idListaCompra).length, equals(2));
+
+      final activeLists = db.getActiveShoppingLists();
+      final updatedList = activeLists.firstWhere((l) => l.idListaCompra == targetList.idListaCompra);
+      expect(updatedList.isActive, isTrue);
+      expect(updatedList.isCompleted, isFalse);
+    });
   });
 
   group('UndoHelper Widget Tests', () {

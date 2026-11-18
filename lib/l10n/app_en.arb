@@ -81,12 +81,12 @@
   "addCustomItemTitle": "Add New Item",
   "itemNameLabel": "Item Name",
   "btnAdd": "Add",
-  "finishListTooltip": "Mark entire list as finished",
+  "finishListTooltip": "Mark all as purchased",
   "cannotFinishPendingItemsErr": "Cannot finish a list while it still has unpurchased items.",
-  "listFinishedSuccess": "List completed successfully!",
-  "confirmFinishListTitle": "Finish List",
-  "confirmFinishListMsg": "Do you want to finish the entire list?",
-  "btnFinish": "Finish",
+  "listFinishedSuccess": "All pending items marked as purchased!",
+  "confirmFinishListTitle": "Complete Items",
+  "confirmFinishListMsg": "Do you want to mark all pending items as purchased?",
+  "btnFinish": "Complete",
   "noPendingItemsMsg": "No pending items. Type or select below to add.",
   "statusPurchased": "Purchased",
   "actionDelete": "Delete",
@@ -288,5 +288,21 @@
     "placeholders": {
       "name": { "type": "String" }
     }
-  }
+  },
+  "restoreCompletedTooltip": "Add all back to items to buy",
+  "confirmRestoreCompletedTitle": "Restore Purchased Items",
+  "confirmRestoreCompletedMsg": "Do you want to add all purchased items back to items to buy?",
+  "btnConfirmRestore": "Yes, add",
+  "restoreCompletedSuccess": "All purchased items were added back to items to buy.",
+  "pendingItemsBadge": "{count} to buy",
+  "@pendingItemsBadge": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "clearCompletedTooltip": "Clear purchased items",
+  "confirmClearCompletedTitle": "Clear Purchased Items",
+  "confirmClearCompletedMsg": "Are you sure you want to delete all purchased items from this list?",
+  "btnConfirmClear": "Yes, clear",
+  "clearCompletedSuccess": "Purchased items were removed from the list."
 }
