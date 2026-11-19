@@ -27,6 +27,7 @@ class ListDetailScreen extends StatefulWidget {
 class _ListDetailScreenState extends State<ListDetailScreen>
     with WidgetsBindingObserver {
   Timer? _syncTimer;
+  int _syncPauseGeneration = 0;
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ScrollController _pendingScrollController = ScrollController();
@@ -115,24 +116,38 @@ class _ListDetailScreenState extends State<ListDetailScreen>
   }
 
   Future<void> _runWithPausedSyncTimer(Future<void> Function() action) async {
+    final generation = ++_syncPauseGeneration;
     _stopSyncTimer();
     try {
       await action();
-      if (mounted) {
-        await context.read<DatabaseService>().syncNow();
-      }
     } catch (e) {
       debugPrint(
         "[LIST_DETAIL LOG] Error en acción manual con timer pausado: $e",
       );
-    } finally {
-      if (mounted) {
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (mounted) {
-          _startSyncTimer();
-        }
-      }
     }
+
+    if (!mounted) return;
+    final db = context.read<DatabaseService>();
+    unawaited(
+      db
+          .syncNow()
+          .catchError((e) {
+            debugPrint(
+              "[LIST_DETAIL LOG] Error en syncNow en segundo plano: $e",
+            );
+          })
+          .whenComplete(() async {
+            await Future.delayed(const Duration(milliseconds: 500));
+            final lifecycle = WidgetsBinding.instance.lifecycleState;
+            final isForeground =
+                lifecycle == null || lifecycle == AppLifecycleState.resumed;
+            if (mounted &&
+                isForeground &&
+                _syncPauseGeneration == generation) {
+              _startSyncTimer();
+            }
+          }),
+    );
   }
 
   void _stopSyncTimer() {

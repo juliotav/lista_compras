@@ -2292,29 +2292,50 @@ class DatabaseService extends ChangeNotifier {
     final now = DateTime.now();
     final nowIso = now.toIso8601String();
     final userId = _currentUser?.idUsuario;
-    bool anyUpdated = false;
+    final List<ListDetailItemModel> updatedItems = [];
+    final Map<String, ItemCatalogModel> updatedCatalogById = {};
 
     for (int i = 0; i < _listDetailItems.length; i++) {
       if (_listDetailItems[i].idListaCompra == idListaCompra &&
           _listDetailItems[i].isPending) {
-        anyUpdated = true;
-        _incrementCatalogUsage(
+        final updatedCatalog = _incrementCatalogUsageInMemory(
           _listDetailItems[i].idArticulo,
           _listDetailItems[i].nbArticulo,
         );
+        if (updatedCatalog != null) {
+          updatedCatalogById[updatedCatalog.idArticulo] = updatedCatalog;
+        }
         final updatedItem = _listDetailItems[i].copyWith(
           status: 'completed',
           fechaCompra: now,
           idUsuarioFinalizo: userId,
         );
         _listDetailItems[i] = updatedItem;
+        updatedItems.add(updatedItem);
         _syncService.recordLocalMutation(
           entityId: updatedItem.idDetalle,
           action: 'UPDATE',
         );
-        await _localDb.saveListDetailItem(updatedItem, syncStatus: 'pending');
+      }
+    }
 
-        await _localDb.enqueueSyncItem(
+    if (updatedItems.isEmpty) return;
+
+    await _localDb.saveListDetailItemsBatch(
+      updatedItems,
+      defaultSyncStatus: 'pending',
+    );
+    if (updatedCatalogById.isNotEmpty) {
+      await _localDb.saveCatalogItems(
+        updatedCatalogById.values.toList(),
+        syncStatus: 'pending',
+      );
+    }
+    notifyListeners();
+
+    final List<SyncQueueItem> syncBatch = [
+      for (final updatedItem in updatedItems)
+        SyncQueueItem(
           collectionName: MongoConfig.colDetalleLista,
           action: 'UPDATE',
           entityId: updatedItem.idDetalle,
@@ -2323,13 +2344,17 @@ class DatabaseService extends ChangeNotifier {
             'fecha_compra': nowIso,
             'id_usuario_finalizo': userId,
           },
-        );
-      }
-    }
+        ),
+      for (final cat in updatedCatalogById.values)
+        SyncQueueItem(
+          collectionName: MongoConfig.colCArticulo,
+          action: 'UPDATE',
+          entityId: cat.idArticulo,
+          payload: {'nu_uso': cat.nuUso},
+        ),
+    ];
+    await _localDb.enqueueSyncItemsBatch(syncBatch);
 
-    if (!anyUpdated) return;
-
-    notifyListeners();
     _checkAndTriggerPurchaseNotification(idListaCompra);
     _syncService.triggerSync(delay: Duration.zero);
   }
@@ -2443,9 +2468,12 @@ class DatabaseService extends ChangeNotifier {
     return true;
   }
 
-  void _incrementCatalogUsage(String? idArticulo, String nbArticulo) {
+  ItemCatalogModel? _incrementCatalogUsageInMemory(
+    String? idArticulo,
+    String nbArticulo,
+  ) {
     final famId = _currentUser?.idFamilia;
-    if (famId == null) return;
+    if (famId == null) return null;
 
     final cleanNameLower = nbArticulo.trim().toLowerCase();
 
@@ -2470,12 +2498,25 @@ class DatabaseService extends ChangeNotifier {
         entityId: target.idArticulo,
         action: 'UPDATE',
       );
-      _localDb.saveCatalogItem(updatedCatalog, syncStatus: 'pending');
+      return updatedCatalog;
+    }
+    return null;
+  }
 
-      _localDb.enqueueSyncItem(
+  Future<void> _incrementCatalogUsage(
+    String? idArticulo,
+    String nbArticulo,
+  ) async {
+    final updatedCatalog = _incrementCatalogUsageInMemory(
+      idArticulo,
+      nbArticulo,
+    );
+    if (updatedCatalog != null) {
+      await _localDb.saveCatalogItem(updatedCatalog, syncStatus: 'pending');
+      await _localDb.enqueueSyncItem(
         collectionName: MongoConfig.colCArticulo,
         action: 'UPDATE',
-        entityId: target.idArticulo,
+        entityId: updatedCatalog.idArticulo,
         payload: {'nu_uso': updatedCatalog.nuUso},
       );
     }
@@ -2853,11 +2894,11 @@ class DatabaseService extends ChangeNotifier {
         idUsuarioFinalizo: _currentUser?.idUsuario,
       );
       _listDetailItems[idx] = updated;
-      _incrementCatalogUsage(updated.idArticulo, updated.nbArticulo);
       _syncService.recordLocalMutation(entityId: idDetalle, action: 'UPDATE');
       await _localDb.saveListDetailItem(updated, syncStatus: 'pending');
       notifyListeners();
 
+      await _incrementCatalogUsage(updated.idArticulo, updated.nbArticulo);
       await _localDb.enqueueSyncItem(
         collectionName: MongoConfig.colDetalleLista,
         action: 'UPDATE',
@@ -2941,21 +2982,22 @@ class DatabaseService extends ChangeNotifier {
     );
     notifyListeners();
 
-    for (final updated in updatedItems) {
-      await _localDb.enqueueSyncItem(
-        collectionName: MongoConfig.colDetalleLista,
-        action: 'UPDATE',
-        entityId: updated.idDetalle,
-        payload: {
-          'status': 'pending',
-          'fecha_compra': null,
-          'id_usuario_finalizo': null,
-          'fecha_agrego': updated.fechaAgrego?.toIso8601String(),
-          'id_usuario_agrego': updated.idUsuarioAgrego,
-          'nu_order': updated.nuOrder,
-        },
-      );
-    }
+    await _localDb.enqueueSyncItemsBatch([
+      for (final updated in updatedItems)
+        SyncQueueItem(
+          collectionName: MongoConfig.colDetalleLista,
+          action: 'UPDATE',
+          entityId: updated.idDetalle,
+          payload: {
+            'status': 'pending',
+            'fecha_compra': null,
+            'id_usuario_finalizo': null,
+            'fecha_agrego': updated.fechaAgrego?.toIso8601String(),
+            'id_usuario_agrego': updated.idUsuarioAgrego,
+            'nu_order': updated.nuOrder,
+          },
+        ),
+    ]);
 
     _checkAndTriggerListNotification(idListaCompra);
     _syncService.triggerSync(delay: Duration.zero);
@@ -2980,14 +3022,15 @@ class DatabaseService extends ChangeNotifier {
     await _localDb.deleteListDetailItemsBatchLocally(idsToDelete);
     notifyListeners();
 
-    for (final idDetalle in idsToDelete) {
-      await _localDb.enqueueSyncItem(
-        collectionName: MongoConfig.colDetalleLista,
-        action: 'DELETE',
-        entityId: idDetalle,
-        payload: {'id_detalle': idDetalle},
-      );
-    }
+    await _localDb.enqueueSyncItemsBatch([
+      for (final idDetalle in idsToDelete)
+        SyncQueueItem(
+          collectionName: MongoConfig.colDetalleLista,
+          action: 'DELETE',
+          entityId: idDetalle,
+          payload: {'id_detalle': idDetalle},
+        ),
+    ]);
 
     _syncService.triggerSync(delay: Duration.zero);
     return idsToDelete.length;

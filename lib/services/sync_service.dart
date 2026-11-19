@@ -161,7 +161,7 @@ class SyncService {
                   collectionName: collectionName,
                   filter: {primaryKeyField: item.entityId},
                   update: {'\$set': item.payload},
-                  upsert: true,
+                  upsert: item.action == 'INSERT',
                 );
               } else if (item.action == 'DELETE') {
                 if (collectionName == MongoConfig.colDetalleLista) {
@@ -189,7 +189,13 @@ class SyncService {
               if (item.id != null) {
                 await _localDb.removeSyncQueueItem(item.id!);
               }
-              clearLocalMutation(item.entityId);
+              if (item.action != 'DELETE') {
+                await _localDb.markEntitiesAsSynced(collectionName, [item.entityId]);
+              }
+              final stillPending = await _localDb.getPendingEntityIds(collectionName);
+              if (!stillPending.contains(item.entityId)) {
+                clearLocalMutation(item.entityId);
+              }
               debugPrint("[SYNC_SERVICE] ¡Elemento #${item.id} sincronizado exitosamente con MongoDB Atlas!");
             } else {
               anyBatchFailed = true;
@@ -216,7 +222,7 @@ class SyncService {
                   'updateOne': {
                     'filter': {primaryKeyField: item.entityId},
                     'update': {'\$set': item.payload},
-                    'upsert': true,
+                    'upsert': item.action == 'INSERT',
                   }
                 });
               } else if (item.action == 'DELETE') {
@@ -253,8 +259,18 @@ class SyncService {
 
             if (success) {
               await _localDb.removeSyncQueueItemsBatch(processedIds);
+              final syncedIds = itemsBatch
+                  .where((item) => item.action != 'DELETE')
+                  .map((item) => item.entityId)
+                  .toList();
+              if (syncedIds.isNotEmpty) {
+                await _localDb.markEntitiesAsSynced(collectionName, syncedIds);
+              }
+              final stillPending = await _localDb.getPendingEntityIds(collectionName);
               for (var item in itemsBatch) {
-                clearLocalMutation(item.entityId);
+                if (!stillPending.contains(item.entityId)) {
+                  clearLocalMutation(item.entityId);
+                }
               }
               debugPrint("[SYNC_SERVICE] ¡LOTE de ${itemsBatch.length} elementos (#${processedIds.first}-#${processedIds.last}) sincronizado exitosamente en MongoDB Atlas en 1 sola petición!");
             } else {

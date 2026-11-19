@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/mongo_config.dart';
 import '../models/family_model.dart';
 import '../models/item_catalog_model.dart';
 import '../models/list_detail_item_model.dart';
@@ -754,6 +755,7 @@ class LocalDbService {
   Future<void> saveCatalogItems(
     List<ItemCatalogModel> items, {
     String famId = '',
+    String syncStatus = 'synced',
   }) async {
     if (items.isEmpty) return;
     final database = await db;
@@ -765,7 +767,7 @@ class LocalDbService {
         'nb_articulo_es': item.nbArticuloEs,
         'nb_articulo_en': item.nbArticuloEn,
         'nu_uso': item.nuUso,
-        'sync_status': 'synced',
+        'sync_status': syncStatus,
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
@@ -805,6 +807,66 @@ class LocalDbService {
       "[LOCAL_DB] Encolado cambio en sync_queue: #$id [$action] $collectionName ($entityId)",
     );
     return id;
+  }
+
+  /// Encola múltiples cambios en sync_queue dentro de un solo batch atómico de SQLite
+  Future<void> enqueueSyncItemsBatch(List<SyncQueueItem> items) async {
+    if (items.isEmpty) return;
+    final database = await db;
+    final batch = database.batch();
+    for (final item in items) {
+      batch.insert('sync_queue', item.toMap());
+    }
+    await batch.commit(noResult: true);
+    debugPrint(
+      "[LOCAL_DB] Encolado lote atómico de ${items.length} cambios en sync_queue.",
+    );
+  }
+
+  /// Marca como 'synced' en SQLite las entidades que ya fueron subidas a MongoDB y no tienen más cambios pendientes en sync_queue
+  Future<void> markEntitiesAsSynced(
+    String collectionName,
+    List<String> entityIds,
+  ) async {
+    if (entityIds.isEmpty) return;
+
+    String? tableName;
+    String? idColumn;
+    if (collectionName == MongoConfig.colDetalleLista) {
+      tableName = 'list_detail_items';
+      idColumn = 'id_detalle';
+    } else if (collectionName == MongoConfig.colListasCompra) {
+      tableName = 'shopping_lists';
+      idColumn = 'id_lista_compra';
+    } else if (collectionName == MongoConfig.colCArticulo) {
+      tableName = 'item_catalog';
+      idColumn = 'id_articulo';
+    } else {
+      return;
+    }
+
+    final stillPending = await getPendingEntityIds(collectionName);
+    final idsToMark = entityIds
+        .where((id) => id.isNotEmpty && !stillPending.contains(id))
+        .toSet()
+        .toList();
+    if (idsToMark.isEmpty) return;
+
+    final database = await db;
+    const chunkSize = 400;
+    for (int offset = 0; offset < idsToMark.length; offset += chunkSize) {
+      final end = (offset + chunkSize < idsToMark.length)
+          ? offset + chunkSize
+          : idsToMark.length;
+      final chunk = idsToMark.sublist(offset, end);
+      final placeholders = List.filled(chunk.length, '?').join(',');
+      await database.update(
+        tableName,
+        {'sync_status': 'synced'},
+        where: '$idColumn IN ($placeholders)',
+        whereArgs: chunk,
+      );
+    }
   }
 
   Future<List<SyncQueueItem>> getPendingSyncQueue() async {

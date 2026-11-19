@@ -51,7 +51,9 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(l10n.newListTitle),
           content: Form(
             key: formKey,
@@ -62,9 +64,12 @@ class _HomeScreenState extends State<HomeScreen> {
               decoration: InputDecoration(
                 labelText: l10n.listNameLabel,
                 hintText: l10n.listNameHint,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              validator: (v) => v == null || v.trim().isEmpty ? l10n.listNameLabel : null,
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? l10n.listNameLabel : null,
             ),
           ),
           actions: [
@@ -74,7 +79,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: () async {
                 if (formKey.currentState!.validate()) {
@@ -123,7 +130,9 @@ class _HomeScreenState extends State<HomeScreen> {
         context: context,
         builder: (dialogContext) {
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             title: Text(l10n.confirmDeleteTitle),
             content: Text(l10n.confirmDeleteMsg),
             actions: [
@@ -134,7 +143,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                 onPressed: () => Navigator.pop(dialogContext, true),
-                child: Text(l10n.btnDelete, style: const TextStyle(color: Colors.white)),
+                child: Text(
+                  l10n.btnDelete,
+                  style: const TextStyle(color: Colors.white),
+                ),
               ),
             ],
           );
@@ -163,11 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
       });
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final shoppingLists = db.getActiveShoppingLists();
@@ -185,13 +193,18 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: l10n.syncTooltip,
             onPressed: () async {
               if (db.isOffline) {
-                final restored = await ConnectivityService().checkConnectivity();
+                final restored = await ConnectivityService()
+                    .checkConnectivity();
                 if (!restored && context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Row(
                         children: [
-                          const Icon(Icons.cloud_off_rounded, color: Colors.white, size: 20),
+                          const Icon(
+                            Icons.cloud_off_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -226,7 +239,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               accountName: Text(
                 user.nbCompleto.isNotEmpty ? user.nbCompleto : l10n.defaultUser,
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
               accountEmail: Text(
                 user.nbEmail,
@@ -235,11 +251,15 @@ class _HomeScreenState extends State<HomeScreen> {
               currentAccountPicture: CircleAvatar(
                 backgroundColor: theme.colorScheme.primary,
                 child: Text(
-                  user.nbCompleto.isNotEmpty ? user.nbCompleto[0].toUpperCase() : 'U',
+                  user.nbCompleto.isNotEmpty
+                      ? user.nbCompleto[0].toUpperCase()
+                      : 'U',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E1035) : Colors.white,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF1E1035)
+                        : Colors.white,
                   ),
                 ),
               ),
@@ -256,7 +276,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     onNavigate: () async {
                       await Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const FamilySetupScreen(),
+                        ),
                       );
                       _refreshData();
                     },
@@ -273,7 +295,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.pop(context);
                   await Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const FamilyMembersScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const FamilyMembersScreen(),
+                    ),
                   );
                   _refreshData();
                 },
@@ -288,7 +312,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const AboutPrivacyScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const AboutPrivacyScreen(),
+                    ),
                   );
                 },
               ),
@@ -296,17 +322,28 @@ class _HomeScreenState extends State<HomeScreen> {
             const Divider(),
             Consumer<LocaleProvider>(
               builder: (context, localeProvider, child) {
-                final currentCode = localeProvider.locale == null ? 'system' : localeProvider.locale!.languageCode;
+                final currentCode = localeProvider.locale == null
+                    ? 'system'
+                    : localeProvider.locale!.languageCode;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.language_rounded, color: Colors.grey),
+                          const Icon(
+                            Icons.language_rounded,
+                            color: Colors.grey,
+                          ),
                           const SizedBox(width: 12),
-                          Text(l10n.menuLanguage, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          Text(
+                            l10n.menuLanguage,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 6),
@@ -315,9 +352,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         value: currentCode,
                         underline: const SizedBox(),
                         items: [
-                          DropdownMenuItem(value: 'system', child: Text(l10n.systemDefault)),
-                          DropdownMenuItem(value: 'es', child: Text(l10n.spanish)),
-                          DropdownMenuItem(value: 'en', child: Text(l10n.english)),
+                          DropdownMenuItem(
+                            value: 'system',
+                            child: Text(l10n.systemDefault),
+                          ),
+                          DropdownMenuItem(
+                            value: 'es',
+                            child: Text(l10n.spanish),
+                          ),
+                          DropdownMenuItem(
+                            value: 'en',
+                            child: Text(l10n.english),
+                          ),
                         ],
                         onChanged: (val) {
                           if (val == 'system') {
@@ -344,15 +390,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
 
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.brightness_6_rounded, color: Colors.grey),
+                          const Icon(
+                            Icons.brightness_6_rounded,
+                            color: Colors.grey,
+                          ),
                           const SizedBox(width: 12),
-                          Text(l10n.menuTheme, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          Text(
+                            l10n.menuTheme,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 6),
@@ -361,9 +416,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         value: currentTheme,
                         underline: const SizedBox(),
                         items: [
-                          DropdownMenuItem(value: 'system', child: Text(l10n.systemDefault)),
-                          DropdownMenuItem(value: 'light', child: Text(l10n.themeLight)),
-                          DropdownMenuItem(value: 'dark', child: Text(l10n.themeDark)),
+                          DropdownMenuItem(
+                            value: 'system',
+                            child: Text(l10n.systemDefault),
+                          ),
+                          DropdownMenuItem(
+                            value: 'light',
+                            child: Text(l10n.themeLight),
+                          ),
+                          DropdownMenuItem(
+                            value: 'dark',
+                            child: Text(l10n.themeDark),
+                          ),
                         ],
                         onChanged: (val) {
                           if (val == 'light') {
@@ -385,7 +449,10 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Colors.transparent,
               child: ListTile(
                 leading: const Icon(Icons.logout_rounded, color: Colors.red),
-                title: Text(l10n.menuLogout, style: const TextStyle(color: Colors.red)),
+                title: Text(
+                  l10n.menuLogout,
+                  style: const TextStyle(color: Colors.red),
+                ),
                 onTap: () async {
                   await db.logout();
                   if (!context.mounted) return;
@@ -407,12 +474,19 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? const Color(0xFF1E1035)
-                      : theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+                      : theme.colorScheme.primaryContainer.withValues(
+                          alpha: 0.3,
+                        ),
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(24),
+                  ),
                 ),
                 child: Column(
                   children: [
@@ -420,7 +494,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       PopupMenuButton<String>(
                         tooltip: l10n.selectFamily,
                         offset: const Offset(0, 48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         elevation: 6,
                         onSelected: (String val) async {
                           if (val == '__add_new_family__') {
@@ -429,7 +505,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               onNavigate: () async {
                                 await Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+                                  MaterialPageRoute(
+                                    builder: (_) => const FamilySetupScreen(),
+                                  ),
                                 );
                                 _refreshData();
                               },
@@ -441,15 +519,21 @@ class _HomeScreenState extends State<HomeScreen> {
                         itemBuilder: (context) {
                           final items = <PopupMenuEntry<String>>[];
                           for (final fam in userFamilies) {
-                            final isSelected = fam.idFamilia == family?.idFamilia;
+                            final isSelected =
+                                fam.idFamilia == family?.idFamilia;
                             items.add(
                               PopupMenuItem<String>(
                                 value: fam.idFamilia,
                                 child: Row(
                                   children: [
                                     Icon(
-                                      isSelected ? Icons.check_circle_rounded : Icons.family_restroom_rounded,
-                                      color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                      isSelected
+                                          ? Icons.check_circle_rounded
+                                          : Icons.family_restroom_rounded,
+                                      color: isSelected
+                                          ? theme.colorScheme.primary
+                                          : theme.colorScheme.onSurface
+                                                .withValues(alpha: 0.6),
                                       size: 20,
                                     ),
                                     const SizedBox(width: 12),
@@ -457,8 +541,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                       child: Text(
                                         fam.nbFamilia,
                                         style: TextStyle(
-                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                          color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: isSelected
+                                              ? theme.colorScheme.primary
+                                              : theme.colorScheme.onSurface,
                                         ),
                                       ),
                                     ),
@@ -473,7 +561,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               value: '__add_new_family__',
                               child: Row(
                                 children: [
-                                  Icon(Icons.add_circle_outline_rounded, color: theme.colorScheme.primary, size: 20),
+                                  Icon(
+                                    Icons.add_circle_outline_rounded,
+                                    color: theme.colorScheme.primary,
+                                    size: 20,
+                                  ),
                                   const SizedBox(width: 12),
                                   Text(
                                     l10n.addOrJoinFamily,
@@ -489,7 +581,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           return items;
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             color: theme.cardColor,
                             borderRadius: BorderRadius.circular(20),
@@ -500,12 +595,20 @@ class _HomeScreenState extends State<HomeScreen> {
                                 offset: const Offset(0, 3),
                               ),
                             ],
-                            border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: theme.colorScheme.primary.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.home_work_rounded, color: theme.colorScheme.primary, size: 22),
+                              Icon(
+                                Icons.home_work_rounded,
+                                color: theme.colorScheme.primary,
+                                size: 22,
+                              ),
                               const SizedBox(width: 8),
                               Flexible(
                                 child: Text(
@@ -518,7 +621,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              Icon(Icons.keyboard_arrow_down_rounded, color: theme.colorScheme.primary),
+                              Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: theme.colorScheme.primary,
+                              ),
                             ],
                           ),
                         ),
@@ -528,7 +634,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         icon: const Icon(Icons.group_add_rounded),
                         label: Text(l10n.addOrJoinFamily),
                         style: ElevatedButton.styleFrom(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                         onPressed: () {
                           AdInterstitialService.showAdIfAllowedThenNavigate(
@@ -536,7 +644,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             onNavigate: () async {
                               await Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+                                MaterialPageRoute(
+                                  builder: (_) => const FamilySetupScreen(),
+                                ),
                               );
                               _refreshData();
                             },
@@ -550,28 +660,44 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           InkWell(
                             onTap: () {
-                              Clipboard.setData(ClipboardData(text: family.clFamilia));
+                              Clipboard.setData(
+                                ClipboardData(text: family.clFamilia),
+                              );
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text(l10n.copiedCode)),
                               );
                             },
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: theme.cardColor,
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                                border: Border.all(
+                                  color: theme.colorScheme.primary.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
                                     "${l10n.familyCodeBadge} ${family.clFamilia}",
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                   const SizedBox(width: 6),
-                                  const Icon(Icons.copy_rounded, size: 16, color: Colors.grey),
+                                  const Icon(
+                                    Icons.copy_rounded,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
                                 ],
                               ),
                             ),
@@ -587,7 +713,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                 decoration: BoxDecoration(
                                   color: theme.cardColor,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                                  border: Border.all(
+                                    color: theme.colorScheme.primary.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                  ),
                                 ),
                                 child: Icon(
                                   Icons.qr_code_2_rounded,
@@ -606,7 +736,10 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 16),
 
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 8.0,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -617,7 +750,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.add_circle_rounded, size: 36, color: Colors.blue),
+                      icon: const Icon(
+                        Icons.add_circle_rounded,
+                        size: 36,
+                        color: Colors.blue,
+                      ),
                       tooltip: l10n.newListTitle,
                       onPressed: _showCreateListDialog,
                     ),
@@ -629,11 +766,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: shoppingLists.isEmpty
                     ? Center(child: Text(l10n.newListTitle))
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 8,
+                        ),
                         itemCount: shoppingLists.length,
                         itemBuilder: (context, index) {
                           final list = shoppingLists[index];
-                          final pendingCount = db.getPendingItemsCount(list.idListaCompra);
+                          final pendingCount = db.getPendingItemsCount(
+                            list.idListaCompra,
+                          );
                           final isDark = theme.brightness == Brightness.dark;
 
                           final cardChild = Card(
@@ -643,8 +785,15 @@ class _HomeScreenState extends State<HomeScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                               side: list.isDefault
-                                  ? BorderSide(color: theme.colorScheme.primary, width: 2)
-                                  : BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
+                                  ? BorderSide(
+                                      color: theme.colorScheme.primary,
+                                      width: 2,
+                                    )
+                                  : BorderSide(
+                                      color: theme.dividerColor.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                    ),
                             ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(16),
@@ -652,13 +801,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                 await Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => ListDetailScreen(shoppingList: list),
+                                    builder: (_) =>
+                                        ListDetailScreen(shoppingList: list),
                                   ),
                                 );
                                 _refreshData();
                               },
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 10, 12, 12),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  10,
+                                  12,
+                                  12,
+                                ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
@@ -666,63 +821,120 @@ class _HomeScreenState extends State<HomeScreen> {
                                       padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
                                         color: list.isDefault
-                                            ? theme.colorScheme.primary.withValues(alpha: 0.15)
-                                            : theme.colorScheme.onSurface.withValues(alpha: 0.08),
+                                            ? theme.colorScheme.primary
+                                                  .withValues(alpha: 0.15)
+                                            : theme.colorScheme.onSurface
+                                                  .withValues(alpha: 0.08),
                                         shape: BoxShape.circle,
                                       ),
                                       child: Icon(
-                                        list.isDefault ? Icons.star_rounded : Icons.shopping_bag_rounded,
+                                        list.isDefault
+                                            ? Icons.star_rounded
+                                            : Icons.shopping_bag_rounded,
                                         color: list.isDefault
                                             ? theme.colorScheme.primary
-                                            : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                            : theme.colorScheme.onSurface
+                                                  .withValues(alpha: 0.7),
                                       ),
                                     ),
                                     const SizedBox(width: 14),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Expanded(
                                                 child: Padding(
-                                                  padding: const EdgeInsets.only(top: 2),
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 2,
+                                                      ),
                                                   child: Text(
                                                     list.nbLista,
                                                     style: TextStyle(
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       fontSize: 18,
                                                       color: list.isDefault
-                                                          ? theme.colorScheme.primary
-                                                          : theme.colorScheme.onSurface,
+                                                          ? theme
+                                                                .colorScheme
+                                                                .primary
+                                                          : theme
+                                                                .colorScheme
+                                                                .onSurface,
                                                     ),
                                                   ),
                                                 ),
                                               ),
                                               const SizedBox(width: 8),
                                               Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 3,
+                                                    ),
                                                 decoration: BoxDecoration(
                                                   color: pendingCount > 0
-                                                      ? theme.colorScheme.primary.withValues(alpha: isDark ? 0.22 : 0.12)
-                                                      : theme.colorScheme.onSurface.withValues(alpha: 0.06),
-                                                  borderRadius: BorderRadius.circular(10),
+                                                      ? theme
+                                                            .colorScheme
+                                                            .primary
+                                                            .withValues(
+                                                              alpha: isDark
+                                                                  ? 0.12
+                                                                  : 0.06,
+                                                            )
+                                                      : theme
+                                                            .colorScheme
+                                                            .onSurface
+                                                            .withValues(
+                                                              alpha: 0.04,
+                                                            ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
                                                   border: Border.all(
+                                                    width: 0.8,
                                                     color: pendingCount > 0
-                                                        ? theme.colorScheme.primary.withValues(alpha: 0.35)
-                                                        : theme.dividerColor.withValues(alpha: 0.3),
+                                                        ? theme
+                                                              .colorScheme
+                                                              .primary
+                                                              .withValues(
+                                                                alpha: isDark
+                                                                    ? 0.20
+                                                                    : 0.16,
+                                                              )
+                                                        : theme.dividerColor
+                                                              .withValues(
+                                                                alpha: 0.18,
+                                                              ),
                                                   ),
                                                 ),
                                                 child: Text(
-                                                  l10n.pendingItemsBadge(pendingCount),
+                                                  l10n.pendingItemsBadge(
+                                                    pendingCount,
+                                                  ),
                                                   style: TextStyle(
                                                     fontSize: 11,
-                                                    fontWeight: FontWeight.w600,
+                                                    fontWeight: FontWeight.w500,
                                                     color: pendingCount > 0
-                                                        ? theme.colorScheme.primary
-                                                        : theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                                                        ? theme
+                                                              .colorScheme
+                                                              .primary
+                                                              .withValues(
+                                                                alpha: isDark
+                                                                    ? 0.80
+                                                                    : 0.72,
+                                                              )
+                                                        : theme
+                                                              .colorScheme
+                                                              .onSurface
+                                                              .withValues(
+                                                                alpha: 0.45,
+                                                              ),
                                                   ),
                                                 ),
                                               ),
@@ -735,17 +947,26 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 child: list.isDefault
                                                     ? Text(
                                                         l10n.primaryFixedListTag,
-                                                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors.grey,
+                                                        ),
                                                       )
                                                     : Text(
                                                         l10n.swipeToDeleteHint,
-                                                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                                        style: const TextStyle(
+                                                          fontSize: 11,
+                                                          color: Colors.grey,
+                                                        ),
                                                       ),
                                               ),
                                               Icon(
                                                 Icons.chevron_right_rounded,
                                                 size: 24,
-                                                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurface
+                                                    .withValues(alpha: 0.6),
                                               ),
                                             ],
                                           ),
@@ -779,11 +1000,18 @@ class _HomeScreenState extends State<HomeScreen> {
                               padding: const EdgeInsets.only(left: 24),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.delete_rounded, color: Colors.white, size: 28),
+                                  const Icon(
+                                    Icons.delete_rounded,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     l10n.deleteListAction,
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -797,9 +1025,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: const SafeArea(
-        child: AdBannerWidget(),
-      ),
+      bottomNavigationBar: const SafeArea(child: AdBannerWidget()),
     );
   }
 }
