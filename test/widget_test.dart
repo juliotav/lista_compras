@@ -9,6 +9,11 @@ import 'package:lista_compras/widgets/family_qr_dialog.dart';
 import 'package:lista_compras/widgets/logout_confirm_dialog.dart';
 import 'package:lista_compras/models/family_model.dart';
 import 'package:lista_compras/l10n/app_localizations.dart';
+import 'package:lista_compras/screens/home_screen.dart';
+import 'package:lista_compras/screens/family_setup_screen.dart';
+import 'package:lista_compras/services/locale_provider.dart';
+import 'package:lista_compras/services/theme_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 void main() {
@@ -192,6 +197,70 @@ void main() {
       final updatedList = activeLists.firstWhere((l) => l.idListaCompra == targetList.idListaCompra);
       expect(updatedList.isActive, isTrue);
       expect(updatedList.isCompleted, isFalse);
+    });
+
+    test('New user creating a family and immediately deleting it clears active family and lists', () async {
+      final uniqueEmail = 'test_${uuid.v4().substring(0, 8)}@example.com';
+      await db.registerUser(
+        nbCompleto: 'Delete Family User',
+        nbEmail: uniqueEmail,
+        password: 'Password123!',
+      );
+
+      final family = await db.createFamily('Familia Temporal', 'Para borrar');
+      expect(db.currentUser?.idFamilia, equals(family.idFamilia));
+      expect(db.userFamilies.length, equals(1));
+      expect(db.getActiveShoppingLists().length, equals(1));
+
+      final deleted = await db.deleteFamily(family.idFamilia);
+      expect(deleted, isTrue);
+      expect(db.currentUser?.idFamilia, isNull);
+      expect(db.currentFamily, isNull);
+      expect(db.userFamilies, isEmpty);
+      expect(db.getActiveShoppingLists(), isEmpty);
+
+      await db.loadLocalDataOnly();
+      expect(db.currentUser?.idFamilia, isNull);
+      expect(db.userFamilies, isEmpty);
+    });
+
+    testWidgets('HomeScreen redirects to FamilySetupScreen when user deletes their only family', (tester) async {
+      final uniqueEmail = 'test_${uuid.v4().substring(0, 8)}@example.com';
+      await db.registerUser(
+        nbCompleto: 'Redirect User',
+        nbEmail: uniqueEmail,
+        password: 'Password123!',
+      );
+      final family = await db.createFamily('Familia Única', null);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => LocaleProvider()),
+            ChangeNotifierProvider(create: (_) => ThemeProvider()),
+            ChangeNotifierProvider.value(value: db),
+          ],
+          child: const MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: Locale('es'),
+            home: HomeScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      expect(find.byType(HomeScreen), findsOneWidget);
+
+      // Eliminar la única familia inmediatamente
+      final deleted = await db.deleteFamily(family.idFamilia);
+      expect(deleted, isTrue);
+
+      await tester.pumpAndSettle();
+
+      // Debe haber redirigido a FamilySetupScreen y no quedarse en HomeScreen vacío
+      expect(find.byType(FamilySetupScreen), findsOneWidget);
+      expect(find.byType(HomeScreen), findsNothing);
     });
   });
 

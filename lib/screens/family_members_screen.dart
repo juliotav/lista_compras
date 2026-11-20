@@ -7,6 +7,7 @@ import '../services/connectivity_service.dart';
 import '../widgets/ad_banner_widget.dart';
 import '../widgets/sync_indicator_widget.dart';
 import '../widgets/family_qr_dialog.dart';
+import 'family_setup_screen.dart';
 
 class FamilyMembersScreen extends StatefulWidget {
   const FamilyMembersScreen({super.key});
@@ -84,7 +85,13 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen>
     if (family == null ||
         !db.userFamilies.any((f) => f.idFamilia == family.idFamilia)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && Navigator.of(context).canPop()) {
+        if (!mounted) return;
+        if (db.currentUser?.idFamilia == null || db.userFamilies.isEmpty) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+            (route) => false,
+          );
+        } else if (Navigator.of(context).canPop()) {
           Navigator.of(context).popUntil((route) => route.isFirst);
         }
       });
@@ -496,9 +503,21 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen>
                                                 );
 
                                                 if (screenNav.mounted) {
-                                                  screenNav.popUntil(
-                                                    (route) => route.isFirst,
-                                                  );
+                                                  if (db.currentUser?.idFamilia ==
+                                                          null ||
+                                                      db.userFamilies.isEmpty) {
+                                                    screenNav.pushAndRemoveUntil(
+                                                      MaterialPageRoute(
+                                                        builder: (_) =>
+                                                            const FamilySetupScreen(),
+                                                      ),
+                                                      (route) => false,
+                                                    );
+                                                  } else {
+                                                    screenNav.popUntil(
+                                                      (route) => route.isFirst,
+                                                    );
+                                                  }
                                                 }
                                               } catch (e) {
                                                 if (dialogNav.mounted &&

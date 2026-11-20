@@ -501,10 +501,13 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
                       : () async {
                           setDialogState(() => isDeleting = true);
                           final nav = Navigator.of(dialogContext);
+                          final screenNav = Navigator.of(context);
                           final messenger = ScaffoldMessenger.of(context);
 
                           final success = await db.deleteFamily(family.idFamilia);
-                          nav.pop();
+                          if (dialogContext.mounted && nav.canPop()) {
+                            nav.pop();
+                          }
                           if (success) {
                             messenger.showSnackBar(
                               SnackBar(
@@ -512,6 +515,17 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
                                 backgroundColor: Colors.green,
                               ),
                             );
+                            if (mounted &&
+                                (db.userFamilies.isEmpty ||
+                                    db.currentUser?.idFamilia == null) &&
+                                screenNav.canPop()) {
+                              screenNav.pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (_) => const FamilySetupScreen(),
+                                ),
+                                (route) => false,
+                              );
+                            }
                           }
                         },
                 ),
@@ -531,12 +545,17 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
     final userId = db.currentUser?.idUsuario;
 
     final userFamilies = db.userFamilies;
+    final hasActiveFamily =
+        db.currentUser?.idFamilia != null && userFamilies.isNotEmpty;
     final createdCount = userFamilies.where((f) => f.idCreador == userId).length;
     final remainingCount = max(0, 5 - createdCount);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.familySetupTitle),
+    return PopScope(
+      canPop: hasActiveFamily,
+      child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: hasActiveFamily,
+          title: Text(l10n.familySetupTitle),
         actions: [
           const SyncIndicatorWidget(),
           IconButton(
@@ -820,6 +839,7 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
       ),
       bottomNavigationBar: const SafeArea(
         child: AdBannerWidget(),
+      ),
       ),
     );
   }

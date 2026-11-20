@@ -48,6 +48,14 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (mounted) {
         final db = context.read<DatabaseService>();
+        if (db.currentUser?.idFamilia == null) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+            (route) => false,
+          );
+          return;
+        }
         await db.loadLocalDataOnly();
         final fetchFuture = db.fetchFamilyData();
         if (checkCoachMark && !_coachMarkChecked) {
@@ -539,6 +547,19 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      });
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (user.idFamilia == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && (ModalRoute.of(context)?.isCurrent ?? true)) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
             (route) => false,
           );
         }

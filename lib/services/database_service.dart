@@ -714,6 +714,12 @@ class DatabaseService extends ChangeNotifier {
         _catalogItems.clear();
         if (_currentUser?.idFamilia != null) {
           _currentUser = _currentUser!.copyWith(clearFamilia: true);
+          final uIdx = _users.indexWhere(
+            (u) => u.idUsuario == _currentUser!.idUsuario,
+          );
+          if (uIdx != -1) {
+            _users[uIdx] = _currentUser!;
+          }
           if (_currentUser != null) {
             await _localDb.saveUser(_currentUser!);
           }
@@ -856,6 +862,11 @@ class DatabaseService extends ChangeNotifier {
               'id_usuario': {'\$in': memberIds.toList()},
             },
           );
+          // Verificar que la familia siga siendo la familia activa y no haya sido eliminada en paralelo
+          if (_currentUser?.idFamilia != famId ||
+              !_userFamilies.any((f) => f.idFamilia == famId)) {
+            return;
+          }
           for (var userDoc in userDocs) {
             final user = UserModel.fromMap(userDoc).copyWith(idFamilia: famId);
             if (user.nbEmail.trim().isEmpty && user.nbCompleto.trim().isEmpty) {
@@ -906,11 +917,20 @@ class DatabaseService extends ChangeNotifier {
         );
       }
 
+      // Verificar nuevamente que la familia no haya sido eliminada antes de sincronizar deltas
+      if (_currentUser?.idFamilia != famId ||
+          !_userFamilies.any((f) => f.idFamilia == famId)) {
+        return;
+      }
+
       // 3. Disparar sincronización delta de la familia activa
       await _syncService.pullDeltaSync(
         famId: famId,
         onDataUpdated: () async {
-          await _loadFromLocalDb(famId);
+          if (_currentUser?.idFamilia == famId &&
+              _userFamilies.any((f) => f.idFamilia == famId)) {
+            await _loadFromLocalDb(famId);
+          }
         },
       );
 
@@ -1789,7 +1809,15 @@ class DatabaseService extends ChangeNotifier {
         PushNotificationService.subscribeToFamily(newActiveFamId);
       } else {
         _currentUser = _currentUser!.copyWith(clearFamilia: true);
+        final uIdx = _users.indexWhere((u) => u.idUsuario == userId);
+        if (uIdx != -1) {
+          _users[uIdx] = _currentUser!;
+        }
+        _shoppingLists.clear();
+        _listDetailItems.clear();
+        _catalogItems.clear();
         await _localDb.saveUser(_currentUser!);
+        notifyListeners();
         await MongoService.updateOne(
           collectionName: MongoConfig.colUsuario,
           filter: {'id_usuario': userId},
@@ -1797,9 +1825,6 @@ class DatabaseService extends ChangeNotifier {
             '\$unset': {'id_familia': ""},
           },
         );
-        _shoppingLists.clear();
-        _listDetailItems.clear();
-        _catalogItems.clear();
       }
     }
 
@@ -1855,11 +1880,16 @@ class DatabaseService extends ChangeNotifier {
 
       _userFamilies.removeWhere((f) => f.idFamilia == idFamilia);
       _families.removeWhere((f) => f.idFamilia == idFamilia);
+      PushNotificationService.unsubscribeFromFamily(idFamilia);
 
       if (_currentUser?.idFamilia == idFamilia) {
         if (_userFamilies.isNotEmpty) {
           final newActiveId = _userFamilies.first.idFamilia;
           _currentUser = _currentUser!.copyWith(idFamilia: newActiveId);
+          final uIdx = _users.indexWhere((u) => u.idUsuario == userId);
+          if (uIdx != -1) {
+            _users[uIdx] = _currentUser!;
+          }
           await _localDb.saveUser(_currentUser!);
           await MongoService.updateOne(
             collectionName: MongoConfig.colUsuario,
@@ -1872,7 +1902,15 @@ class DatabaseService extends ChangeNotifier {
           PushNotificationService.subscribeToFamily(newActiveId);
         } else {
           _currentUser = _currentUser!.copyWith(clearFamilia: true);
+          final uIdx = _users.indexWhere((u) => u.idUsuario == userId);
+          if (uIdx != -1) {
+            _users[uIdx] = _currentUser!;
+          }
+          _shoppingLists.clear();
+          _listDetailItems.clear();
+          _catalogItems.clear();
           await _localDb.saveUser(_currentUser!);
+          notifyListeners();
           await MongoService.updateOne(
             collectionName: MongoConfig.colUsuario,
             filter: {'id_usuario': userId},
@@ -1880,9 +1918,6 @@ class DatabaseService extends ChangeNotifier {
               '\$unset': {'id_familia': ""},
             },
           );
-          _shoppingLists.clear();
-          _listDetailItems.clear();
-          _catalogItems.clear();
         }
       }
 

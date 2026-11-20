@@ -14,6 +14,7 @@ import '../widgets/ad_banner_widget.dart';
 import '../widgets/coach_mark_overlay.dart';
 import '../widgets/sync_indicator_widget.dart';
 import '../utils/undo_helper.dart';
+import 'family_setup_screen.dart';
 
 enum PendingItemsSortOption { manual, alphabeticalAsc, alphabeticalDesc }
 
@@ -773,7 +774,14 @@ class _ListDetailScreenState extends State<ListDetailScreen>
         currentUserFam != widget.shoppingList.idFamilia) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          Navigator.of(context).popUntil((route) => route.isFirst);
+          if (currentUserFam == null || db.userFamilies.isEmpty) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const FamilySetupScreen()),
+              (route) => false,
+            );
+          } else {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          }
         }
       });
     }
