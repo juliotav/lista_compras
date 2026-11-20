@@ -801,4 +801,230 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get joinedFamilySuccess => '¡Te has unido a la familia exitosamente!';
+
+  @override
+  String get coachBtnSkip => 'Omitir';
+
+  @override
+  String coachStepCounter(int current, int total) {
+    return '$current de $total';
+  }
+
+  @override
+  String get menuCoachMarkGuide => 'Guía de uso';
+
+  @override
+  String get coachGuideSheetTitle => 'Guía interactiva';
+
+  @override
+  String get coachGuideSheetSubtitle =>
+      'Elige la pantalla cuya guía deseas volver a ver:';
+
+  @override
+  String get coachGuideOptionFamilySetup => 'Crear o unirse a familia';
+
+  @override
+  String get coachGuideOptionFamilySetupDesc =>
+      'Crea tu familia, consulta tus grupos y tu límite.';
+
+  @override
+  String get coachGuideOptionJoinFamily => 'Unirse con código o QR';
+
+  @override
+  String get coachGuideOptionJoinFamilyDesc =>
+      'Ingresa un código compartido o escanea un código QR.';
+
+  @override
+  String get coachGuideOptionHome => 'Listas de compras';
+
+  @override
+  String get coachGuideOptionHomeDesc =>
+      'Conoce tu lista principal, código, QR, cambio de familia y menú.';
+
+  @override
+  String get coachGuideOptionListDetail => 'Detalle de lista';
+
+  @override
+  String get coachGuideOptionListDetailDesc =>
+      'Agrega, busca, filtra, ordena y completa tus artículos.';
+
+  @override
+  String get coachGuideOptionResetAll => 'Reiniciar toda la guía';
+
+  @override
+  String get coachGuideOptionResetAllDesc =>
+      'Vuelve a mostrar el recorrido automáticamente en cada pantalla.';
+
+  @override
+  String get coachGuideResetSuccess =>
+      'Guía reiniciada. Se mostrará de nuevo al entrar a cada pantalla.';
+
+  @override
+  String get coachGuideNoListAvailable =>
+      'Crea primero una lista de compras para ver su guía.';
+
+  @override
+  String get coachFamilyCreateTitle => 'Crear familia';
+
+  @override
+  String get coachFamilyCreateDesc =>
+      'Da clic aquí para crear tu primera familia y puedas invitar a más miembros a unirse.';
+
+  @override
+  String get coachFamilyJoinTitle => 'Unirse a familia';
+
+  @override
+  String get coachFamilyJoinDesc =>
+      'Si quieres unirte a un grupo o familia debes de dar clic aquí.';
+
+  @override
+  String get coachFamilyMyFamiliesTitle => 'Mis familias';
+
+  @override
+  String get coachFamilyMyFamiliesDesc =>
+      'Aquí aparecerán todas las familias o grupos a los que te has unido.';
+
+  @override
+  String get coachFamilyLimitTitle => 'Familias creadas';
+
+  @override
+  String get coachFamilyLimitDesc =>
+      'Aquí te mostrará el número de familias creadas con tu cuenta. Tienes hasta 5 disponibles para crear, pero recuerda que puedes unirte a la cantidad de familias o grupos que quieras.';
+
+  @override
+  String get coachJoinCodeTitle => 'Código de familia';
+
+  @override
+  String get coachJoinCodeDesc =>
+      'Aquí podrás ingresar el código que te han compartido para poder unirte a una familia.';
+
+  @override
+  String get coachJoinQrTitle => 'Escanear código QR';
+
+  @override
+  String get coachJoinQrDesc =>
+      'También tienes la opción de escanear el código QR del grupo al que te vas a unir (esta función abrirá la cámara de tu teléfono para escanear).';
+
+  @override
+  String get coachHomeDefaultListTitle => 'Tu primera lista';
+
+  @override
+  String get coachHomeDefaultListDesc =>
+      'Esta es tu primera lista que por defecto se crea al crear una familia. Aquí podrás añadir tus artículos.';
+
+  @override
+  String get coachHomeAddListTitle => 'Añadir más listas';
+
+  @override
+  String get coachHomeAddListDesc =>
+      'Para añadir más listas a tu familia, selecciona este botón.';
+
+  @override
+  String get coachHomeFamilyCodeTitle => 'Código de familia';
+
+  @override
+  String get coachHomeFamilyCodeDesc =>
+      'Este código es el que debes de compartir con tu familia o amigos para que se unan a tu lista y puedan ser parte de la familia que has creado.';
+
+  @override
+  String get coachHomeFamilyQrTitle => 'Código QR';
+
+  @override
+  String get coachHomeFamilyQrDesc =>
+      'O bien, aquí encontrarás el QR para escanear y unirse.';
+
+  @override
+  String get coachHomeFamilyDropdownTitle => 'Familia seleccionada';
+
+  @override
+  String get coachHomeFamilyDropdownDesc =>
+      'En este botón podrás ver la familia o grupo en el que te encuentras añadiendo listas y también podrás seleccionar otra diferente en caso de que tengas más de una familia añadida.';
+
+  @override
+  String get coachHomeRefreshTitle => 'Refrescar listas';
+
+  @override
+  String get coachHomeRefreshDesc =>
+      'La sincronización es constante en tus listas, pero de ser necesario tienes este botón para refrescar y actualizar tus listas.';
+
+  @override
+  String get coachHomeMenuTitle => 'Menú de tu app';
+
+  @override
+  String get coachHomeMenuDesc =>
+      'Aquí podrás ver el menú de tu app, donde podrás crear o unirte a una familia, ver miembros de la familia, configuración de tu app y más.';
+
+  @override
+  String get coachListAddItemTitle => 'Añadir artículos';
+
+  @override
+  String get coachListAddItemDesc =>
+      'Aquí podrás añadir tus artículos a la lista. Intenta añadir uno.';
+
+  @override
+  String get coachListSearchCatalogTitle => 'Buscar o escribir artículo';
+
+  @override
+  String get coachListSearchCatalogDesc =>
+      'Este espacio te ayudará a buscar en las sugerencias de tu lista que hay predeterminadas o guardadas anteriormente.';
+
+  @override
+  String get coachListSuggestionsTitle => 'Sugerencias y top artículos';
+
+  @override
+  String get coachListSuggestionsDesc =>
+      'También puedes ayudarte de los artículos predeterminados para añadirlos a tu lista con un solo clic en el signo de +. También visualizarás tu top de artículos añadidos.';
+
+  @override
+  String get coachListFilterTitle => 'Filtrar artículos';
+
+  @override
+  String get coachListFilterDesc =>
+      'Aquí podrás filtrar tus artículos de la lista.';
+
+  @override
+  String get coachListSortTitle => 'Orden de artículos';
+
+  @override
+  String get coachListSortDesc =>
+      'Puedes ordenar tu lista manualmente seleccionando cualquier artículo y arrastrando de arriba a abajo, o bien, puedes utilizar este botón para organizar tu lista por orden alfabético ascendente o descendentemente.';
+
+  @override
+  String get coachListCompleteAllTitle => 'Completar artículos';
+
+  @override
+  String get coachListCompleteAllDesc =>
+      'Una vez completa tu lista puedes marcarla como completada con este botón, o bien, puedes deslizar hacia la derecha cada artículo agregado para marcarlo individualmente como ¡Listo!, o hacia la izquierda para eliminarlo.';
+
+  @override
+  String get coachGuideOptionPurchasedActions =>
+      'Artículos comprados (restaurar y limpiar)';
+
+  @override
+  String get coachGuideOptionPurchasedActionsDesc =>
+      'Aprende a restaurar o limpiar los artículos ya comprados.';
+
+  @override
+  String get coachGuideNoPurchasedListAvailable =>
+      'Necesitas al menos una lista con artículos ya comprados para ver esta guía.';
+
+  @override
+  String get coachPurchasedRestoreTitle => 'Restaurar artículos comprados';
+
+  @override
+  String get coachPurchasedRestoreDesc =>
+      'Con este botón podrás regresar todos los artículos comprados a tu lista de artículos por comprar con un solo clic.';
+
+  @override
+  String get coachPurchasedClearTitle => 'Limpiar artículos comprados';
+
+  @override
+  String get coachPurchasedClearDesc =>
+      'Aquí podrás eliminar de forma definitiva todos los artículos ya comprados para mantener limpia esta sección.';
+
+  @override
+  String get confirmLogoutTitle => 'Cerrar Sesión';
+
+  @override
+  String get confirmLogoutMsg => '¿Seguro que quieres cerrar sesión?';
 }

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 
 import '../services/database_service.dart';
+import '../widgets/logout_confirm_dialog.dart';
 import 'home_screen.dart';
 import 'family_setup_screen.dart';
 import 'intro_slides_screen.dart';
@@ -296,6 +297,8 @@ class _AccountActivationScreenState extends State<AccountActivationScreen>
   }
 
   Future<void> _handleLogout() async {
+    final confirmed = await showLogoutConfirmDialog(context);
+    if (!confirmed || !mounted) return;
     final db = context.read<DatabaseService>();
     await db.logout();
     if (!mounted) return;

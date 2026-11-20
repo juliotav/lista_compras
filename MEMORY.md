@@ -26,3 +26,8 @@ El guardado en local (RAM + SQLite) y la sincronización delta en segundo plano 
 ### 5. Unión a familias por código o QR
 - Las familias pueden compartirse mediante su código `cl_familia` (`FAM-XXXXX`) o su código QR (`LISTALISTA:FAM-XXXXX`) generado localmente con `qr_flutter` (`FamilyQrDialog` en `HomeScreen`, `FamilyMembersScreen` y `FamilySetupScreen`).
 - En `FamilySetupScreen`, el diálogo de unirse permite tanto escribir el código manualmente como escanear el QR con la cámara (`QrScannerScreen` con `mobile_scanner`), reutilizando `DatabaseService.joinFamily`.
+
+### 6. Coach Marks (Guía interactiva)
+- Implementación propia sin dependencias externas (`CoachMarkController` en `lib/widgets/coach_mark_overlay.dart` usando `showGeneralDialog` en el root Navigator, `BackdropFilter` recortado fuera del spotlight, texto flotante sin tarjeta y auto-scroll `Scrollable.ensureVisible`), compatible con temas claro/oscuro y sobre `AlertDialog`.
+- Estado de visto persistido por usuario en `SharedPreferences` (`CoachMarkService`, claves `coach_mark_v1_<tour>_<userId>`, fuera de SQLite para no perderse al limpiar caché offline), cubriendo `familySetup`, `joinFamily`, `home`, `listDetail` y `purchasedItemsActions`.
+- En `FamilySetupScreen`, "Mis familias" se omite con 0 familias. `purchasedItemsActions` (restaurar y limpiar comprados) solo se dispara al entrar a una lista que ya tenga artículos comprados; en el Drawer ("Guía de uso") valida que exista una lista con comprados antes de abrirla.

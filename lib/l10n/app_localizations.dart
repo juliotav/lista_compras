@@ -1501,6 +1501,390 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'¡Te has unido a la familia exitosamente!'**
   String get joinedFamilySuccess;
+
+  /// No description provided for @coachBtnSkip.
+  ///
+  /// In es, this message translates to:
+  /// **'Omitir'**
+  String get coachBtnSkip;
+
+  /// No description provided for @coachStepCounter.
+  ///
+  /// In es, this message translates to:
+  /// **'{current} de {total}'**
+  String coachStepCounter(int current, int total);
+
+  /// No description provided for @menuCoachMarkGuide.
+  ///
+  /// In es, this message translates to:
+  /// **'Guía de uso'**
+  String get menuCoachMarkGuide;
+
+  /// No description provided for @coachGuideSheetTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Guía interactiva'**
+  String get coachGuideSheetTitle;
+
+  /// No description provided for @coachGuideSheetSubtitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Elige la pantalla cuya guía deseas volver a ver:'**
+  String get coachGuideSheetSubtitle;
+
+  /// No description provided for @coachGuideOptionFamilySetup.
+  ///
+  /// In es, this message translates to:
+  /// **'Crear o unirse a familia'**
+  String get coachGuideOptionFamilySetup;
+
+  /// No description provided for @coachGuideOptionFamilySetupDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Crea tu familia, consulta tus grupos y tu límite.'**
+  String get coachGuideOptionFamilySetupDesc;
+
+  /// No description provided for @coachGuideOptionJoinFamily.
+  ///
+  /// In es, this message translates to:
+  /// **'Unirse con código o QR'**
+  String get coachGuideOptionJoinFamily;
+
+  /// No description provided for @coachGuideOptionJoinFamilyDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Ingresa un código compartido o escanea un código QR.'**
+  String get coachGuideOptionJoinFamilyDesc;
+
+  /// No description provided for @coachGuideOptionHome.
+  ///
+  /// In es, this message translates to:
+  /// **'Listas de compras'**
+  String get coachGuideOptionHome;
+
+  /// No description provided for @coachGuideOptionHomeDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Conoce tu lista principal, código, QR, cambio de familia y menú.'**
+  String get coachGuideOptionHomeDesc;
+
+  /// No description provided for @coachGuideOptionListDetail.
+  ///
+  /// In es, this message translates to:
+  /// **'Detalle de lista'**
+  String get coachGuideOptionListDetail;
+
+  /// No description provided for @coachGuideOptionListDetailDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Agrega, busca, filtra, ordena y completa tus artículos.'**
+  String get coachGuideOptionListDetailDesc;
+
+  /// No description provided for @coachGuideOptionResetAll.
+  ///
+  /// In es, this message translates to:
+  /// **'Reiniciar toda la guía'**
+  String get coachGuideOptionResetAll;
+
+  /// No description provided for @coachGuideOptionResetAllDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Vuelve a mostrar el recorrido automáticamente en cada pantalla.'**
+  String get coachGuideOptionResetAllDesc;
+
+  /// No description provided for @coachGuideResetSuccess.
+  ///
+  /// In es, this message translates to:
+  /// **'Guía reiniciada. Se mostrará de nuevo al entrar a cada pantalla.'**
+  String get coachGuideResetSuccess;
+
+  /// No description provided for @coachGuideNoListAvailable.
+  ///
+  /// In es, this message translates to:
+  /// **'Crea primero una lista de compras para ver su guía.'**
+  String get coachGuideNoListAvailable;
+
+  /// No description provided for @coachFamilyCreateTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Crear familia'**
+  String get coachFamilyCreateTitle;
+
+  /// No description provided for @coachFamilyCreateDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Da clic aquí para crear tu primera familia y puedas invitar a más miembros a unirse.'**
+  String get coachFamilyCreateDesc;
+
+  /// No description provided for @coachFamilyJoinTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Unirse a familia'**
+  String get coachFamilyJoinTitle;
+
+  /// No description provided for @coachFamilyJoinDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Si quieres unirte a un grupo o familia debes de dar clic aquí.'**
+  String get coachFamilyJoinDesc;
+
+  /// No description provided for @coachFamilyMyFamiliesTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Mis familias'**
+  String get coachFamilyMyFamiliesTitle;
+
+  /// No description provided for @coachFamilyMyFamiliesDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Aquí aparecerán todas las familias o grupos a los que te has unido.'**
+  String get coachFamilyMyFamiliesDesc;
+
+  /// No description provided for @coachFamilyLimitTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Familias creadas'**
+  String get coachFamilyLimitTitle;
+
+  /// No description provided for @coachFamilyLimitDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Aquí te mostrará el número de familias creadas con tu cuenta. Tienes hasta 5 disponibles para crear, pero recuerda que puedes unirte a la cantidad de familias o grupos que quieras.'**
+  String get coachFamilyLimitDesc;
+
+  /// No description provided for @coachJoinCodeTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Código de familia'**
+  String get coachJoinCodeTitle;
+
+  /// No description provided for @coachJoinCodeDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Aquí podrás ingresar el código que te han compartido para poder unirte a una familia.'**
+  String get coachJoinCodeDesc;
+
+  /// No description provided for @coachJoinQrTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Escanear código QR'**
+  String get coachJoinQrTitle;
+
+  /// No description provided for @coachJoinQrDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'También tienes la opción de escanear el código QR del grupo al que te vas a unir (esta función abrirá la cámara de tu teléfono para escanear).'**
+  String get coachJoinQrDesc;
+
+  /// No description provided for @coachHomeDefaultListTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Tu primera lista'**
+  String get coachHomeDefaultListTitle;
+
+  /// No description provided for @coachHomeDefaultListDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Esta es tu primera lista que por defecto se crea al crear una familia. Aquí podrás añadir tus artículos.'**
+  String get coachHomeDefaultListDesc;
+
+  /// No description provided for @coachHomeAddListTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Añadir más listas'**
+  String get coachHomeAddListTitle;
+
+  /// No description provided for @coachHomeAddListDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Para añadir más listas a tu familia, selecciona este botón.'**
+  String get coachHomeAddListDesc;
+
+  /// No description provided for @coachHomeFamilyCodeTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Código de familia'**
+  String get coachHomeFamilyCodeTitle;
+
+  /// No description provided for @coachHomeFamilyCodeDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Este código es el que debes de compartir con tu familia o amigos para que se unan a tu lista y puedan ser parte de la familia que has creado.'**
+  String get coachHomeFamilyCodeDesc;
+
+  /// No description provided for @coachHomeFamilyQrTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Código QR'**
+  String get coachHomeFamilyQrTitle;
+
+  /// No description provided for @coachHomeFamilyQrDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'O bien, aquí encontrarás el QR para escanear y unirse.'**
+  String get coachHomeFamilyQrDesc;
+
+  /// No description provided for @coachHomeFamilyDropdownTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Familia seleccionada'**
+  String get coachHomeFamilyDropdownTitle;
+
+  /// No description provided for @coachHomeFamilyDropdownDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'En este botón podrás ver la familia o grupo en el que te encuentras añadiendo listas y también podrás seleccionar otra diferente en caso de que tengas más de una familia añadida.'**
+  String get coachHomeFamilyDropdownDesc;
+
+  /// No description provided for @coachHomeRefreshTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Refrescar listas'**
+  String get coachHomeRefreshTitle;
+
+  /// No description provided for @coachHomeRefreshDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'La sincronización es constante en tus listas, pero de ser necesario tienes este botón para refrescar y actualizar tus listas.'**
+  String get coachHomeRefreshDesc;
+
+  /// No description provided for @coachHomeMenuTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Menú de tu app'**
+  String get coachHomeMenuTitle;
+
+  /// No description provided for @coachHomeMenuDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Aquí podrás ver el menú de tu app, donde podrás crear o unirte a una familia, ver miembros de la familia, configuración de tu app y más.'**
+  String get coachHomeMenuDesc;
+
+  /// No description provided for @coachListAddItemTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Añadir artículos'**
+  String get coachListAddItemTitle;
+
+  /// No description provided for @coachListAddItemDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Aquí podrás añadir tus artículos a la lista. Intenta añadir uno.'**
+  String get coachListAddItemDesc;
+
+  /// No description provided for @coachListSearchCatalogTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Buscar o escribir artículo'**
+  String get coachListSearchCatalogTitle;
+
+  /// No description provided for @coachListSearchCatalogDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Este espacio te ayudará a buscar en las sugerencias de tu lista que hay predeterminadas o guardadas anteriormente.'**
+  String get coachListSearchCatalogDesc;
+
+  /// No description provided for @coachListSuggestionsTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Sugerencias y top artículos'**
+  String get coachListSuggestionsTitle;
+
+  /// No description provided for @coachListSuggestionsDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'También puedes ayudarte de los artículos predeterminados para añadirlos a tu lista con un solo clic en el signo de +. También visualizarás tu top de artículos añadidos.'**
+  String get coachListSuggestionsDesc;
+
+  /// No description provided for @coachListFilterTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Filtrar artículos'**
+  String get coachListFilterTitle;
+
+  /// No description provided for @coachListFilterDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Aquí podrás filtrar tus artículos de la lista.'**
+  String get coachListFilterDesc;
+
+  /// No description provided for @coachListSortTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Orden de artículos'**
+  String get coachListSortTitle;
+
+  /// No description provided for @coachListSortDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Puedes ordenar tu lista manualmente seleccionando cualquier artículo y arrastrando de arriba a abajo, o bien, puedes utilizar este botón para organizar tu lista por orden alfabético ascendente o descendentemente.'**
+  String get coachListSortDesc;
+
+  /// No description provided for @coachListCompleteAllTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Completar artículos'**
+  String get coachListCompleteAllTitle;
+
+  /// No description provided for @coachListCompleteAllDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Una vez completa tu lista puedes marcarla como completada con este botón, o bien, puedes deslizar hacia la derecha cada artículo agregado para marcarlo individualmente como ¡Listo!, o hacia la izquierda para eliminarlo.'**
+  String get coachListCompleteAllDesc;
+
+  /// No description provided for @coachGuideOptionPurchasedActions.
+  ///
+  /// In es, this message translates to:
+  /// **'Artículos comprados (restaurar y limpiar)'**
+  String get coachGuideOptionPurchasedActions;
+
+  /// No description provided for @coachGuideOptionPurchasedActionsDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Aprende a restaurar o limpiar los artículos ya comprados.'**
+  String get coachGuideOptionPurchasedActionsDesc;
+
+  /// No description provided for @coachGuideNoPurchasedListAvailable.
+  ///
+  /// In es, this message translates to:
+  /// **'Necesitas al menos una lista con artículos ya comprados para ver esta guía.'**
+  String get coachGuideNoPurchasedListAvailable;
+
+  /// No description provided for @coachPurchasedRestoreTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Restaurar artículos comprados'**
+  String get coachPurchasedRestoreTitle;
+
+  /// No description provided for @coachPurchasedRestoreDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Con este botón podrás regresar todos los artículos comprados a tu lista de artículos por comprar con un solo clic.'**
+  String get coachPurchasedRestoreDesc;
+
+  /// No description provided for @coachPurchasedClearTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Limpiar artículos comprados'**
+  String get coachPurchasedClearTitle;
+
+  /// No description provided for @coachPurchasedClearDesc.
+  ///
+  /// In es, this message translates to:
+  /// **'Aquí podrás eliminar de forma definitiva todos los artículos ya comprados para mantener limpia esta sección.'**
+  String get coachPurchasedClearDesc;
+
+  /// No description provided for @confirmLogoutTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Cerrar Sesión'**
+  String get confirmLogoutTitle;
+
+  /// No description provided for @confirmLogoutMsg.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Seguro que quieres cerrar sesión?'**
+  String get confirmLogoutMsg;
 }
 
 class _AppLocalizationsDelegate

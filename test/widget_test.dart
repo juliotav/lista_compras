@@ -6,6 +6,7 @@ import 'package:lista_compras/services/security_service.dart';
 import 'package:lista_compras/services/database_service.dart';
 import 'package:lista_compras/utils/undo_helper.dart';
 import 'package:lista_compras/widgets/family_qr_dialog.dart';
+import 'package:lista_compras/widgets/logout_confirm_dialog.dart';
 import 'package:lista_compras/models/family_model.dart';
 import 'package:lista_compras/l10n/app_localizations.dart';
 import 'package:uuid/uuid.dart';
@@ -367,6 +368,49 @@ void main() {
 
       expect(find.text('Familia Pérez'), findsOneWidget);
       expect(find.text('FAM-8X92K'), findsOneWidget);
+    });
+  });
+
+  group('LogoutConfirmDialog Tests', () {
+    testWidgets('returns false when cancelled and true when confirmed (es)', (tester) async {
+      bool? result;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('es'),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                return ElevatedButton(
+                  onPressed: () async {
+                    result = await showLogoutConfirmDialog(context);
+                  },
+                  child: const Text('Abrir'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      // Cancelar
+      await tester.tap(find.text('Abrir'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('¿Seguro que quieres cerrar sesión?'), findsOneWidget);
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      expect(result, isFalse);
+
+      // Confirmar
+      await tester.tap(find.text('Abrir'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Cerrar Sesión'));
+      await tester.pumpAndSettle();
+      expect(result, isTrue);
     });
   });
 }

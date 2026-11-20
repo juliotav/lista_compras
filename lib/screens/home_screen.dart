@@ -13,9 +13,12 @@ import 'list_detail_screen.dart';
 import 'login_screen.dart';
 import '../widgets/ad_banner_widget.dart';
 import '../services/ad_interstitial_service.dart';
+import '../services/coach_mark_service.dart';
 import '../services/connectivity_service.dart';
+import '../widgets/coach_mark_overlay.dart';
 import '../widgets/sync_indicator_widget.dart';
 import '../widgets/family_qr_dialog.dart';
+import '../widgets/logout_confirm_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,21 +28,386 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final GlobalKey _defaultListKey = GlobalKey();
+  final GlobalKey _addListKey = GlobalKey();
+  final GlobalKey _familyCodeKey = GlobalKey();
+  final GlobalKey _familyQrKey = GlobalKey();
+  final GlobalKey _familyDropdownKey = GlobalKey();
+  final GlobalKey _refreshListsKey = GlobalKey();
+  final GlobalKey _drawerMenuKey = GlobalKey();
+  bool _coachMarkChecked = false;
+
   @override
   void initState() {
     super.initState();
     AdInterstitialService.preloadAd();
-    _refreshData();
+    _refreshData(checkCoachMark: true);
   }
 
-  void _refreshData() {
+  void _refreshData({bool checkCoachMark = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (mounted) {
         final db = context.read<DatabaseService>();
         await db.loadLocalDataOnly();
-        db.fetchFamilyData();
+        final fetchFuture = db.fetchFamilyData();
+        if (checkCoachMark && !_coachMarkChecked) {
+          _coachMarkChecked = true;
+          await _maybeShowInitialCoachMark(fetchFuture);
+        }
       }
     });
+  }
+
+  Future<void> _maybeShowInitialCoachMark(Future<void> fetchFuture) async {
+    if (!mounted) return;
+    final db = context.read<DatabaseService>();
+    final userId = db.currentUser?.idUsuario;
+    if (userId == null) return;
+
+    final hasSeen = await CoachMarkService.hasSeenTour(
+      CoachMarkTour.home,
+      userId,
+    );
+    if (hasSeen || !mounted) return;
+
+    // Si aún no hay listas locales (ej. primer inicio en otro dispositivo), espera brevemente la descarga
+    if (db.getActiveShoppingLists().isEmpty) {
+      await fetchFuture.timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {},
+      );
+    }
+
+    await Future.delayed(const Duration(milliseconds: 420));
+    if (!mounted) return;
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return;
+
+    await _showHomeCoachMark(markAsSeen: true);
+  }
+
+  Future<void> _showHomeCoachMark({required bool markAsSeen}) async {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final userId = context.read<DatabaseService>().currentUser?.idUsuario;
+
+    final steps = <CoachMarkStep>[
+      CoachMarkStep(
+        targetKey: _defaultListKey,
+        title: l10n.coachHomeDefaultListTitle,
+        description: l10n.coachHomeDefaultListDesc,
+        borderRadius: 16,
+      ),
+      CoachMarkStep(
+        targetKey: _addListKey,
+        title: l10n.coachHomeAddListTitle,
+        description: l10n.coachHomeAddListDesc,
+        isCircle: true,
+        highlightPadding: const EdgeInsets.all(4),
+      ),
+      CoachMarkStep(
+        targetKey: _familyCodeKey,
+        title: l10n.coachHomeFamilyCodeTitle,
+        description: l10n.coachHomeFamilyCodeDesc,
+        borderRadius: 12,
+      ),
+      CoachMarkStep(
+        targetKey: _familyQrKey,
+        title: l10n.coachHomeFamilyQrTitle,
+        description: l10n.coachHomeFamilyQrDesc,
+        borderRadius: 12,
+      ),
+      CoachMarkStep(
+        targetKey: _familyDropdownKey,
+        title: l10n.coachHomeFamilyDropdownTitle,
+        description: l10n.coachHomeFamilyDropdownDesc,
+        borderRadius: 20,
+      ),
+      CoachMarkStep(
+        targetKey: _refreshListsKey,
+        title: l10n.coachHomeRefreshTitle,
+        description: l10n.coachHomeRefreshDesc,
+        isCircle: true,
+        highlightPadding: const EdgeInsets.all(4),
+      ),
+      CoachMarkStep(
+        targetKey: _drawerMenuKey,
+        title: l10n.coachHomeMenuTitle,
+        description: l10n.coachHomeMenuDesc,
+        isCircle: true,
+        highlightPadding: const EdgeInsets.all(4),
+      ),
+    ];
+
+    await CoachMarkController.show(
+      context: context,
+      steps: steps,
+      onComplete: markAsSeen
+          ? () => CoachMarkService.markTourSeen(CoachMarkTour.home, userId)
+          : null,
+    );
+  }
+
+  void _showCoachMarkGuideSheet() {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final db = context.read<DatabaseService>();
+    final userId = db.currentUser?.idUsuario;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.help_outline_rounded,
+                      color: theme.colorScheme.primary,
+                      size: 26,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        l10n.coachGuideSheetTitle,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.coachGuideSheetSubtitle,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor:
+                        theme.colorScheme.primary.withValues(alpha: 0.12),
+                    child: Icon(
+                      Icons.family_restroom_rounded,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  title: Text(
+                    l10n.coachGuideOptionFamilySetup,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(l10n.coachGuideOptionFamilySetupDesc),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const FamilySetupScreen(startCoachMark: true),
+                      ),
+                    );
+                    _refreshData();
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.teal.withValues(alpha: 0.12),
+                    child: const Icon(
+                      Icons.qr_code_scanner_rounded,
+                      color: Colors.teal,
+                    ),
+                  ),
+                  title: Text(
+                    l10n.coachGuideOptionJoinFamily,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(l10n.coachGuideOptionJoinFamilyDesc),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const FamilySetupScreen(
+                          openJoinDialogWithCoachMark: true,
+                        ),
+                      ),
+                    );
+                    _refreshData();
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.indigo.withValues(alpha: 0.12),
+                    child: const Icon(
+                      Icons.shopping_cart_rounded,
+                      color: Colors.indigo,
+                    ),
+                  ),
+                  title: Text(
+                    l10n.coachGuideOptionHome,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(l10n.coachGuideOptionHomeDesc),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    await Future.delayed(const Duration(milliseconds: 280));
+                    if (mounted) {
+                      await _showHomeCoachMark(markAsSeen: false);
+                    }
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.amber.withValues(alpha: 0.16),
+                    child: Icon(
+                      Icons.checklist_rounded,
+                      color: Colors.amber[800],
+                    ),
+                  ),
+                  title: Text(
+                    l10n.coachGuideOptionListDetail,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(l10n.coachGuideOptionListDetailDesc),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    final activeLists = db.getActiveShoppingLists();
+                    if (activeLists.isEmpty) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(l10n.coachGuideNoListAvailable)),
+                        );
+                      }
+                      return;
+                    }
+                    final targetList = activeLists.firstWhere(
+                      (l) => l.isDefault,
+                      orElse: () => activeLists.first,
+                    );
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ListDetailScreen(
+                          shoppingList: targetList,
+                          startCoachMark: true,
+                        ),
+                      ),
+                    );
+                    _refreshData();
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.green.withValues(alpha: 0.14),
+                    child: Icon(
+                      Icons.restore_rounded,
+                      color: Colors.green[700],
+                    ),
+                  ),
+                  title: Text(
+                    l10n.coachGuideOptionPurchasedActions,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(l10n.coachGuideOptionPurchasedActionsDesc),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    final activeLists = db.getActiveShoppingLists();
+                    final listsWithPurchased = activeLists
+                        .where(
+                          (l) => db
+                              .getCompletedItems(l.idListaCompra)
+                              .isNotEmpty,
+                        )
+                        .toList();
+                    if (listsWithPurchased.isEmpty) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              l10n.coachGuideNoPurchasedListAvailable,
+                            ),
+                            backgroundColor: Colors.orange[800],
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                    final targetList = listsWithPurchased.firstWhere(
+                      (l) => l.isDefault,
+                      orElse: () => listsWithPurchased.first,
+                    );
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ListDetailScreen(
+                          shoppingList: targetList,
+                          startPurchasedCoachMark: true,
+                        ),
+                      ),
+                    );
+                    _refreshData();
+                  },
+                ),
+                const Divider(height: 24),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.orange.withValues(alpha: 0.12),
+                    child: Icon(
+                      Icons.restart_alt_rounded,
+                      color: Colors.orange[800],
+                    ),
+                  ),
+                  title: Text(
+                    l10n.coachGuideOptionResetAll,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(l10n.coachGuideOptionResetAllDesc),
+                  onTap: () async {
+                    Navigator.pop(sheetContext);
+                    await CoachMarkService.resetAllTours(userId);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(l10n.coachGuideResetSuccess),
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                    await Future.delayed(const Duration(milliseconds: 350));
+                    if (mounted) {
+                      await _showHomeCoachMark(markAsSeen: true);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _showCreateListDialog() {
@@ -179,16 +547,27 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final shoppingLists = db.getActiveShoppingLists();
+    final defaultListIdx = shoppingLists.indexWhere((l) => l.isDefault);
+    final coachListTargetIndex = defaultListIdx != -1 ? defaultListIdx : 0;
 
     final userFamilies = db.userFamilies;
 
     return Scaffold(
       appBar: AppBar(
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            key: _drawerMenuKey,
+            icon: const Icon(Icons.menu),
+            tooltip: MaterialLocalizations.of(ctx).openAppDrawerTooltip,
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
+        ),
         title: Text(l10n.homeTitle),
         centerTitle: true,
         actions: [
           const SyncIndicatorWidget(),
           IconButton(
+            key: _refreshListsKey,
             icon: const Icon(Icons.refresh_rounded),
             tooltip: l10n.syncTooltip,
             onPressed: () async {
@@ -316,6 +695,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       builder: (_) => const AboutPrivacyScreen(),
                     ),
                   );
+                },
+              ),
+            ),
+            Material(
+              color: Colors.transparent,
+              child: ListTile(
+                leading: const Icon(Icons.help_outline_rounded),
+                title: Text(l10n.menuCoachMarkGuide),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showCoachMarkGuideSheet();
                 },
               ),
             ),
@@ -454,6 +844,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: const TextStyle(color: Colors.red),
                 ),
                 onTap: () async {
+                  final confirmed = await showLogoutConfirmDialog(context);
+                  if (!confirmed || !context.mounted) return;
                   await db.logout();
                   if (!context.mounted) return;
                   Navigator.pushAndRemoveUntil(
@@ -581,6 +973,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           return items;
                         },
                         child: Container(
+                          key: _familyDropdownKey,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 10,
@@ -669,6 +1062,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
+                              key: _familyCodeKey,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 6,
@@ -709,6 +1103,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               onTap: () => showFamilyQrDialog(context, family),
                               borderRadius: BorderRadius.circular(12),
                               child: Container(
+                                key: _familyQrKey,
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
                                   color: theme.cardColor,
@@ -750,6 +1145,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     IconButton(
+                      key: _addListKey,
                       icon: const Icon(
                         Icons.add_circle_rounded,
                         size: 36,
@@ -779,6 +1175,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           final isDark = theme.brightness == Brightness.dark;
 
                           final cardChild = Card(
+                            key: index == coachListTargetIndex
+                                ? _defaultListKey
+                                : null,
                             elevation: list.isDefault ? 3 : 1,
                             margin: const EdgeInsets.symmetric(vertical: 6),
                             clipBehavior: Clip.antiAlias,

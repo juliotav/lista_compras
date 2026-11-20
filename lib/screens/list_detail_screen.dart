@@ -5,11 +5,13 @@ import '../l10n/app_localizations.dart';
 import '../models/item_catalog_model.dart';
 import '../models/list_detail_item_model.dart';
 import '../models/shopping_list_model.dart';
+import '../services/coach_mark_service.dart';
 import '../services/database_service.dart';
 import '../services/locale_provider.dart';
 import '../services/push_notification_service.dart';
 import '../services/connectivity_service.dart';
 import '../widgets/ad_banner_widget.dart';
+import '../widgets/coach_mark_overlay.dart';
 import '../widgets/sync_indicator_widget.dart';
 import '../utils/undo_helper.dart';
 
@@ -17,8 +19,15 @@ enum PendingItemsSortOption { manual, alphabeticalAsc, alphabeticalDesc }
 
 class ListDetailScreen extends StatefulWidget {
   final ShoppingListModel shoppingList;
+  final bool startCoachMark;
+  final bool startPurchasedCoachMark;
 
-  const ListDetailScreen({super.key, required this.shoppingList});
+  const ListDetailScreen({
+    super.key,
+    required this.shoppingList,
+    this.startCoachMark = false,
+    this.startPurchasedCoachMark = false,
+  });
 
   @override
   State<ListDetailScreen> createState() => _ListDetailScreenState();
@@ -26,6 +35,16 @@ class ListDetailScreen extends StatefulWidget {
 
 class _ListDetailScreenState extends State<ListDetailScreen>
     with WidgetsBindingObserver {
+  final GlobalKey _addItemKey = GlobalKey();
+  final GlobalKey _catalogSearchKey = GlobalKey();
+  final GlobalKey _suggestionsBoxKey = GlobalKey();
+  final GlobalKey _filterPendingKey = GlobalKey();
+  final GlobalKey _sortPendingKey = GlobalKey();
+  final GlobalKey _completeAllKey = GlobalKey();
+  final GlobalKey _restoreCompletedKey = GlobalKey();
+  final GlobalKey _clearCompletedKey = GlobalKey();
+  bool _coachMarkScheduled = false;
+
   Timer? _syncTimer;
   int _syncPauseGeneration = 0;
   final TextEditingController _searchController = TextEditingController();
@@ -74,6 +93,7 @@ class _ListDetailScreenState extends State<ListDetailScreen>
       if (mounted) {
         context.read<DatabaseService>().fetchFamilyData();
         unawaited(PushNotificationService.clearBadge());
+        _scheduleInitialCoachMark();
       }
     });
 
@@ -90,6 +110,176 @@ class _ListDetailScreenState extends State<ListDetailScreen>
         _pendingFilterQuery = _pendingFilterController.text.trim();
       });
     });
+  }
+
+  Future<void> _scheduleInitialCoachMark() async {
+    if (_coachMarkScheduled || !mounted) return;
+    _coachMarkScheduled = true;
+
+    if (widget.startPurchasedCoachMark) {
+      await Future.delayed(const Duration(milliseconds: 420));
+      if (!mounted) return;
+      await _showPurchasedItemsCoachMark(markAsSeen: false);
+      return;
+    }
+
+    if (widget.startCoachMark) {
+      await Future.delayed(const Duration(milliseconds: 420));
+      if (!mounted) return;
+      await _showListDetailCoachMark(markAsSeen: false);
+      return;
+    }
+
+    final db = context.read<DatabaseService>();
+    final userId = db.currentUser?.idUsuario;
+    final hasSeenMain = await CoachMarkService.hasSeenTour(
+      CoachMarkTour.listDetail,
+      userId,
+    );
+    bool ranMain = false;
+    if (!hasSeenMain && mounted) {
+      await Future.delayed(const Duration(milliseconds: 420));
+      if (!mounted) return;
+      await _showListDetailCoachMark(markAsSeen: true);
+      ranMain = true;
+    }
+
+    if (!mounted) return;
+    final hasCompletedItems = db
+        .getCompletedItems(widget.shoppingList.idListaCompra)
+        .isNotEmpty;
+    if (!hasCompletedItems) return;
+
+    final hasSeenPurchased = await CoachMarkService.hasSeenTour(
+      CoachMarkTour.purchasedItemsActions,
+      userId,
+    );
+    if (!hasSeenPurchased && mounted) {
+      await Future.delayed(
+        Duration(milliseconds: ranMain ? 360 : 420),
+      );
+      if (!mounted) return;
+      await _showPurchasedItemsCoachMark(markAsSeen: true);
+    }
+  }
+
+  Future<void> _showPurchasedItemsCoachMark({required bool markAsSeen}) async {
+    if (!mounted) return;
+    final db = context.read<DatabaseService>();
+    final completed = db.getCompletedItems(widget.shoppingList.idListaCompra);
+    if (completed.isEmpty) return;
+
+    final l10n = AppLocalizations.of(context)!;
+    final userId = db.currentUser?.idUsuario;
+
+    final steps = <CoachMarkStep>[
+      CoachMarkStep(
+        targetKey: _restoreCompletedKey,
+        title: l10n.coachPurchasedRestoreTitle,
+        description: l10n.coachPurchasedRestoreDesc,
+        isCircle: true,
+        highlightPadding: const EdgeInsets.all(4),
+        scrollAlignment: 0.72,
+      ),
+      CoachMarkStep(
+        targetKey: _clearCompletedKey,
+        title: l10n.coachPurchasedClearTitle,
+        description: l10n.coachPurchasedClearDesc,
+        isCircle: true,
+        highlightPadding: const EdgeInsets.all(4),
+        scrollAlignment: 0.72,
+      ),
+    ];
+
+    _stopSyncTimer();
+    try {
+      await CoachMarkController.show(
+        context: context,
+        steps: steps,
+        onComplete: markAsSeen
+            ? () => CoachMarkService.markTourSeen(
+                  CoachMarkTour.purchasedItemsActions,
+                  userId,
+                )
+            : null,
+      );
+    } finally {
+      if (mounted) {
+        _startSyncTimer();
+      }
+    }
+  }
+
+  Future<void> _showListDetailCoachMark({required bool markAsSeen}) async {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final userId = context.read<DatabaseService>().currentUser?.idUsuario;
+
+    final steps = <CoachMarkStep>[
+      CoachMarkStep(
+        targetKey: _addItemKey,
+        title: l10n.coachListAddItemTitle,
+        description: l10n.coachListAddItemDesc,
+        isCircle: true,
+        highlightPadding: const EdgeInsets.all(4),
+        scrollAlignment: 0.3,
+      ),
+      CoachMarkStep(
+        targetKey: _catalogSearchKey,
+        title: l10n.coachListSearchCatalogTitle,
+        description: l10n.coachListSearchCatalogDesc,
+        borderRadius: 16,
+        scrollAlignment: 0.3,
+      ),
+      CoachMarkStep(
+        targetKey: _suggestionsBoxKey,
+        title: l10n.coachListSuggestionsTitle,
+        description: l10n.coachListSuggestionsDesc,
+        borderRadius: 16,
+        scrollAlignment: 0.85,
+      ),
+      CoachMarkStep(
+        targetKey: _filterPendingKey,
+        title: l10n.coachListFilterTitle,
+        description: l10n.coachListFilterDesc,
+        isCircle: true,
+        highlightPadding: const EdgeInsets.all(4),
+        scrollAlignment: 0.1,
+      ),
+      CoachMarkStep(
+        targetKey: _sortPendingKey,
+        title: l10n.coachListSortTitle,
+        description: l10n.coachListSortDesc,
+        isCircle: true,
+        highlightPadding: const EdgeInsets.all(4),
+        scrollAlignment: 0.1,
+      ),
+      CoachMarkStep(
+        targetKey: _completeAllKey,
+        title: l10n.coachListCompleteAllTitle,
+        description: l10n.coachListCompleteAllDesc,
+        isCircle: true,
+        highlightPadding: const EdgeInsets.all(4),
+      ),
+    ];
+
+    _stopSyncTimer();
+    try {
+      await CoachMarkController.show(
+        context: context,
+        steps: steps,
+        onComplete: markAsSeen
+            ? () => CoachMarkService.markTourSeen(
+                  CoachMarkTour.listDetail,
+                  userId,
+                )
+            : null,
+      );
+    } finally {
+      if (mounted) {
+        _startSyncTimer();
+      }
+    }
   }
 
   void _startSyncTimer() {
@@ -699,6 +889,7 @@ class _ListDetailScreenState extends State<ListDetailScreen>
             },
           ),
           IconButton(
+            key: _completeAllKey,
             icon: const Icon(Icons.check_circle_outline_rounded, size: 28),
             tooltip: l10n.finishListTooltip,
             onPressed: _handleFinishEntireList,
@@ -755,6 +946,7 @@ class _ListDetailScreenState extends State<ListDetailScreen>
 
                   // Icono para desplegar/ocultar barra de búsqueda de por comprar
                   IconButton(
+                    key: _filterPendingKey,
                     icon: Icon(
                       _showPendingFilter
                           ? Icons.filter_alt_off_rounded
@@ -779,6 +971,7 @@ class _ListDetailScreenState extends State<ListDetailScreen>
 
                   // Botón desplegable para seleccionar tipo de ordenamiento
                   PopupMenuButton<PendingItemsSortOption>(
+                    key: _sortPendingKey,
                     icon: Icon(
                       Icons.sort_rounded,
                       color: _pendingSortOption != PendingItemsSortOption.manual
@@ -1276,6 +1469,7 @@ class _ListDetailScreenState extends State<ListDetailScreen>
                     ],
                   ),
                   IconButton(
+                    key: _addItemKey,
                     icon: const Icon(
                       Icons.add_circle_outline_rounded,
                       color: Colors.blue,
@@ -1290,6 +1484,7 @@ class _ListDetailScreenState extends State<ListDetailScreen>
 
               // CAMPO DE BÚSQUEDA AL VUELO
               TextField(
+                key: _catalogSearchKey,
                 controller: _searchController,
                 textCapitalization: TextCapitalization.sentences,
                 textInputAction: TextInputAction.done,
@@ -1339,6 +1534,7 @@ class _ListDetailScreenState extends State<ListDetailScreen>
               const SizedBox(height: 12),
 
               Material(
+                key: _suggestionsBoxKey,
                 color: Colors.amber.withValues(alpha: 0.05),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -1522,6 +1718,7 @@ class _ListDetailScreenState extends State<ListDetailScreen>
                     ),
                     const Spacer(),
                     IconButton(
+                      key: _restoreCompletedKey,
                       icon: Icon(
                         Icons.restore_rounded,
                         color: Colors.green[800],
@@ -1531,6 +1728,7 @@ class _ListDetailScreenState extends State<ListDetailScreen>
                       onPressed: _handleRestoreAllCompletedItems,
                     ),
                     IconButton(
+                      key: _clearCompletedKey,
                       icon: Icon(
                         Icons.delete_sweep_rounded,
                         color: Colors.red[700],

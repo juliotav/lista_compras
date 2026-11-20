@@ -3,23 +3,123 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../models/family_model.dart';
+import '../services/coach_mark_service.dart';
 import '../services/database_service.dart';
 import '../widgets/ad_banner_widget.dart';
+import '../widgets/coach_mark_overlay.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'about_privacy_screen.dart';
 import 'qr_scanner_screen.dart';
 import '../widgets/sync_indicator_widget.dart';
 import '../widgets/family_qr_dialog.dart';
+import '../widgets/logout_confirm_dialog.dart';
 
 class FamilySetupScreen extends StatefulWidget {
-  const FamilySetupScreen({super.key});
+  final bool startCoachMark;
+  final bool openJoinDialogWithCoachMark;
+
+  const FamilySetupScreen({
+    super.key,
+    this.startCoachMark = false,
+    this.openJoinDialogWithCoachMark = false,
+  });
 
   @override
   State<FamilySetupScreen> createState() => _FamilySetupScreenState();
 }
 
 class _FamilySetupScreenState extends State<FamilySetupScreen> {
+  final GlobalKey _createFamilyKey = GlobalKey();
+  final GlobalKey _joinFamilyKey = GlobalKey();
+  final GlobalKey _myFamiliesKey = GlobalKey();
+  final GlobalKey _createdFamiliesCounterKey = GlobalKey();
+  bool _coachMarkScheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scheduleInitialCoachMark();
+    });
+  }
+
+  Future<void> _scheduleInitialCoachMark() async {
+    if (_coachMarkScheduled || !mounted) return;
+    _coachMarkScheduled = true;
+
+    if (widget.openJoinDialogWithCoachMark) {
+      await Future.delayed(const Duration(milliseconds: 350));
+      if (!mounted) return;
+      _showJoinFamilyDialog(forceCoachMark: true);
+      return;
+    }
+
+    if (widget.startCoachMark) {
+      await Future.delayed(const Duration(milliseconds: 380));
+      if (!mounted) return;
+      await _showFamilySetupCoachMark(markAsSeen: false);
+      return;
+    }
+
+    final userId = context.read<DatabaseService>().currentUser?.idUsuario;
+    final hasSeen = await CoachMarkService.hasSeenTour(
+      CoachMarkTour.familySetup,
+      userId,
+    );
+    if (!hasSeen && mounted) {
+      await Future.delayed(const Duration(milliseconds: 380));
+      if (!mounted) return;
+      await _showFamilySetupCoachMark(markAsSeen: true);
+    }
+  }
+
+  Future<void> _showFamilySetupCoachMark({required bool markAsSeen}) async {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final db = context.read<DatabaseService>();
+    final userId = db.currentUser?.idUsuario;
+
+    final steps = <CoachMarkStep>[
+      CoachMarkStep(
+        targetKey: _createFamilyKey,
+        title: l10n.coachFamilyCreateTitle,
+        description: l10n.coachFamilyCreateDesc,
+        borderRadius: 20,
+      ),
+      CoachMarkStep(
+        targetKey: _joinFamilyKey,
+        title: l10n.coachFamilyJoinTitle,
+        description: l10n.coachFamilyJoinDesc,
+        borderRadius: 20,
+      ),
+      if (db.userFamilies.isNotEmpty)
+        CoachMarkStep(
+          targetKey: _myFamiliesKey,
+          title: l10n.coachFamilyMyFamiliesTitle,
+          description: l10n.coachFamilyMyFamiliesDesc,
+          borderRadius: 12,
+        ),
+      CoachMarkStep(
+        targetKey: _createdFamiliesCounterKey,
+        title: l10n.coachFamilyLimitTitle,
+        description: l10n.coachFamilyLimitDesc,
+        borderRadius: 16,
+      ),
+    ];
+
+    await CoachMarkController.show(
+      context: context,
+      steps: steps,
+      onComplete: markAsSeen
+          ? () => CoachMarkService.markTourSeen(
+                CoachMarkTour.familySetup,
+                userId,
+              )
+          : null,
+    );
+  }
+
   void _showCreateFamilyDialog() {
     final l10n = AppLocalizations.of(context)!;
     final db = context.read<DatabaseService>();
@@ -140,11 +240,15 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
     );
   }
 
-  void _showJoinFamilyDialog() {
+  void _showJoinFamilyDialog({bool forceCoachMark = false}) {
     final l10n = AppLocalizations.of(context)!;
+    final userId = context.read<DatabaseService>().currentUser?.idUsuario;
     final codeController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    final joinCodeFieldKey = GlobalKey();
+    final joinScanQrKey = GlobalKey();
     bool isSubmitting = false;
+    bool joinTourScheduled = false;
 
     Future<void> submitJoinCode(
       String rawCode,
@@ -190,6 +294,43 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            if (!joinTourScheduled) {
+              joinTourScheduled = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) async {
+                final shouldShow = forceCoachMark ||
+                    !(await CoachMarkService.hasSeenTour(
+                      CoachMarkTour.joinFamily,
+                      userId,
+                    ));
+                if (!shouldShow || !dialogContext.mounted) return;
+                await Future.delayed(const Duration(milliseconds: 350));
+                if (!dialogContext.mounted) return;
+                await CoachMarkController.show(
+                  context: dialogContext,
+                  steps: [
+                    CoachMarkStep(
+                      targetKey: joinCodeFieldKey,
+                      title: l10n.coachJoinCodeTitle,
+                      description: l10n.coachJoinCodeDesc,
+                      borderRadius: 12,
+                    ),
+                    CoachMarkStep(
+                      targetKey: joinScanQrKey,
+                      title: l10n.coachJoinQrTitle,
+                      description: l10n.coachJoinQrDesc,
+                      borderRadius: 12,
+                    ),
+                  ],
+                  onComplete: forceCoachMark
+                      ? null
+                      : () => CoachMarkService.markTourSeen(
+                            CoachMarkTour.joinFamily,
+                            userId,
+                          ),
+                );
+              });
+            }
+
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: Text(l10n.btnJoinFamily),
@@ -201,6 +342,7 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       OutlinedButton.icon(
+                        key: joinScanQrKey,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.teal,
                           side: const BorderSide(color: Colors.teal, width: 1.5),
@@ -251,6 +393,7 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
                       ),
                       const SizedBox(height: 14),
                       TextFormField(
+                        key: joinCodeFieldKey,
                         controller: codeController,
                         enabled: !isSubmitting,
                         textCapitalization: TextCapitalization.characters,
@@ -410,6 +553,8 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
             icon: const Icon(Icons.logout_rounded),
             tooltip: l10n.menuLogout,
             onPressed: () async {
+              final confirmed = await showLogoutConfirmDialog(context);
+              if (!confirmed || !context.mounted) return;
               await db.logout();
               if (!context.mounted) return;
               Navigator.pushAndRemoveUntil(
@@ -439,6 +584,7 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
 
               // Banner con contador de limite de creación (Máximo 5 familias)
               Container(
+                key: _createdFamiliesCounterKey,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: remainingCount > 0 ? Colors.purple.withValues(alpha: 0.08) : Colors.orange.withValues(alpha: 0.12),
@@ -481,6 +627,7 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
 
               // Botón 1: Crear Familia
               Card(
+                key: _createFamilyKey,
                 elevation: 3,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
@@ -522,6 +669,7 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
 
               // Botón 2: Unirse a Familia
               Card(
+                key: _joinFamilyKey,
                 elevation: 3,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
@@ -562,11 +710,15 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
               // Lista simple de mis familias
               if (userFamilies.isNotEmpty) ...[
                 const SizedBox(height: 32),
-                Text(
-                  l10n.myFamiliesHeader,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
+                Padding(
+                  key: _myFamiliesKey,
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Text(
+                    l10n.myFamiliesHeader,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
